@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+
+class {{CLASS_NAME}} < ApplicationComponent
+  def initialize({{PARAMS}})
+    {{INSTANCE_VARS}}
+  end
+
+  private
+
+  {{ATTR_READERS}}
+end

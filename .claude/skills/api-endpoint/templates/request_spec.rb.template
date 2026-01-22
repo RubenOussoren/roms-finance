@@ -1,0 +1,57 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class Api::V1::{{CLASS_NAME}}ControllerTest < ActionDispatch::IntegrationTest
+  setup do
+    @family = families(:one)
+    @user = users(:one)
+    # Setup authentication headers
+    @headers = authenticated_headers(@user)
+  end
+
+  test "GET /api/v1/{{resource}} returns list" do
+    get api_v1_{{resource}}_url, headers: @headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert json.key?("{{resource}}")
+  end
+
+  test "GET /api/v1/{{resource}}/:id returns resource" do
+    {{singular}} = {{model}}.first
+    get api_v1_{{singular}}_url({{singular}}), headers: @headers
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert_equal {{singular}}.id, json["{{singular}}"]["id"]
+  end
+
+  test "POST /api/v1/{{resource}} creates resource" do
+    assert_difference("{{model}}.count") do
+      post api_v1_{{resource}}_url,
+        params: { {{singular}}: { {{CREATE_PARAMS}} } },
+        headers: @headers
+    end
+
+    assert_response :created
+  end
+
+  test "requires authentication" do
+    get api_v1_{{resource}}_url
+
+    assert_response :unauthorized
+  end
+
+  private
+
+  def authenticated_headers(user)
+    # Return headers with valid authentication token
+    { "Authorization" => "Bearer #{generate_token(user)}" }
+  end
+
+  def generate_token(user)
+    # Generate JWT or OAuth token for user
+    "test_token"
+  end
+end

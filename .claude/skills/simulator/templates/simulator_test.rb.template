@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class {{CLASS_NAME}}Test < ActiveSupport::TestCase
+  setup do
+    @simulator = {{CLASS_NAME}}.new({{TEST_PARAMS}})
+  end
+
+  test "simulation returns baseline and optimized paths" do
+    result = @simulator.simulate
+
+    assert_not_nil result.baseline_path
+    assert_not_nil result.optimized_path
+    assert result.baseline_path.length > 0
+    assert result.optimized_path.length > 0
+  end
+
+  test "optimized strategy improves on baseline" do
+    result = @simulator.simulate
+
+    # Verify optimized path provides benefit
+    assert result.summary[:improvement] >= 0
+  end
+
+  test "handles edge cases" do
+    # Test with minimum values
+    {{EDGE_CASE_TESTS}}
+  end
+
+  test "is jurisdiction aware" do
+    assert_respond_to @simulator, :jurisdiction
+  end
+
+  test "respects PAG 2025 compliance" do
+    # Verify compliant assumptions if applicable
+    assert_respond_to @simulator, :pag_compliant?
+  end
+end

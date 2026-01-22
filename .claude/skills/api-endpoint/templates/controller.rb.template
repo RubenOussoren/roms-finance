@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+module Api
+  module V1
+    class {{CLASS_NAME}}Controller < Api::V1::BaseController
+      {{BEFORE_ACTIONS}}
+
+      {{ACTIONS}}
+
+      private
+
+      {{PRIVATE_METHODS}}
+    end
+  end
+end

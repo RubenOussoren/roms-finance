@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class {{CLASS_NAME}}Test < ActiveSupport::TestCase
+  test "calculation matches expected formula" do
+    calc = {{CLASS_NAME}}.new({{TEST_PARAMS}})
+    result = calc.calculate
+
+    # Known formula verification
+    expected = {{EXPECTED_VALUE}}
+    assert_in_delta expected, result.{{RESULT_FIELD}}, 0.01
+  end
+
+  test "handles zero values" do
+    calc = {{CLASS_NAME}}.new({{ZERO_PARAMS}})
+    result = calc.calculate
+
+    assert_not_nil result
+  end
+
+  test "handles edge cases" do
+    # Test boundary conditions
+    {{EDGE_CASE_TESTS}}
+  end
+
+  test "is jurisdiction aware" do
+    calc = {{CLASS_NAME}}.new({{TEST_PARAMS}}, jurisdiction: Jurisdiction.find_by(country_code: 'CA'))
+
+    assert_respond_to calc, :jurisdiction
+  end
+end

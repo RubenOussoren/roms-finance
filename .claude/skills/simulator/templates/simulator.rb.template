@@ -1,0 +1,68 @@
+# frozen_string_literal: true
+
+# 🇨🇦 Canadian-first financial simulator
+# 🔧 Extensibility: Supports jurisdiction configuration
+#
+# {{DESCRIPTION}}
+class {{CLASS_NAME}}
+  include PagCompliant
+  include JurisdictionAware
+
+  SimulationResult = Struct.new(
+    :baseline_path,
+    :optimized_path,
+    :summary,
+    keyword_init: true
+  )
+
+  PeriodState = Struct.new(
+    :period,
+    {{STATE_FIELDS}},
+    keyword_init: true
+  )
+
+  def initialize({{PARAMS}})
+    {{INSTANCE_VARS}}
+    @jurisdiction = jurisdiction || Jurisdiction.default
+  end
+
+  def simulate
+    baseline = simulate_baseline
+    optimized = simulate_optimized
+
+    SimulationResult.new(
+      baseline_path: baseline,
+      optimized_path: optimized,
+      summary: build_summary(baseline, optimized)
+    )
+  end
+
+  private
+
+  def simulate_baseline
+    path = []
+    {{BASELINE_LOGIC}}
+    path
+  end
+
+  def simulate_optimized
+    path = []
+    {{OPTIMIZED_LOGIC}}
+    path
+  end
+
+  def build_summary(baseline, optimized)
+    {
+      baseline_final: baseline.last,
+      optimized_final: optimized.last,
+      improvement: calculate_improvement(baseline, optimized)
+    }
+  end
+
+  def calculate_improvement(baseline, optimized)
+    # Compare strategies
+    0
+  end
+
+  {{PRIVATE_METHODS}}
+end

@@ -1,0 +1,3 @@
+<div class="bg-container border border-primary rounded-lg p-4">
+  <%%= content %>
+</div>

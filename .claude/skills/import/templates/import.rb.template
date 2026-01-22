@@ -1,0 +1,53 @@
+# frozen_string_literal: true
+
+class {{CLASS_NAME}} < Import
+  REQUIRED_COLUMNS = %w[{{REQUIRED_COLUMNS}}].freeze
+  OPTIONAL_COLUMNS = %w[{{OPTIONAL_COLUMNS}}].freeze
+
+  def column_mappings
+    {
+      {{COLUMN_MAPPINGS}}
+    }
+  end
+
+  def transform_row(row)
+    {
+      {{TRANSFORM_LOGIC}}
+    }
+  end
+
+  def validate_row(row)
+    errors = []
+    {{VALIDATIONS}}
+    errors
+  end
+
+  def process!
+    transaction do
+      rows.each_with_index do |row, index|
+        transformed = transform_row(row)
+        errors = validate_row(transformed)
+
+        if errors.any?
+          record_error(index, errors)
+          next
+        end
+
+        create_record(transformed)
+      end
+
+      update!(status: errors.any? ? :completed_with_errors : :completed)
+    end
+  end
+
+  private
+
+  {{PRIVATE_METHODS}}
+
+  def record_error(row_index, errors)
+    import_errors.create!(
+      row_number: row_index + 1,
+      messages: errors
+    )
+  end
+end

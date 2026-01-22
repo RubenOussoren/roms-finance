@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+class {{CLASS_NAME}} < ApplicationJob
+  queue_as :default
+
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+  discard_on ActiveRecord::RecordNotFound
+
+  def perform({{PARAMS}})
+    {{FIND_RECORD}}
+    sync = {{SYNCABLE}}.syncs.create!(status: :syncing)
+
+    begin
+      result = perform_sync({{SYNCABLE}})
+
+      sync.update!(
+        status: :completed,
+        completed_at: Time.current,
+        metadata: result
+      )
+    rescue StandardError => e
+      sync.update!(
+        status: :failed,
+        error_message: e.message
+      )
+      raise
+    end
+  end
+
+  private
+
+  def perform_sync({{SYNCABLE}})
+    {{SYNC_LOGIC}}
+
+    {
+      {{RESULT_METADATA}}
+    }
+  end
+end

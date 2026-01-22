@@ -1,0 +1,30 @@
+# frozen_string_literal: true
+
+# 🇨🇦 Canadian-first financial calculator
+# 🔧 Extensibility: Supports jurisdiction configuration
+#
+# {{DESCRIPTION}}
+class {{CLASS_NAME}}
+  include PagCompliant
+  include JurisdictionAware
+
+  Result = Struct.new({{RESULT_FIELDS}}, keyword_init: true)
+
+  def initialize({{PARAMS}})
+    {{INSTANCE_VARS}}
+    @jurisdiction = jurisdiction || Jurisdiction.default
+  end
+
+  def calculate
+    # Pure calculation logic - no side effects
+    {{CALCULATION_LOGIC}}
+
+    Result.new(
+      {{RESULT_ASSIGNMENTS}}
+    )
+  end
+
+  private
+
+  {{PRIVATE_METHODS}}
+end
