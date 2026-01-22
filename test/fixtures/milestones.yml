@@ -1,0 +1,31 @@
+# Milestone fixtures
+first_100k:
+  account: investment
+  name: $100K
+  target_amount: 100000.0
+  currency: USD
+  status: pending
+  progress_percentage: 10.0
+  is_custom: false
+  metadata: {}
+
+half_million:
+  account: investment
+  name: $500K
+  target_amount: 500000.0
+  currency: USD
+  status: pending
+  progress_percentage: 2.0
+  is_custom: false
+  metadata: {}
+
+custom_goal:
+  account: investment
+  name: Down Payment
+  target_amount: 75000.0
+  currency: USD
+  target_date: <%= 2.years.from_now.to_date %>
+  status: in_progress
+  progress_percentage: 13.33
+  is_custom: true
+  metadata: {}

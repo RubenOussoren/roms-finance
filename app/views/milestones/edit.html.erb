@@ -1,0 +1,25 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Edit Milestone") %>
+  <% dialog.with_body do %>
+    <%= styled_form_with model: @milestone, url: milestone_path(@milestone), method: :patch, class: "space-y-4" do |form| %>
+      <div class="space-y-3">
+        <%= form.text_field :name,
+            label: "Name",
+            required: true,
+            placeholder: "e.g., Emergency Fund $10K" %>
+
+        <%= form.money_field :target_amount,
+            label: "Target Amount",
+            required: true,
+            disable_currency: true %>
+
+        <%= form.date_field :target_date,
+            label: "Target Date (optional)",
+            min: Date.current,
+            help_text: "Set a target date to track if you're on schedule" %>
+      </div>
+
+      <%= form.submit "Update Milestone" %>
+    <% end %>
+  <% end %>
+<% end %>

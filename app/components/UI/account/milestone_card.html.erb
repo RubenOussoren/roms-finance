@@ -1,0 +1,80 @@
+<%= tag.div class: class_names(
+      "p-4 rounded-lg border",
+      highlight? ? "border-blue-200 bg-blue-50/50" : "border-secondary bg-container"
+    ) do %>
+  <div class="flex items-start justify-between gap-3">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-2">
+        <h4 class="font-medium text-primary truncate"><%= milestone.name %></h4>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= status_badge_classes %>">
+          <%= status_label %>
+        </span>
+      </div>
+
+      <p class="text-lg font-semibold text-primary mb-3">
+        <%= formatted_target %>
+      </p>
+
+      <div class="mb-2">
+        <div class="flex items-center justify-between text-xs text-secondary mb-1">
+          <span>Progress</span>
+          <span><%= formatted_progress %>%</span>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full <%= progress_bar_classes %> rounded-full transition-all duration-300"
+               style="width: <%= [milestone.progress_percentage, 100].min %>%">
+          </div>
+        </div>
+      </div>
+
+      <% if projected_date_text.present? || days_remaining_text.present? %>
+        <div class="flex items-center justify-between text-sm mt-3">
+          <% if projected_date_text.present? %>
+            <div class="flex items-center gap-1 text-secondary">
+              <%= helpers.icon("calendar", size: "sm") %>
+              <span><%= projected_date_text %></span>
+            </div>
+          <% end %>
+
+          <% if days_remaining_text.present? && !milestone.achieved? %>
+            <span class="text-secondary"><%= days_remaining_text %></span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if on_track_indicator.present? && !milestone.achieved? %>
+        <div class="flex items-center gap-1 mt-2 text-sm">
+          <%= helpers.icon(on_track_indicator[:icon], size: "sm", color: on_track_indicator[:color]) %>
+          <span class="<%= on_track_indicator[:color] == "success" ? "text-green-600" : "text-yellow-600" %>">
+            <%= on_track_indicator[:text] %>
+          </span>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="flex-shrink-0 flex items-center gap-2">
+      <% if milestone.achieved? %>
+        <%= helpers.icon("trophy", size: "lg", color: "success") %>
+      <% end %>
+
+      <% if custom? %>
+        <div class="flex items-center gap-1">
+          <%= helpers.link_to edit_path,
+                class: "p-1 text-secondary hover:text-primary rounded hover:bg-gray-100",
+                data: { turbo_frame: "modal" },
+                title: "Edit milestone" do %>
+            <%= helpers.icon("edit", size: "sm") %>
+          <% end %>
+
+          <%= helpers.button_to delete_path,
+                method: :delete,
+                data: { turbo_confirm: "Are you sure you want to delete this milestone?" },
+                class: "p-1 text-secondary hover:text-red-600 rounded hover:bg-gray-100",
+                title: "Delete milestone" do %>
+            <%= helpers.icon("trash-2", size: "sm") %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
