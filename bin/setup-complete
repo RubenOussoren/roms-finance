@@ -1,0 +1,320 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "open3"
+
+# Color output helpers
+def green(text)
+  "\e[32m#{text}\e[0m"
+end
+
+def yellow(text)
+  "\e[33m#{text}\e[0m"
+end
+
+def red(text)
+  "\e[31m#{text}\e[0m"
+end
+
+def blue(text)
+  "\e[34m#{text}\e[0m"
+end
+
+# Parse command line arguments
+RESET_DB = ARGV.include?("--reset")
+SKIP_USER = ARGV.include?("--skip-user")
+SHOW_HELP = ARGV.include?("--help") || ARGV.include?("-h")
+
+if SHOW_HELP
+  puts <<~HELP
+    #{blue("ROMS Finance - Complete Development Environment Setup")}
+
+    Usage: bin/setup-complete [options]
+
+    Options:
+      --reset       Drop and recreate the database (clean slate)
+      --skip-user   Skip creating the test user
+      --help, -h    Show this help message
+
+    Examples:
+      bin/setup-complete              # Standard setup
+      bin/setup-complete --reset      # Reset database first
+      bin/setup-complete --skip-user  # Skip test user creation
+
+    This script will:
+      1. Check prerequisites (Ruby, PostgreSQL, Redis, Node.js)
+      2. Copy environment configuration
+      3. Install Ruby and JavaScript dependencies
+      4. Setup database (with optional reset)
+      5. Create test user (unless --skip-user)
+      6. Compile Tailwind CSS assets
+      7. Display success message with login credentials
+  HELP
+  exit 0
+end
+
+# Track failures
+@failures = []
+
+def run_command(description, command, check_exit: true)
+  puts "  #{description}..."
+  success = system(command)
+
+  if check_exit && !success
+    @failures << description
+    puts "  #{red("✗")} #{description} failed"
+    return false
+  end
+
+  puts "  #{green("✓")} #{description}"
+  true
+end
+
+def check_command_exists(command)
+  system("which #{command} > /dev/null 2>&1")
+end
+
+def check_service_running(service_name, check_command)
+  stdout, stderr, status = Open3.capture3(check_command)
+  status.success?
+end
+
+puts ""
+puts blue("=" * 70)
+puts blue("  ROMS Finance - Complete Development Environment Setup")
+puts blue("=" * 70)
+puts ""
+
+# Step 1: Check prerequisites
+puts blue("Step 1: Checking Prerequisites")
+puts ""
+
+# Check Ruby version
+current_ruby = `ruby --version 2>&1`.strip
+if current_ruby.include?("3.4.4")
+  puts "  #{green("✓")} Ruby 3.4.4 is installed"
+else
+  puts "  #{yellow("⚠")} Ruby version mismatch"
+  puts "    Current: #{current_ruby}"
+  puts "    Required: Ruby 3.4.4"
+  puts ""
+  puts "    To install Ruby 3.4.4 with rbenv:"
+  puts "      #{yellow("rbenv install 3.4.4")}"
+  puts "      #{yellow("rbenv rehash")}"
+  puts ""
+  @failures << "Ruby version check"
+end
+
+# Check PostgreSQL
+if check_command_exists("psql")
+  if check_service_running("PostgreSQL", "pg_isready")
+    puts "  #{green("✓")} PostgreSQL is running"
+  else
+    puts "  #{yellow("⚠")} PostgreSQL is not running"
+    puts "    Attempting to start PostgreSQL..."
+    if system("brew services start postgresql@14 > /dev/null 2>&1")
+      sleep 2
+      if check_service_running("PostgreSQL", "pg_isready")
+        puts "  #{green("✓")} PostgreSQL started successfully"
+      else
+        puts "  #{red("✗")} Failed to start PostgreSQL"
+        puts "    Try manually: #{yellow("brew services start postgresql@14")}"
+        @failures << "PostgreSQL startup"
+      end
+    else
+      puts "  #{red("✗")} Failed to start PostgreSQL"
+      puts "    Try manually: #{yellow("brew services start postgresql@14")}"
+      @failures << "PostgreSQL startup"
+    end
+  end
+else
+  puts "  #{red("✗")} PostgreSQL is not installed"
+  puts "    To install PostgreSQL:"
+  puts "      #{yellow("brew install postgresql@14")}"
+  puts "      #{yellow("brew services start postgresql@14")}"
+  @failures << "PostgreSQL installation"
+end
+
+# Check Redis
+if check_command_exists("redis-cli")
+  if check_service_running("Redis", "redis-cli ping > /dev/null 2>&1")
+    puts "  #{green("✓")} Redis is running"
+  else
+    puts "  #{yellow("⚠")} Redis is not running"
+    puts "    Attempting to start Redis..."
+    if system("brew services start redis > /dev/null 2>&1")
+      sleep 1
+      if check_service_running("Redis", "redis-cli ping > /dev/null 2>&1")
+        puts "  #{green("✓")} Redis started successfully"
+      else
+        puts "  #{red("✗")} Failed to start Redis"
+        puts "    Try manually: #{yellow("brew services start redis")}"
+        @failures << "Redis startup"
+      end
+    else
+      puts "  #{red("✗")} Failed to start Redis"
+      puts "    Try manually: #{yellow("brew services start redis")}"
+      @failures << "Redis startup"
+    end
+  end
+else
+  puts "  #{red("✗")} Redis is not installed"
+  puts "    To install Redis:"
+  puts "      #{yellow("brew install redis")}"
+  puts "      #{yellow("brew services start redis")}"
+  @failures << "Redis installation"
+end
+
+# Check Node.js
+if check_command_exists("node")
+  node_version = `node --version 2>&1`.strip
+  puts "  #{green("✓")} Node.js is installed (#{node_version})"
+else
+  puts "  #{red("✗")} Node.js is not installed"
+  puts "    To install Node.js:"
+  puts "      #{yellow("brew install node@20")}"
+  @failures << "Node.js installation"
+end
+
+puts ""
+
+# Stop if critical prerequisites are missing
+if @failures.any?
+  puts red("⚠ Prerequisites check failed. Please address the issues above before continuing.")
+  puts ""
+  exit 1
+end
+
+# Step 2: Environment Configuration
+puts blue("Step 2: Environment Configuration")
+puts ""
+
+if File.exist?(".env.local")
+  puts "  #{green("✓")} .env.local already exists (preserving existing configuration)"
+else
+  if File.exist?(".env.local.example")
+    FileUtils.cp(".env.local.example", ".env.local")
+    puts "  #{green("✓")} Created .env.local from .env.local.example"
+  else
+    puts "  #{yellow("⚠")} .env.local.example not found, skipping environment setup"
+  end
+end
+
+puts ""
+
+# Step 3: Install Dependencies
+puts blue("Step 3: Installing Dependencies")
+puts ""
+
+run_command("Installing Ruby gems", "bundle install --quiet")
+run_command("Installing JavaScript packages", "npm install --silent")
+
+puts ""
+
+# Step 4: Database Setup
+puts blue("Step 4: Database Setup")
+puts ""
+
+if RESET_DB
+  puts "  #{yellow("⚠")} Dropping existing database..."
+  run_command("Dropping database", "bin/rails db:drop", check_exit: false)
+end
+
+run_command("Preparing database", "bin/rails db:prepare")
+run_command("Loading seed data", "bin/rails db:seed")
+
+puts ""
+
+# Step 5: Create Test User
+unless SKIP_USER
+  puts blue("Step 5: Creating Test User")
+  puts ""
+
+  # Check if user already exists
+  user_exists_script = <<~RUBY
+    require './config/environment'
+    user = User.find_by(email: 'user@maybe.local')
+    exit(user.present? ? 0 : 1)
+  RUBY
+
+  user_exists = system("ruby", "-e", user_exists_script)
+
+  if user_exists && !RESET_DB
+    puts "  #{green("✓")} Test user already exists (user@maybe.local)"
+  else
+    create_user_script = <<~RUBY
+      require './config/environment'
+      family = Family.create!(name: 'Test Family')
+      user = User.create!(
+        email: 'user@maybe.local',
+        password: 'password',
+        password_confirmation: 'password',
+        family: family,
+        role: 'admin',
+        first_name: 'Test',
+        last_name: 'User'
+      )
+      puts "Created user: \#{user.email}"
+    RUBY
+
+    if system("ruby", "-e", create_user_script)
+      puts "  #{green("✓")} Test user created (user@maybe.local)"
+    else
+      puts "  #{red("✗")} Failed to create test user"
+      @failures << "User creation"
+    end
+  end
+
+  puts ""
+end
+
+# Step 6: Compile Assets
+puts blue("Step 6: Compiling Assets")
+puts ""
+
+run_command("Building Tailwind CSS", "bin/rails tailwindcss:build")
+
+puts ""
+
+# Final summary
+puts blue("=" * 70)
+
+if @failures.empty?
+  puts green("  ✓ Setup completed successfully!")
+  puts blue("=" * 70)
+  puts ""
+  puts "  #{green("Next steps:")}"
+  puts ""
+  puts "  1. Start the development server:"
+  puts "     #{yellow("bin/rails server")}"
+  puts ""
+  puts "  2. Open your browser to:"
+  puts "     #{yellow("http://localhost:3000")}"
+  puts ""
+
+  unless SKIP_USER
+    puts "  3. Login with:"
+    puts "     Email:    #{yellow("user@maybe.local")}"
+    puts "     Password: #{yellow("password")}"
+    puts ""
+  end
+
+  puts "  #{blue("Additional commands:")}"
+  puts "  - Run tests:           #{yellow("bin/rails test")}"
+  puts "  - Open Rails console:  #{yellow("bin/rails console")}"
+  puts "  - Reset database:      #{yellow("bin/setup-complete --reset")}"
+  puts ""
+else
+  puts red("  ⚠ Setup completed with errors")
+  puts blue("=" * 70)
+  puts ""
+  puts "  The following steps failed:"
+  @failures.each do |failure|
+    puts "    #{red("✗")} #{failure}"
+  end
+  puts ""
+  puts "  Please address these issues and run #{yellow("bin/setup-complete")} again."
+  puts ""
+  exit 1
+end

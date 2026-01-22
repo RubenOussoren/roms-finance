@@ -1,5 +1,6 @@
 class Family < ApplicationRecord
   include PlaidConnectable, Syncable, AutoTransferMatchable, Subscribeable
+  include JurisdictionAware, PagCompliant, DataQualityCheckable
 
   DATE_FORMATS = [
     [ "MM-DD-YYYY", "%m-%d-%Y" ],
@@ -32,6 +33,8 @@ class Family < ApplicationRecord
 
   has_many :budgets, dependent: :destroy
   has_many :budget_categories, through: :budgets
+  has_many :projection_assumptions, dependent: :destroy
+  has_many :debt_optimization_strategies, dependent: :destroy
 
   validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
   validates :date_format, inclusion: { in: DATE_FORMATS.map(&:last) }

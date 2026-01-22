@@ -1,0 +1,740 @@
+---
+description: Testing patterns for financial calculations, simulators, and compliance
+globs:
+  - "test/**/*.rb"
+alwaysApply: false
+---
+
+# Financial Testing Patterns
+
+This rule defines testing patterns specific to financial calculations, simulators, and compliance features.
+
+## Core Testing Philosophy
+
+**Philosophy**: *"Test the critical paths that give confidence, not coverage for coverage's sake"*
+
+**Focus**: Test critical and important code paths that significantly increase confidence in the codebase.
+
+---
+
+## What to Test
+
+### ✅ DO Test: Financial Calculations
+
+Always test financial math with known values.
+
+```ruby
+# test/calculators/projection_calculator_test.rb
+class ProjectionCalculatorTest < ActiveSupport::TestCase
+  test "compound interest calculation matches formula" do
+    # Formula: FV = PV × (1 + r)^n (for monthly compounding over 10 years = 120 months)
+    calc = ProjectionCalculator.new(
+      principal: 1000,
+      rate: 0.08,
+      contribution: 0
+    )
+
+    expected = 1000 * (1.08 ** 10)  # = 2158.92 (approximate for annual)
+    assert_in_delta expected, calc.future_value_at_month(120), 1.0
+  end
+
+  test "monthly contribution increases portfolio value" do
+    calc = ProjectionCalculator.new(
+      principal: 50000,
+      rate: 0.06,
+      contribution: 500
+    )
+
+    result = calc.project(months: 120)  # 10 years
+
+    # Total contributions: $500 × 120 months = $60,000
+    assert_equal 60000.0, result.last[:cumulative_contribution]
+
+    # Final value should be > principal + contributions (due to growth)
+    assert_operator result.last[:balance], :>, 50000 + 60000
+  end
+
+  test "zero balance projections remain valid" do
+    calc = ProjectionCalculator.new(
+      principal: 0,
+      rate: 0.06,
+      contribution: 0
+    )
+
+    result = calc.project(months: 12)
+
+    assert_equal 0.0, result.last[:balance]
+  end
+
+  test "negative returns decrease portfolio value" do
+    calc = ProjectionCalculator.new(
+      principal: 10000,
+      rate: -0.05,  # -5% annual return
+      contribution: 0
+    )
+
+    future_value = calc.future_value_at_month(12)  # 1 year
+
+    assert_operator future_value, :<, 10000
+  end
+end
+```
+
+### ✅ DO Test: Edge Cases
+
+Test boundary conditions and unusual inputs.
+
+```ruby
+# test/calculators/milestone_calculator_test.rb
+class MilestoneCalculatorTest < ActiveSupport::TestCase
+  test "handles zero balance gracefully" do
+    account = accounts(:empty_account)
+    milestone = Milestone.create!(
+      account: account,
+      target_value: 100000,
+      milestone_type: :net_worth_target
+    )
+
+    result = MilestoneCalculator.new(milestone).calculate
+
+    assert result[:p50].present?, "Should calculate projected date even for zero balance"
+    assert_operator result[:p50], :>, Date.today + 10.years, "Should be far in future"
+  end
+
+  test "handles already-achieved milestones" do
+    account = accounts(:wealthy_account)  # Balance: $1,000,000
+    milestone = Milestone.create!(
+      account: account,
+      target_value: 500000,  # Already achieved
+      milestone_type: :net_worth_target
+    )
+
+    result = MilestoneCalculator.new(milestone).calculate
+
+    assert_equal Date.today, result[:p50], "Milestone already achieved"
+    assert_equal 100, result[:confidence], "100% confident when already achieved"
+  end
+
+  test "handles unrealistic targets" do
+    account = accounts(:investment_account)  # Balance: $50,000
+    milestone = Milestone.create!(
+      account: account,
+      target_value: 10_000_000,  # $10M
+      milestone_type: :net_worth_target
+    )
+
+    result = MilestoneCalculator.new(milestone).calculate
+
+    # Should still calculate, but with low confidence
+    assert result[:p50].present?
+    assert_operator result[:confidence], :<, 50
+  end
+end
+```
+
+### ✅ DO Test: Business Logic
+
+Test domain-specific rules and validations.
+
+```ruby
+# test/services/canadian_smith_manoeuvre_simulator_test.rb
+class CanadianSmithManoeuvrSimulatorTest < ActiveSupport::TestCase
+  setup do
+    @strategy = debt_optimization_strategies(:monika_modified_smith)
+    @simulator = CanadianSmithManoeuvrSimulator.new(@strategy)
+  end
+
+  test "modified strategy stops when HELOC reaches limit" do
+    @strategy.auto_stop_heloc_percentage = 0.90
+    @strategy.heloc.credit_limit = 50000
+
+    result = @simulator.run(months: 360)  # 30 years
+
+    assert result[:stopped?], "Strategy should have stopped"
+    stopped_entry = result[:month_by_month].find { |e| e[:strategy_stopped] }
+    assert_operator stopped_entry[:heloc_balance_end], :>=, 45000  # 90% of 50K
+    assert_equal "HELOC limit reached", stopped_entry[:stop_reason]
+  end
+
+  test "validates CRA compliance requirements" do
+    us_jurisdiction = jurisdictions(:united_states)
+    @strategy.jurisdiction = us_jurisdiction
+
+    # Canadian Modified Smith Manoeuvre requires CRA deductibility rules
+    assert_raises(RuntimeError, "HELOC interest not deductible in this jurisdiction") do
+      @simulator.run(months: 12)
+    end
+  end
+
+  test "HELOC interest is fully deductible when used for rental" do
+    result = @simulator.run(months: 12)
+    ledger = result[:month_by_month]
+
+    ledger.each do |entry|
+      # All HELOC interest should be deductible (100% rental use)
+      assert_equal entry[:heloc_interest], entry[:deductible_interest],
+                   "All HELOC interest should be deductible per CRA rules"
+    end
+  end
+
+  test "tax benefit calculation uses correct marginal rate" do
+    @strategy.marginal_tax_rate = 0.45  # 45% MTR
+
+    result = @simulator.run(months: 1)
+    entry = result[:month_by_month].first
+
+    expected_tax_refund = entry[:deductible_interest] * 0.45
+    assert_in_delta expected_tax_refund, entry[:tax_refund_monthly], 0.01
+  end
+
+  test "primary mortgage pays off faster with modified strategy" do
+    result = @simulator.run(months: 360)
+
+    assert_operator result[:years_to_payoff_modified], :<, result[:years_to_payoff_baseline],
+                    "Modified strategy should pay off primary mortgage faster"
+  end
+end
+```
+
+### ✅ DO Test: Data Transformations
+
+Test CSV imports, data parsing, and transformations.
+
+```ruby
+# test/services/holdings_import_service_test.rb
+class HoldingsImportServiceTest < ActiveSupport::TestCase
+  test "CSV import creates correct holdings" do
+    account = accounts(:investment_account)
+    csv_file = fixture_file_upload('wealthsimple.csv', 'text/csv')
+
+    assert_difference 'Holding.count', 3 do
+      Holdings::ImportService.new(account, csv_file).call
+    end
+
+    # Verify specific holding was created correctly
+    aapl_holding = account.holdings.find_by(ticker: 'AAPL')
+    assert_equal 10.5, aapl_holding.qty
+    assert_equal 150.25, aapl_holding.price
+    assert_equal 'USD', aapl_holding.currency
+  end
+
+  test "import infers contributions from balance changes" do
+    account = accounts(:investment_account)
+    csv_file = fixture_file_upload('snapshots_with_contributions.csv', 'text/csv')
+
+    Holdings::ImportService.new(account, csv_file).call
+
+    contributions = account.inferred_contributions
+    assert_equal 12, contributions.size  # 12 months
+    assert_operator contributions.sum, :>, 0, "Should detect contributions"
+  end
+
+  test "import detects and warns about anomalies" do
+    account = accounts(:investment_account)
+    csv_file = fixture_file_upload('snapshots_with_anomalies.csv', 'text/csv')
+
+    Holdings::ImportService.new(account, csv_file).call
+
+    issues = account.data_quality_issues
+    assert_includes issues.map { |i| i[:type] }, :negative_contributions
+    assert_includes issues.map { |i| i[:type] }, :unrealistic_contribution
+  end
+end
+```
+
+---
+
+## What NOT to Test
+
+### ❌ DON'T Test: Framework Behavior
+
+Don't test ActiveRecord validations work (Rails already tests this).
+
+```ruby
+# BAD - Testing ActiveRecord functionality
+test "saves balance" do
+  balance_record = Balance.new(balance: 100, currency: "USD")
+  assert balance_record.save
+end
+
+# GOOD - Test business logic validation
+test "rejects unrealistic volatility" do
+  projection = Projection.new(volatility: 3.0)  # 300% volatility
+  assert_not projection.valid?
+  assert_includes projection.errors[:volatility], "is very high"
+end
+```
+
+### ❌ DON'T Test: Third-Party Libraries
+
+Don't test that NumPy works (NumPy team already tests this).
+
+```ruby
+# BAD - Testing library behavior
+test "numpy calculates standard deviation" do
+  values = [1, 2, 3, 4, 5]
+  std_dev = Numpy.std(values)
+  assert_operator std_dev, :>, 0
+end
+
+# GOOD - Test your usage of the library
+test "portfolio volatility calculation uses correct formula" do
+  holdings = [
+    { ticker: 'AAPL', weight: 0.5, volatility: 0.15 },
+    { ticker: 'MSFT', weight: 0.5, volatility: 0.18 }
+  ]
+
+  volatility = PortfolioVolatilityCalculator.new(holdings).calculate
+
+  # Test that our calculator produces expected results
+  assert_in_delta 0.165, volatility, 0.01
+end
+```
+
+### ❌ DON'T Test: Trivial Getters/Setters
+
+Don't test simple attribute access.
+
+```ruby
+# BAD
+test "milestone has target value" do
+  milestone = milestones(:first_100k)
+  assert_equal 100000, milestone.target_value
+end
+
+# GOOD - Test calculated/derived values
+test "milestone calculates progress percentage" do
+  account = accounts(:investment_account)  # Balance: $50,000
+  milestone = Milestone.new(account: account, target_value: 100000)
+
+  assert_equal 50.0, milestone.progress_percentage
+end
+```
+
+### ❌ DON'T Test: Private Methods
+
+Test through public interface only.
+
+```ruby
+# BAD - Testing private method directly
+test "simulate_path helper calculates correctly" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  result = calc.send(:simulate_path, months: 120, monthly_rate: 0.08/12, monthly_vol: 0.15)
+  assert result > 0
+end
+
+# GOOD - Test public method that uses private helper
+test "projection uses compound growth" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  result = calc.future_value_at_month(120)  # 10 years
+  # simulate_path is tested implicitly through public interface
+  assert_operator result, :>, 1000
+end
+```
+
+---
+
+## Testing Simulators
+
+### Simulator Testing Pattern
+
+```ruby
+# test/services/baseline_simulator_test.rb
+class BaselineSimulatorTest < ActiveSupport::TestCase
+  setup do
+    @strategy = debt_optimization_strategies(:baseline_strategy)
+    @simulator = BaselineSimulator.new(@strategy)
+  end
+
+  test "baseline simulator produces expected output format" do
+    result = @simulator.run(months: 12)
+
+    # Verify structure
+    assert result.key?(:total_interest)
+    assert result.key?(:tax_benefit)
+    assert result.key?(:months_to_payoff)
+    assert result.key?(:ledger)
+
+    # Verify ledger has correct number of entries
+    assert_equal 12, result[:ledger].size
+  end
+
+  test "baseline strategy does not use HELOC" do
+    result = @simulator.run(months: 12)
+
+    result[:ledger].each do |entry|
+      assert_equal 0, entry[:heloc_draw] || 0, "Baseline should not draw on HELOC"
+      assert_equal 0, entry[:heloc_balance_end] || 0
+    end
+  end
+
+  test "rental income goes to rental mortgage in baseline" do
+    result = @simulator.run(months: 1)
+    entry = result[:ledger].first
+
+    # In baseline, rental income pays rental expenses + mortgage
+    expected_to_rental = @strategy.rental_income_monthly - @strategy.rental_expenses_monthly
+    assert_in_delta expected_to_rental, entry[:rental_mortgage_payment], 1.0
+  end
+end
+```
+
+### Comparison Testing
+
+```ruby
+# test/services/simulator_comparison_test.rb
+class SimulatorComparisonTest < ActiveSupport::TestCase
+  test "modified strategy produces different results than baseline" do
+    strategy = debt_optimization_strategies(:monika_modified_smith)
+
+    baseline_result = BaselineSimulator.new(strategy).run(months: 360)
+    modified_result = CanadianSmithManoeuvrSimulator.new(strategy).run(months: 360)
+
+    # Modified should have tax benefit
+    assert_operator modified_result[:modified_tax_benefit], :>, 0
+    assert_equal 0, baseline_result[:tax_benefit]
+
+    # Modified should use HELOC
+    assert_operator modified_result[:month_by_month].last[:heloc_balance_end], :>, 0
+
+    # Net savings should be positive
+    net_savings = baseline_result[:total_interest] - modified_result[:modified_total_interest] +
+                  modified_result[:modified_tax_benefit]
+    assert_operator net_savings, :>, 0, "Modified strategy should save money"
+  end
+end
+```
+
+---
+
+## Testing PAG Compliance
+
+### PAG Assumption Testing
+
+```ruby
+# test/models/projection_assumption_test.rb
+class ProjectionAssumptionTest < ActiveSupport::TestCase
+  test "PAG 2025 defaults match official guidelines" do
+    # Verify our constants match FP Canada PAG 2025 published values
+    pag_defaults = ProjectionAssumption::PAG_2025_DEFAULTS
+
+    # Canadian equity: 6.6% nominal, 15.7% volatility
+    assert_equal 0.066, pag_defaults[:canadian_equity][:nominal]
+    assert_equal 0.157, pag_defaults[:canadian_equity][:volatility]
+    assert_equal 0.045, pag_defaults[:canadian_equity][:real]
+
+    # US equity: 6.6% nominal, 16.1% volatility
+    assert_equal 0.066, pag_defaults[:us_equity][:nominal]
+    assert_equal 0.161, pag_defaults[:us_equity][:volatility]
+
+    # Fixed income: 3.4% nominal, 7.8% volatility
+    assert_equal 0.034, pag_defaults[:fixed_income][:nominal]
+    assert_equal 0.078, pag_defaults[:fixed_income][:volatility]
+  end
+
+  test "security classification determines correct asset class" do
+    # Canadian ticker
+    vcn = securities(:vcn_to)
+    assert_equal :canadian_equity, ProjectionAssumption.classify_security(vcn)
+
+    # US ticker
+    voo = securities(:voo)
+    assert_equal :us_equity, ProjectionAssumption.classify_security(voo)
+
+    # International ticker
+    vxus = securities(:vxus)
+    assert_equal :intl_developed_equity, ProjectionAssumption.classify_security(vxus)
+  end
+
+  test "pag_compliant? returns true when all assets use PAG assumptions" do
+    account = accounts(:investment_account)
+    account.use_pag_assumptions!
+
+    assert account.pag_compliant?
+    assert_equal "Prepared using FP Canada PAG 2025", account.compliance_badge
+  end
+
+  test "pag_compliant? returns false when custom assumptions used" do
+    account = accounts(:investment_account)
+    account.projection_assumptions.first.update!(
+      nominal_return: 0.15,  # Custom 15% return
+      standard_compliant: false
+    )
+
+    assert_not account.pag_compliant?
+    assert_nil account.compliance_badge
+  end
+end
+```
+
+---
+
+## Testing with Fixtures
+
+### Fixture Best Practices
+
+```ruby
+# test/fixtures/accounts.yml
+investment_account:
+  accountable: vanguard_brokerage (Investment)
+  balance: 50000
+  currency: USD
+  status: active
+  monthly_contribution: 500
+
+empty_account:
+  accountable: empty_brokerage (Investment)
+  balance: 0
+  currency: USD
+  status: active
+  monthly_contribution: 0
+
+wealthy_account:
+  accountable: wealthy_brokerage (Investment)
+  balance: 1000000
+  currency: USD
+  status: active
+  monthly_contribution: 5000
+
+# test/fixtures/milestones.yml
+first_100k:
+  account: investment_account
+  target_value: 100000
+  description: "First $100K"
+  milestone_type: net_worth_target
+
+already_achieved:
+  account: wealthy_account
+  target_value: 500000
+  description: "Half Million"
+  milestone_type: net_worth_target
+
+# test/fixtures/debt_optimization_strategies.yml
+monika_modified_smith:
+  family: canadian_family
+  jurisdiction: canada
+  strategy_type: modified_smith
+  primary_mortgage: primary_mortgage_account
+  heloc: heloc_account
+  rental_mortgage: rental_mortgage_account
+  rental_income_monthly: 1900
+  rental_expenses_monthly: 797
+  property_management_fee: 95
+  marginal_tax_rate: 0.45
+  province_or_state: "ON"
+  auto_stop_heloc_percentage: 0.90
+  auto_stop_on_primary_paid: true
+
+baseline_strategy:
+  family: canadian_family
+  jurisdiction: canada
+  strategy_type: baseline
+  primary_mortgage: primary_mortgage_account
+  rental_mortgage: rental_mortgage_account
+  rental_income_monthly: 1900
+  rental_expenses_monthly: 797
+  marginal_tax_rate: 0.45
+```
+
+### Using Fixtures in Tests
+
+```ruby
+class ProjectionTest < ActiveSupport::TestCase
+  # Use fixtures (minimal setup in test files)
+  setup do
+    @account = accounts(:investment_account)
+    @milestone = milestones(:first_100k)
+  end
+
+  test "projection starts from current balance" do
+    projection = @account.adaptive_projection(years: 10, monthly_contribution: 500)
+    assert_equal @account.balance, projection[:starting_value]
+  end
+
+  # Create edge cases on-the-fly (not in fixtures)
+  test "handles extremely high volatility" do
+    assumption = ProjectionAssumption.create!(
+      family: families(:canadian_family),
+      asset_class: :custom,
+      nominal_return: 0.10,
+      volatility: 0.80,  # 80% volatility - very high
+      standard_compliant: false
+    )
+
+    assert_not assumption.valid?
+    assert_includes assumption.errors[:volatility], "is very high"
+  end
+end
+```
+
+---
+
+## Test Helpers for Financial Data
+
+```ruby
+# test/support/financial_test_helper.rb
+module FinancialTestHelper
+  # Create a projection with specific parameters
+  def create_projection(account:, years: 10, contribution: 500)
+    ProjectionCalculator.new(account).adaptive(
+      years: years,
+      monthly_contribution: contribution
+    )
+  end
+
+  # Create a full strategy setup with all required accounts
+  def create_full_debt_strategy(family:, jurisdiction: nil)
+    jurisdiction ||= Jurisdiction.find_by(country_code: 'CA')
+
+    primary = Account.create!(
+      family: family,
+      accountable: Loan.create!(
+        balance: 775000,
+        interest_rate: 0.0549,
+        term_months: 300
+      ),
+      name: "Primary Mortgage"
+    )
+
+    heloc = Account.create!(
+      family: family,
+      accountable: Loan.create!(
+        balance: 0,
+        interest_rate: 0.077,
+        credit_limit: 50000
+      ),
+      name: "HELOC"
+    )
+
+    rental = Account.create!(
+      family: family,
+      accountable: Loan.create!(
+        balance: 450000,
+        interest_rate: 0.0549,
+        term_months: 300
+      ),
+      name: "Rental Mortgage"
+    )
+
+    DebtOptimizationStrategy.create!(
+      family: family,
+      jurisdiction: jurisdiction,
+      strategy_type: :modified_smith,
+      primary_mortgage: primary,
+      heloc: heloc,
+      rental_mortgage: rental,
+      rental_income_monthly: 1900,
+      rental_expenses_monthly: 797,
+      marginal_tax_rate: 0.45
+    )
+  end
+
+  # Assert values are within percentage tolerance
+  def assert_within_percentage(expected, actual, percentage = 1.0, message = nil)
+    tolerance = expected.abs * (percentage / 100.0)
+    assert_in_delta expected, actual, tolerance, message
+  end
+end
+
+# Include in test base class
+class ActiveSupport::TestCase
+  include FinancialTestHelper
+end
+```
+
+---
+
+## Performance Testing
+
+```ruby
+# test/performance/projection_performance_test.rb
+require 'test_helper'
+require 'benchmark'
+
+class ProjectionPerformanceTest < ActiveSupport::TestCase
+  test "deterministic projection completes in < 200ms" do
+    account = accounts(:investment_account)
+
+    time = Benchmark.realtime do
+      ProjectionCalculator.new(account).adaptive(
+        years: 30,
+        monthly_contribution: 500
+      )
+    end
+
+    assert_operator time, :<, 0.2, "Projection took #{(time * 1000).round}ms (should be < 200ms)"
+  end
+
+  test "month-by-month simulation for 30 years completes in < 2s" do
+    strategy = debt_optimization_strategies(:monika_modified_smith)
+    simulator = CanadianSmithManoeuvrSimulator.new(strategy)
+
+    time = Benchmark.realtime do
+      simulator.run(months: 360)  # 30 years
+    end
+
+    assert_operator time, :<, 2.0, "Simulation took #{time.round(2)}s (should be < 2s)"
+  end
+end
+```
+
+---
+
+## Anti-Patterns
+
+### ❌ BAD: Testing Implementation Details
+
+```ruby
+# DON'T test internal state
+test "calculator stores principal" do
+  calc = ProjectionCalculator.new(principal: 1000)
+  assert_equal 1000, calc.instance_variable_get(:@principal)
+end
+```
+
+### ✅ GOOD: Testing Public Behavior
+
+```ruby
+# DO test output
+test "calculator produces correct future value" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  # 10 years = 120 months, expected ~2158.92 for annual compounding
+  assert_in_delta 2158.92, calc.future_value_at_month(120), 10.0
+end
+```
+
+### ❌ BAD: Over-Mocking
+
+```ruby
+# DON'T mock everything
+test "projection uses calculator" do
+  account = accounts(:investment_account)
+  ProjectionCalculator.any_instance.expects(:adaptive).returns({})
+
+  account.adaptive_projection(years: 10, monthly_contribution: 500)
+end
+```
+
+### ✅ GOOD: Minimal Mocking
+
+```ruby
+# DO test actual behavior, mock only external dependencies
+test "monte carlo service falls back to deterministic on error" do
+  HTTP.stubs(:post).raises(HTTP::ConnectionError)
+
+  result = MonteCarloService.run(
+    account: accounts(:investment_account),
+    years: 10
+  )
+
+  assert result[:fallback], "Should use deterministic fallback"
+end
+```
+
+---
+
+## References
+
+- See DESIGN_VISION.md Part 3.3 for detailed testing strategy
+- See testing.mdc for general Maybe Finance testing conventions
+- See CLAUDE.md Pre-Pull Request CI Workflow for required checks

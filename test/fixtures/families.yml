@@ -1,5 +1,8 @@
 empty:
   name: Family
+  country: US
 
 dylan_family:
   name: The Dylan Family
+  country: CA
+  currency: USD

@@ -18,9 +18,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Linting & Formatting
 - `bin/rubocop` - Run Ruby linter
-- `npm run lint` - Check JavaScript/TypeScript code
-- `npm run lint:fix` - Fix JavaScript/TypeScript issues
-- `npm run format` - Format JavaScript/TypeScript code
+- `npm run lint` - Check JavaScript/TypeScript code (uses Biome)
+- `npm run lint:fix` - Fix JavaScript/TypeScript issues (uses Biome)
+- `npm run format` - Format JavaScript/TypeScript code (uses Biome)
+- `npm run style:check` - Check code style (uses Biome)
+- `npm run style:fix` - Fix code style issues (uses Biome)
 - `bin/brakeman` - Run security analysis
 
 ### Database
@@ -28,6 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bin/rails db:migrate` - Run pending migrations
 - `bin/rails db:rollback` - Rollback last migration
 - `bin/rails db:seed` - Load seed data
+- `rake demo_data:default` - Load demo data for development
 
 ### Setup
 - `bin/setup` - Initial project setup (installs dependencies, prepares database)
@@ -62,6 +65,58 @@ Only proceed with pull request creation if ALL checks pass.
 - Do not run `touch tmp/restart.txt`
 - Do not run `rails credentials`
 - Do not automatically run migrations
+
+## Project Structure Notes
+
+### Investment Projections (Phase 1 & 2 - Deployed)
+
+Investment projection features are deployed and functional:
+- **Models**: `Jurisdiction`, `ProjectionStandard`, `ProjectionAssumption`, `Milestone`, `Account::Projection`
+- **Calculators**: `ProjectionCalculator`, `ForecastAccuracyCalculator`, `MilestoneCalculator`
+- **Concerns**: `Projectable`, `JurisdictionAware`, `PagCompliant`, `DataQualityCheckable`
+- **UI Components**: `UI::Account::ProjectionChart`, `UI::Account::ProjectionSettings`, `UI::Account::MilestoneTracker`, `UI::Account::MilestoneCard`
+
+**Seed Data**: Run `bin/rails db:seed` to create:
+- Canada jurisdiction with federal tax brackets
+- PAG 2025 projection standard
+- Canadian test family with investment accounts and projections
+
+**Test the features**: Login as `test.canadian@example.com` / `password123`
+
+**Performance Note**: The `Projectable#projection_data` method uses pre-stored projections from the database instead of computing Monte Carlo on every page load. This is critical for performance.
+
+### Debt Optimization (Phase 3 - Deployed)
+
+Canadian Modified Smith Manoeuvre debt optimization features are deployed and functional:
+- **Models**: `DebtOptimizationStrategy`, `DebtOptimizationLedgerEntry`, `DebtOptimizationStrategy::AutoStopRule`
+- **Simulators**: `CanadianSmithManoeuvrSimulator`, `BaselineSimulator` (in `app/services/`)
+- **Supporting Classes**: `DebtOptimizationStrategy::ChartSeriesBuilder`, `DebtOptimizationStrategy::AuditTrail`
+- **UI Components**: `UI::DebtOptimization::StrategyCard`, `UI::DebtOptimization::LedgerTable`, `UI::DebtOptimization::ComparisonChart`
+- **Controller**: `DebtOptimizationStrategiesController` with CRUD + simulate action
+- **Stimulus**: `debt_comparison_chart_controller.js` for D3.js chart rendering
+
+**Routes**: `resources :debt_optimization_strategies` with `simulate` member action
+
+**Test the features**: Visit `/debt_optimization_strategies` when logged in as a family with loan accounts
+
+**Key Implementation Notes**:
+- `DebtOptimizationStrategy` does NOT include `JurisdictionAware` concern (to avoid infinite recursion) - it has custom `effective_jurisdiction` and `effective_marginal_tax_rate` methods
+- Simulator file is `canadian_smith_manoeuvr_simulator.rb` (note: no 'e' in Manoeuvr to match class name)
+- Simulators use `insert_all` with explicit timestamps for bulk ledger entry creation
+- Auto-stop rules support 7 rule types: `heloc_limit_percentage`, `heloc_balance_threshold`, `primary_paid_off`, `all_debt_paid_off`, `max_months`, `negative_cash_flow`, `heloc_interest_exceeds_benefit`
+
+### Investment Dashboard Prototype (Reference Only)
+
+The `investment-dashboard/` directory contains a **Python prototype** used for requirements discovery and proof-of-concept only. This code is **NOT for integration** with the Rails application.
+
+**Important:**
+- All investment projections and financial calculations are implemented in pure Ruby/Rails
+- The Python prototype was used to validate algorithms and UX patterns
+- Never import, reference, or integrate code from `investment-dashboard/`
+- The authoritative implementation lives in:
+  - `app/calculators/` - Financial calculation classes
+  - `app/models/` - Domain models (Jurisdiction, ProjectionStandard, Milestone, etc.)
+  - `app/models/concerns/` - Shared behaviors (Projectable, JurisdictionAware, PagCompliant)
 
 ## High-Level Architecture
 
@@ -151,6 +206,158 @@ Sidekiq handles asynchronous tasks:
 - Lookbook for component development (`/lookbook`)
 - Letter Opener for email preview in development
 
+### Data Provider Architecture
+The application uses a provider pattern for third-party data services (exchange rates, security prices, etc.):
+
+**Provider Registry Pattern:**
+- Providers are configured at runtime via `Provider::Registry`
+- Settings stored in database for runtime parameters (API keys, etc.)
+- Supports both "managed" and "self-hosted" modes
+
+**Two Types of Provider Data:**
+1. **"Concept" data** - Generic data with swappable providers (e.g., exchange rates, security prices)
+   - Each concept has an interface defined in `app/models/provider/concepts/`
+   - Example: `ExchangeRate` concept can use different providers (Synth, alternative services)
+2. **One-off data** - Provider-specific methods called directly without abstractions
+   - Example: `Provider::Registry.get_provider(:synth)&.usage`
+
+**"Provided" Concerns:**
+- Domain models use `Provided` concerns instead of calling `Provider::Registry` directly
+- Concerns handle provider selection and provide convenience methods
+- Example: `ExchangeRate::Provided` includes `find_or_fetch_rate`, `sync_provider_rates`
+- Exposes generic access pattern where caller doesn't care which provider is chosen
+
+**Implementing Concrete Providers:**
+- Inherit from `Provider` base class
+- Return `with_provider_response` which wraps responses in `Provider::ProviderResponse`
+- Automatically catches provider errors
+- Raise `ProviderError` when valid data cannot be returned
+
+### Financial Architecture for Investment & Debt Features
+
+This section defines core patterns for implementing investment projections and debt optimization features.
+
+#### Calculator vs Simulator Pattern
+
+**Use Calculators** (`app/calculators/`) for pure financial math:
+- Pure functions with no side effects (no DB writes, API calls)
+- Any calculation with >10 lines of logic
+- Return value objects or hashes
+- Examples: `ProjectionCalculator`, `ForecastAccuracyCalculator`, `MilestoneCalculator`
+
+**Use Simulators** (`app/services/`) for complex scenarios:
+- Multi-step processes with state changes over time (month-by-month)
+- Compare multiple strategies (baseline vs optimized)
+- Examples: `CanadianSmithManoeuvrSimulator` (note: no 'e' in Manoeuvr), `BaselineSimulator`
+
+#### Jurisdiction-Aware Design (Canadian-First)
+
+**CRITICAL: NEVER hardcode tax rules, tax brackets, or deductibility rules.**
+
+**Configuration pattern**:
+- Use `Jurisdiction` model (country registry with `tax_config` JSONB column for tax brackets)
+- Use `ProjectionStandard` (PAG 2025, CFP Board standards)
+- Default to Canada (`country_code: 'CA'`)
+
+**Example - BAD**:
+```ruby
+tax_benefit = interest * 0.45  # Hardcoded Canadian marginal rate
+```
+
+**Example - GOOD**:
+```ruby
+tax_rate = jurisdiction.marginal_tax_rate(income: family.income)
+tax_benefit = interest * tax_rate
+```
+
+#### Financial Model Concerns
+
+**Always include** appropriate concerns in financial models:
+
+**`Projectable`** - For accounts with projections:
+- Included in: `Account`
+- `has_many :projections`, `has_many :milestones`
+- `adaptive_projection(years:, contribution:)` - Start from actual balance
+- `forecast_accuracy` - Calculate MAPE, RMSE, Tracking Signal
+
+**`PagCompliant`** - For PAG 2025 compliance (Canadian):
+- Included in: `Family`
+- `use_pag_assumptions!` - Apply FP Canada PAG 2025 defaults
+- `pag_compliant?` - Check if using standard assumptions
+- `compliance_badge` - Return "Prepared using FP Canada PAG 2025"
+
+**`JurisdictionAware`** - For jurisdiction-specific behavior:
+- Included in: `Account`, `Family`
+- `jurisdiction` - Defaults to Canada (Family uses its own `country` field, Account inherits from Family)
+- `projection_standard` - Returns current PAG 2025 (or other standards)
+- `marginal_tax_rate(income:)` - Calculates tax rate from jurisdiction's tax brackets
+
+**`DataQualityCheckable`** - For validation warnings:
+- Included in: `Account`, `Family`
+- `data_quality_issues` - Returns array of warnings
+- `data_quality_score` - Returns 0-100 score based on issues
+- Never fail hard, guide users with warnings instead
+
+#### Performance Requirements
+
+- **Deterministic projections**: < 200ms
+- **Monte Carlo simulations**: < 2s (background job acceptable)
+- **Cache projections** with smart cache keys
+- **Store percentiles only** (p10, p25, p50, p75, p90), NOT all simulation paths
+
+#### Visual Markers for Jurisdiction Context
+
+Use these markers consistently in code comments:
+
+- 🇨🇦 **Canadian-specific** - PAG 2025, CRA tax rules, Smith Manoeuvre
+- 🌍 **Universal** - Concepts that apply globally
+- 🔧 **Extensibility hook** - Architecture for future jurisdictions
+- 🇺🇸 **Future: US** - Commented examples for US support
+- 🇬🇧 **Future: UK** - Commented examples for UK support
+
+**Example**:
+```ruby
+# 🇨🇦 Canadian Modified Smith Manoeuvre simulator
+class CanadianSmithManoeuvrSimulator
+  # CRA-compliant debt optimization
+end
+
+# 🔧 Extensibility: Future US simulator
+# 🇺🇸 class UsHelocArbitrageSimulator
+#   # IRS-compliant HELOC strategies
+# end
+```
+
+#### Testing Financial Calculations
+
+**Always test with known values**:
+```ruby
+test "compound interest calculation matches formula" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  expected = 1000 * (1.08 ** 10)  # Known formula for 10 years
+  assert_in_delta expected, calc.future_value_at_month(120), 0.01  # Use assert_in_delta for floats
+end
+```
+
+**Test edge cases**:
+- Zero balance
+- Negative returns
+- Already-achieved milestones
+- HELOC at limit
+
+**Fixtures**:
+- Keep minimal (2-3 per model for base cases)
+- Create edge cases on-the-fly within test context
+
+#### Reference
+
+For detailed implementation patterns, see:
+- `.cursor/rules/financial-architecture.mdc` - Calculator/Simulator patterns
+- `.cursor/rules/jurisdiction-architecture.mdc` - Multi-jurisdiction design
+- `.cursor/rules/investment-projections.mdc` - Adaptive projections, Monte Carlo, PAG 2025
+- `.cursor/rules/debt-optimization.mdc` - Canadian Smith Manoeuvre, CRA compliance
+- `.cursor/rules/financial-testing.mdc` - Testing patterns for financial calculations
+
 ## Project Conventions
 
 ### Convention 1: Minimize Dependencies
@@ -230,7 +437,9 @@ Sidekiq handles asynchronous tasks:
 - Keep controllers lightweight and simple (< 7 targets)
 - Use private methods and expose clear public API
 - Single responsibility or highly related responsibilities
-- Component controllers stay in component directory, global controllers in `app/javascript/controllers/`
+- **Controller placement:**
+  - Component controllers: `app/components/[component_name]/[component_name]_controller.js` (only used within that component)
+  - Global controllers: `app/javascript/controllers/` (can be used across any view)
 - Pass data via `data-*-value` attributes, not inline JavaScript
 
 ## Testing Philosophy

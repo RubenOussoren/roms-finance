@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
+ActiveRecord::Schema[7.2].define(version: 2026_01_21_235000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -18,6 +18,25 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "account_status", ["ok", "syncing", "error"]
+
+  create_table "account_projections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "account_id", null: false
+    t.uuid "projection_assumption_id"
+    t.date "projection_date", null: false
+    t.decimal "projected_balance", precision: 19, scale: 4, null: false
+    t.decimal "actual_balance", precision: 19, scale: 4
+    t.decimal "contribution", precision: 19, scale: 4, default: "0.0"
+    t.string "currency", null: false
+    t.boolean "is_adaptive", default: false
+    t.jsonb "percentiles", default: {}
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "projection_date"], name: "index_account_projections_on_account_id_and_projection_date", unique: true
+    t.index ["account_id"], name: "index_account_projections_on_account_id"
+    t.index ["projection_assumption_id"], name: "index_account_projections_on_projection_assumption_id"
+    t.index ["projection_date"], name: "index_account_projections_on_projection_date"
+  end
 
   create_table "accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "subtype"
@@ -29,7 +48,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.uuid "accountable_id"
     t.decimal "balance", precision: 19, scale: 4
     t.string "currency"
-    t.virtual "classification", type: :string, as: "\nCASE\n    WHEN ((accountable_type)::text = ANY ((ARRAY['Loan'::character varying, 'CreditCard'::character varying, 'OtherLiability'::character varying])::text[])) THEN 'liability'::text\n    ELSE 'asset'::text\nEND", stored: true
+    t.virtual "classification", type: :string, as: "\nCASE\n    WHEN ((accountable_type)::text = ANY (ARRAY[('Loan'::character varying)::text, ('CreditCard'::character varying)::text, ('OtherLiability'::character varying)::text])) THEN 'liability'::text\n    ELSE 'asset'::text\nEND", stored: true
     t.uuid "import_id"
     t.uuid "plaid_account_id"
     t.decimal "cash_balance", precision: 19, scale: 4, default: "0.0"
@@ -210,6 +229,83 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.datetime "updated_at", null: false
     t.index ["enrichable_id", "enrichable_type", "source", "attribute_name"], name: "idx_on_enrichable_id_enrichable_type_source_attribu_5be5f63e08", unique: true
     t.index ["enrichable_type", "enrichable_id"], name: "index_data_enrichments_on_enrichable"
+  end
+
+  create_table "debt_optimization_auto_stop_rules", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "debt_optimization_strategy_id", null: false
+    t.string "rule_type", null: false
+    t.decimal "threshold_value", precision: 19, scale: 4
+    t.string "threshold_unit"
+    t.boolean "enabled", default: true, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["debt_optimization_strategy_id", "rule_type"], name: "idx_debt_stop_rules_strategy_type", unique: true
+    t.index ["debt_optimization_strategy_id"], name: "idx_on_debt_optimization_strategy_id_c57543b8d5"
+  end
+
+  create_table "debt_optimization_ledger_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "debt_optimization_strategy_id", null: false
+    t.integer "month_number", null: false
+    t.date "calendar_month", null: false
+    t.decimal "rental_income", precision: 19, scale: 4, default: "0.0"
+    t.decimal "rental_expenses", precision: 19, scale: 4, default: "0.0"
+    t.decimal "net_rental_cash_flow", precision: 19, scale: 4, default: "0.0"
+    t.decimal "heloc_draw", precision: 19, scale: 4, default: "0.0"
+    t.decimal "heloc_balance", precision: 19, scale: 4, default: "0.0"
+    t.decimal "heloc_interest", precision: 19, scale: 4, default: "0.0"
+    t.decimal "heloc_payment", precision: 19, scale: 4, default: "0.0"
+    t.decimal "primary_mortgage_balance", precision: 19, scale: 4, default: "0.0"
+    t.decimal "primary_mortgage_payment", precision: 19, scale: 4, default: "0.0"
+    t.decimal "primary_mortgage_principal", precision: 19, scale: 4, default: "0.0"
+    t.decimal "primary_mortgage_interest", precision: 19, scale: 4, default: "0.0"
+    t.decimal "primary_mortgage_prepayment", precision: 19, scale: 4, default: "0.0"
+    t.decimal "rental_mortgage_balance", precision: 19, scale: 4, default: "0.0"
+    t.decimal "rental_mortgage_payment", precision: 19, scale: 4, default: "0.0"
+    t.decimal "rental_mortgage_principal", precision: 19, scale: 4, default: "0.0"
+    t.decimal "rental_mortgage_interest", precision: 19, scale: 4, default: "0.0"
+    t.decimal "deductible_interest", precision: 19, scale: 4, default: "0.0"
+    t.decimal "non_deductible_interest", precision: 19, scale: 4, default: "0.0"
+    t.decimal "tax_benefit", precision: 19, scale: 4, default: "0.0"
+    t.decimal "cumulative_tax_benefit", precision: 19, scale: 4, default: "0.0"
+    t.decimal "total_debt", precision: 19, scale: 4, default: "0.0"
+    t.decimal "net_worth_impact", precision: 19, scale: 4, default: "0.0"
+    t.boolean "baseline", default: false, null: false
+    t.boolean "strategy_stopped", default: false, null: false
+    t.string "stop_reason"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["debt_optimization_strategy_id", "month_number", "baseline"], name: "idx_debt_ledger_strategy_month_baseline", unique: true
+    t.index ["debt_optimization_strategy_id"], name: "idx_on_debt_optimization_strategy_id_6b2b092cea"
+  end
+
+  create_table "debt_optimization_strategies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.uuid "jurisdiction_id"
+    t.uuid "primary_mortgage_id"
+    t.uuid "heloc_id"
+    t.uuid "rental_mortgage_id"
+    t.string "name", null: false
+    t.string "strategy_type", default: "baseline", null: false
+    t.string "status", default: "draft", null: false
+    t.decimal "rental_income", precision: 19, scale: 4, default: "0.0"
+    t.decimal "rental_expenses", precision: 19, scale: 4, default: "0.0"
+    t.decimal "heloc_interest_rate", precision: 6, scale: 4
+    t.integer "simulation_months", default: 300
+    t.decimal "total_interest_saved", precision: 19, scale: 4
+    t.decimal "total_tax_benefit", precision: 19, scale: 4
+    t.integer "months_accelerated"
+    t.string "currency", default: "CAD", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "last_simulated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_debt_optimization_strategies_on_family_id"
+    t.index ["heloc_id"], name: "index_debt_optimization_strategies_on_heloc_id"
+    t.index ["jurisdiction_id"], name: "index_debt_optimization_strategies_on_jurisdiction_id"
+    t.index ["primary_mortgage_id"], name: "index_debt_optimization_strategies_on_primary_mortgage_id"
+    t.index ["rental_mortgage_id"], name: "index_debt_optimization_strategies_on_rental_mortgage_id"
   end
 
   create_table "depositories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -413,6 +509,19 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.index ["token"], name: "index_invite_codes_on_token", unique: true
   end
 
+  create_table "jurisdictions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "country_code", null: false
+    t.string "name", null: false
+    t.string "currency_code", null: false
+    t.boolean "interest_deductible", default: false
+    t.boolean "has_smith_manoeuvre", default: false
+    t.jsonb "tax_config", default: {}
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["country_code"], name: "index_jurisdictions_on_country_code", unique: true
+  end
+
   create_table "loans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -421,6 +530,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.integer "term_months"
     t.decimal "initial_balance", precision: 19, scale: 4
     t.jsonb "locked_attributes", default: {}
+    t.decimal "credit_limit", precision: 19, scale: 4
   end
 
   create_table "merchants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -452,6 +562,25 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.string "provider_id"
     t.boolean "reasoning", default: false
     t.index ["chat_id"], name: "index_messages_on_chat_id"
+  end
+
+  create_table "milestones", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "account_id", null: false
+    t.string "name", null: false
+    t.decimal "target_amount", precision: 19, scale: 4, null: false
+    t.string "currency", null: false
+    t.date "target_date"
+    t.date "projected_date"
+    t.date "achieved_date"
+    t.string "status", default: "pending"
+    t.decimal "progress_percentage", precision: 6, scale: 2, default: "0.0"
+    t.boolean "is_custom", default: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "target_amount"], name: "index_milestones_on_account_id_and_target_amount", unique: true, where: "(is_custom = false)"
+    t.index ["account_id"], name: "index_milestones_on_account_id"
+    t.index ["status"], name: "index_milestones_on_status"
   end
 
   create_table "mobile_devices", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -567,6 +696,44 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.jsonb "raw_institution_payload", default: {}
     t.index ["family_id"], name: "index_plaid_items_on_family_id"
     t.index ["plaid_id"], name: "index_plaid_items_on_plaid_id", unique: true
+  end
+
+  create_table "projection_assumptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.uuid "projection_standard_id"
+    t.string "name", null: false
+    t.decimal "expected_return", precision: 6, scale: 4
+    t.decimal "inflation_rate", precision: 6, scale: 4
+    t.decimal "monthly_contribution", precision: 19, scale: 4, default: "0.0"
+    t.decimal "volatility", precision: 6, scale: 4
+    t.boolean "use_pag_defaults", default: true
+    t.boolean "is_active", default: true
+    t.jsonb "custom_overrides", default: {}
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "is_active"], name: "index_projection_assumptions_on_family_id_and_is_active", where: "(is_active = true)"
+    t.index ["family_id"], name: "index_projection_assumptions_on_family_id"
+    t.index ["projection_standard_id"], name: "index_projection_assumptions_on_projection_standard_id"
+  end
+
+  create_table "projection_standards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "jurisdiction_id", null: false
+    t.string "name", null: false
+    t.string "code", null: false
+    t.integer "effective_year", null: false
+    t.decimal "equity_return", precision: 6, scale: 4
+    t.decimal "fixed_income_return", precision: 6, scale: 4
+    t.decimal "cash_return", precision: 6, scale: 4
+    t.decimal "inflation_rate", precision: 6, scale: 4
+    t.decimal "volatility_equity", precision: 6, scale: 4
+    t.decimal "volatility_fixed_income", precision: 6, scale: 4
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["effective_year"], name: "index_projection_standards_on_effective_year"
+    t.index ["jurisdiction_id", "code"], name: "index_projection_standards_on_jurisdiction_id_and_code", unique: true
+    t.index ["jurisdiction_id"], name: "index_projection_standards_on_jurisdiction_id"
   end
 
   create_table "properties", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -824,6 +991,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.jsonb "locked_attributes", default: {}
   end
 
+  add_foreign_key "account_projections", "accounts"
+  add_foreign_key "account_projections", "projection_assumptions"
   add_foreign_key "accounts", "families"
   add_foreign_key "accounts", "imports"
   add_foreign_key "accounts", "plaid_accounts"
@@ -836,6 +1005,13 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
   add_foreign_key "budgets", "families"
   add_foreign_key "categories", "families"
   add_foreign_key "chats", "users"
+  add_foreign_key "debt_optimization_auto_stop_rules", "debt_optimization_strategies"
+  add_foreign_key "debt_optimization_ledger_entries", "debt_optimization_strategies"
+  add_foreign_key "debt_optimization_strategies", "accounts", column: "heloc_id"
+  add_foreign_key "debt_optimization_strategies", "accounts", column: "primary_mortgage_id"
+  add_foreign_key "debt_optimization_strategies", "accounts", column: "rental_mortgage_id"
+  add_foreign_key "debt_optimization_strategies", "families"
+  add_foreign_key "debt_optimization_strategies", "jurisdictions"
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
   add_foreign_key "family_exports", "families"
@@ -850,11 +1026,15 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
   add_foreign_key "invitations", "users", column: "inviter_id"
   add_foreign_key "merchants", "families"
   add_foreign_key "messages", "chats"
+  add_foreign_key "milestones", "accounts"
   add_foreign_key "mobile_devices", "users"
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "plaid_accounts", "plaid_items"
   add_foreign_key "plaid_items", "families"
+  add_foreign_key "projection_assumptions", "families"
+  add_foreign_key "projection_assumptions", "projection_standards"
+  add_foreign_key "projection_standards", "jurisdictions"
   add_foreign_key "rejected_transfers", "transactions", column: "inflow_transaction_id"
   add_foreign_key "rejected_transfers", "transactions", column: "outflow_transaction_id"
   add_foreign_key "rule_actions", "rules"

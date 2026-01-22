@@ -1,0 +1,489 @@
+---
+description: Core architectural patterns for financial calculations, simulators, and data structures
+globs:
+  - "**/{calculators,services,models,concerns}/**/*.rb"
+alwaysApply: false
+---
+
+# Financial Architecture Patterns
+
+This rule defines core patterns for financial calculations, simulators, and data structures in the ROMS Finance application.
+
+## Calculator Pattern for Financial Math
+
+**When to use**: Any calculation with >10 lines of logic that performs pure mathematical operations.
+
+**Characteristics**:
+- Pure functions with no side effects
+- No database writes or API calls
+- Returns value objects or hashes
+- Testable with known values
+- Reusable across controllers, jobs, and services
+
+**Structure** (Actual Implementation):
+```ruby
+# app/calculators/[domain]_calculator.rb
+class ProjectionCalculator
+  attr_reader :principal, :rate, :contribution, :currency
+
+  def initialize(principal:, rate:, contribution: 0, currency: "CAD")
+    @principal = principal.to_d
+    @rate = rate.to_d
+    @contribution = contribution.to_d
+    @currency = currency
+  end
+
+  # Calculate future value at a specific month
+  def future_value_at_month(month)
+    return principal if month <= 0
+    monthly_rate = rate / 12
+    if monthly_rate.zero?
+      principal + (contribution * month)
+    else
+      compound_factor = (1 + monthly_rate) ** month
+      principal * compound_factor + contribution * ((compound_factor - 1) / monthly_rate)
+    end
+  end
+
+  # Generate projection data for multiple months
+  def project(months:)
+    (1..months).map do |month|
+      {
+        month: month,
+        date: Date.current + month.months,
+        balance: future_value_at_month(month).round(2),
+        cumulative_contribution: (contribution * month).round(2),
+        growth: (future_value_at_month(month) - principal - (contribution * month)).round(2)
+      }
+    end
+  end
+
+  # Monte Carlo with percentiles (pure Ruby implementation)
+  def project_with_percentiles(months:, volatility:, simulations: 1000)
+    # ... see actual implementation
+  end
+end
+```
+
+**Examples** (All Implemented):
+- `ProjectionCalculator` - Calculate investment growth over time ✅
+- `ForecastAccuracyCalculator` - Calculate MAPE, RMSE, Tracking Signal metrics ✅
+- `MilestoneCalculator` - Determine when financial goals will be reached ✅
+
+**Testing Pattern**:
+```ruby
+test "compound interest calculation matches formula" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  expected = 1000 * (1.08 ** 10)
+  assert_in_delta expected, calc.future_value_at_month(120), 0.01
+end
+
+test "project returns monthly data points" do
+  calc = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 500)
+  result = calc.project(months: 12)
+  assert_equal 12, result.length
+  assert result.last[:balance] > 10000 + (500 * 12)
+end
+```
+
+---
+
+## Simulator Pattern for Complex Scenarios
+
+**When to use**: Multi-step financial simulations with complex state changes over time.
+
+**Characteristics**:
+- Models month-by-month or year-by-year scenarios
+- Maintains state across time periods
+- Compares multiple strategies (baseline vs optimized)
+- Returns detailed ledger entries
+- Used for "what-if" analysis
+
+**Structure**:
+```ruby
+# app/services/[domain]_simulator.rb
+class CanadianSmithManoeuvrSimulator
+  def initialize(strategy)
+    @strategy = strategy
+    @tax_config = strategy.jurisdiction.tax_calculator_config
+  end
+
+  def run(months:)
+    results = {
+      baseline: simulate_baseline(months),
+      modified: simulate_modified(months)
+    }
+
+    # Return comparison
+    {
+      baseline_total_interest: results[:baseline][:total_interest],
+      modified_total_interest: results[:modified][:total_interest],
+      net_savings: calculate_net_savings(results),
+      month_by_month: results[:modified][:ledger]
+    }
+  end
+
+  private
+
+  def simulate_modified(months)
+    ledger = []
+    months.times do |month|
+      entry = calculate_month_entry(month)
+      validate_compliance(entry)
+      check_auto_stop_rules(entry)
+      ledger << entry
+    end
+    ledger
+  end
+end
+```
+
+**Examples**:
+- `CanadianSmithManoeuvrSimulator` - Debt optimization with CRA compliance
+- `MonteCarloSimulator` - Probabilistic portfolio projections
+- `RebalancingSimulator` - Portfolio rebalancing strategies
+- `BaselineSimulator` - Default no-optimization strategy
+
+**Anti-patterns**:
+- Don't put simulators in models (too complex for model logic)
+- Don't mix simulator logic with calculator logic
+- Don't perform database writes inside simulation loops (store results after completion)
+
+---
+
+## Concern Modules for Financial Behavior
+
+**When to use**: Multiple models need same financial calculation behavior.
+
+### `Projectable` - For accounts with projections (Actual Implementation)
+
+```ruby
+# app/models/concerns/projectable.rb
+module Projectable
+  extend ActiveSupport::Concern
+
+  included do
+    has_many :projections,
+             class_name: "Account::Projection",
+             dependent: :destroy
+  end
+
+  def adaptive_projection(years:, contribution: 0)
+    assumption = family&.projection_assumptions&.default_for_account(self)
+    rate = assumption&.effective_return || 0.066
+
+    calculator = ProjectionCalculator.new(
+      principal: balance || 0,
+      rate: rate,
+      contribution: contribution,
+      currency: currency
+    )
+
+    calculator.project(months: years * 12)
+  end
+
+  def forecast_accuracy
+    ForecastAccuracyCalculator.new(projections).calculate
+  end
+
+  def generate_projections_with_percentiles(years:, contribution: 0, volatility: 0.15)
+    assumption = family&.projection_assumptions&.default_for_account(self)
+    rate = assumption&.effective_return || 0.066
+
+    calculator = ProjectionCalculator.new(
+      principal: balance || 0,
+      rate: rate,
+      contribution: contribution,
+      currency: currency
+    )
+
+    calculator.project_with_percentiles(
+      months: years * 12,
+      volatility: volatility,
+      simulations: 1000
+    )
+  end
+end
+
+# Use in Account model
+class Account
+  include Projectable
+end
+```
+
+### `PagCompliant` - For PAG 2025 assumptions (Canadian) (Actual Implementation)
+
+```ruby
+# app/models/concerns/pag_compliant.rb
+module PagCompliant
+  extend ActiveSupport::Concern
+
+  def pag_assumption_warnings
+    warnings = []
+    assumption = default_projection_assumption
+    return ["No projection assumptions configured"] unless assumption
+
+    standard = ProjectionStandard::PAG_2025_ASSUMPTIONS
+
+    if assumption.expected_return > standard[:equity_return] + 0.02
+      warnings << "Expected return significantly exceeds PAG 2025 guidelines"
+    end
+
+    if assumption.inflation_rate < standard[:inflation_rate] - 0.005
+      warnings << "Inflation assumption below PAG 2025 guidelines"
+    end
+
+    warnings
+  end
+
+  def pag_compliant?
+    pag_assumption_warnings.empty? && default_projection_assumption&.pag_compliant?
+  end
+
+  def compliance_badge
+    pag_compliant? ? "Prepared using FP Canada PAG 2025" : nil
+  end
+end
+```
+
+### `JurisdictionAware` - For jurisdiction-specific behavior (Actual Implementation)
+
+```ruby
+# app/models/concerns/jurisdiction_aware.rb
+module JurisdictionAware
+  extend ActiveSupport::Concern
+
+  def jurisdiction
+    country_code = determine_country_code
+    @jurisdiction ||= Jurisdiction.for_country(country_code) || Jurisdiction.default
+  end
+
+  def projection_standard
+    jurisdiction&.current_projection_standard
+  end
+
+  def tax_calculator_config
+    jurisdiction&.tax_config || {}
+  end
+
+  def marginal_tax_rate(income:)
+    jurisdiction&.marginal_tax_rate(income: income) || 0
+  end
+
+  def interest_deductible?
+    jurisdiction&.interest_deductible? || false
+  end
+
+  def supports_smith_manoeuvre?
+    jurisdiction&.supports_smith_manoeuvre? || false
+  end
+
+  private
+
+  def determine_country_code
+    return country if respond_to?(:country) && country.present?
+    return family.country if respond_to?(:family) && family&.country.present?
+    "CA" # Default to Canada
+  end
+end
+```
+
+### `DataQualityCheckable` - For validation warnings (Actual Implementation)
+
+```ruby
+# app/models/concerns/data_quality_checkable.rb
+module DataQualityCheckable
+  extend ActiveSupport::Concern
+
+  def data_quality_issues
+    issues = []
+    issues.concat(balance_quality_issues) if respond_to?(:balance_quality_issues)
+    issues.concat(projection_quality_issues) if respond_to?(:projection_quality_issues)
+    issues.concat(assumption_quality_issues) if respond_to?(:assumption_quality_issues)
+    issues.concat(custom_quality_issues) if respond_to?(:custom_quality_issues)
+    issues
+  end
+
+  def data_quality_acceptable?
+    data_quality_issues.none? { |issue| issue[:severity] == :error }
+  end
+
+  def data_quality_score
+    issues = data_quality_issues
+    return 100 if issues.empty?
+
+    deductions = issues.sum do |issue|
+      case issue[:severity]
+      when :error then 25
+      when :warning then 10
+      when :info then 2
+      else 0
+      end
+    end
+
+    [100 - deductions, 0].max
+  end
+end
+```
+
+---
+
+## Financial Data Validation
+
+**Philosophy**: *"Trust, but verify. Warn loudly, fail gracefully."*
+
+### Three-Level Validation
+
+**Level 1: Database Constraints** (hard failures for impossible data)
+```ruby
+# migration
+create_table :projections do |t|
+  t.decimal :expected_return, null: false
+  t.decimal :volatility, null: false
+  t.check_constraint "expected_return >= 0 AND expected_return <= 1", name: "return_bounds"
+  t.check_constraint "volatility >= 0 AND volatility <= 2", name: "volatility_bounds"
+end
+```
+
+**Level 2: Model Validations** (soft failures for unusual data)
+```ruby
+class Projection < ApplicationRecord
+  validates :expected_return, numericality: {
+    greater_than_or_equal_to: 0,
+    less_than_or_equal_to: 1,
+    message: "must be between 0% and 100%"
+  }
+
+  validate :realistic_assumptions
+
+  private
+
+  def realistic_assumptions
+    # Warn if assumptions are unusual (but don't fail)
+    if expected_return > 0.20
+      errors.add(:expected_return, "is unusually high (>20%/year). Are you sure?")
+    end
+  end
+end
+```
+
+**Level 3: Data Quality Warnings** (informational, never block)
+```ruby
+# Use DataQualityCheckable concern (see above)
+# Display warnings in UI but allow operation to continue
+```
+
+---
+
+## Service Objects for Orchestration
+
+**When to use**: Multi-step processes with side effects (database writes, API calls, external integrations).
+
+**Structure**:
+```ruby
+# app/services/[domain]/[action]_service.rb
+class Portfolio::RebalanceService
+  def initialize(account, strategy:)
+    @account = account
+    @strategy = strategy
+  end
+
+  def call
+    # 1. Calculate target allocation
+    target = calculate_target_allocation
+
+    # 2. Determine trades needed
+    trades = determine_rebalancing_trades(target)
+
+    # 3. Estimate costs
+    costs = estimate_transaction_costs(trades)
+
+    # 4. Create trade entries (side effect)
+    create_trade_entries(trades) if @strategy.execute?
+
+    # 5. Update holdings
+    @account.sync!
+
+    # Return result
+    Result.new(trades: trades, costs: costs, success: true)
+  end
+
+  private
+
+  def calculate_target_allocation
+    # Implementation
+  end
+end
+```
+
+**Benefits**:
+- Single entry point (`call` method)
+- Handles errors and edge cases
+- Can be wrapped in transactions
+- Easy to test with mocks
+
+**Anti-patterns**:
+- Don't use services for pure calculations (use calculators instead)
+- Don't create one service per model method (use model methods)
+- Don't create services that just delegate to models
+
+---
+
+## Performance Considerations
+
+**Calculator Performance**:
+- Calculators should complete in < 200ms for deterministic calculations
+- Use memoization for expensive intermediate results
+- Avoid N+1 queries (pass eager-loaded data to calculators)
+
+**Simulator Performance**:
+- Month-by-month simulations for 30 years (360 iterations) should complete in < 2 seconds
+- Use background jobs for Monte Carlo simulations (300-1000 runs)
+- Cache simulation results with smart cache keys
+- Store only percentiles (p10, p25, p50, p75, p90), not all simulation paths
+
+**Cache Keys**:
+```ruby
+def projection_cache_key
+  [
+    "projection",
+    account.id,
+    account.updated_at.to_i,
+    account.holdings.maximum(:updated_at)&.to_i,
+    projection_params.hash
+  ].join("-")
+end
+
+def cached_projection
+  Rails.cache.fetch(projection_cache_key, expires_in: 1.hour) do
+    calculate_projection
+  end
+end
+```
+
+---
+
+## Implementation Status
+
+| Pattern | Status | Location |
+|---------|--------|----------|
+| Calculator Pattern | ✅ Implemented | `app/calculators/` |
+| ProjectionCalculator | ✅ Complete | `app/calculators/projection_calculator.rb` |
+| ForecastAccuracyCalculator | ✅ Complete | `app/calculators/forecast_accuracy_calculator.rb` |
+| MilestoneCalculator | ✅ Complete | `app/calculators/milestone_calculator.rb` |
+| Projectable concern | ✅ Complete | `app/models/concerns/projectable.rb` |
+| PagCompliant concern | ✅ Complete | `app/models/concerns/pag_compliant.rb` |
+| JurisdictionAware concern | ✅ Complete | `app/models/concerns/jurisdiction_aware.rb` |
+| DataQualityCheckable concern | ✅ Complete | `app/models/concerns/data_quality_checkable.rb` |
+| **Account integration** | ✅ Complete | Includes: Projectable, JurisdictionAware, DataQualityCheckable |
+| **Family integration** | ✅ Complete | Includes: JurisdictionAware, PagCompliant, DataQualityCheckable |
+| Simulator Pattern | ⏳ Phase 3 | Planned: `app/services/` |
+| SmithManoeuvrSimulator | ⏳ Phase 3 | Pending |
+
+---
+
+## References
+
+- See DESIGN_VISION.md Part 3.1 for detailed pattern explanations
+- See DESIGN_VISION.md Part 1.2 for investment projection examples
+- See DESIGN_VISION.md Part 2.2 for debt optimization simulator examples

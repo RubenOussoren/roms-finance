@@ -1,0 +1,902 @@
+---
+description: Debt optimization strategy patterns - Smith Manoeuvre, HELOC optimization, CRA compliance
+globs:
+  - "**/{models,services,calculators}/**/*.rb"
+  - "app/components/debt*.rb"
+  - "app/components/loan*.rb"
+alwaysApply: false
+---
+
+# Debt Optimization Patterns
+
+This rule defines patterns for implementing debt optimization strategies, with primary focus on Canadian Modified Smith Manoeuvre and CRA audit trail compliance.
+
+## Core Problem
+
+Homeowners face complex tax optimization decisions:
+- Should rental income accelerate primary mortgage payoff?
+- When to draw on HELOC/readvanceable mortgage for rental expenses?
+- Optimal timing to stop debt optimization strategies?
+- Interest rate impact on tax arbitrage?
+
+**Our Solution**: Interactive simulator modeling real cash flows with jurisdiction-specific tax compliance.
+
+---
+
+## Debt Optimization Strategy Architecture
+
+### Core Model Pattern
+
+```ruby
+# app/models/debt_optimization_strategy.rb 🔧
+class DebtOptimizationStrategy < ApplicationRecord
+  include JurisdictionAware
+
+  belongs_to :family
+  belongs_to :jurisdiction, optional: true  # Defaults to Canada
+  belongs_to :tax_calculator_config
+
+  # Associated loan accounts
+  belongs_to :primary_mortgage, class_name: 'Account', optional: true
+  belongs_to :heloc, class_name: 'Account', optional: true
+  belongs_to :rental_mortgage, class_name: 'Account', optional: true
+
+  has_many :ledger_entries,
+           class_name: 'DebtOptimizationLedgerEntry',
+           dependent: :destroy
+  has_many :auto_stop_rules,
+           class_name: 'DebtOptimizationStrategy::AutoStopRule',
+           dependent: :destroy
+
+  enum strategy_type: {
+    baseline: 0,          # 🌍 Universal: no optimization
+    modified_smith: 1,    # 🇨🇦 Canadian Smith Manoeuvre
+    heloc_arbitrage: 2,   # 🇺🇸 Future: US HELOC strategies
+    offset_mortgage: 3,   # 🇬🇧 Future: UK offset mortgages
+    custom: 4
+  }
+
+  # Income and expense settings
+  decimal :rental_income_monthly
+  decimal :rental_expenses_monthly
+  decimal :property_management_fee
+
+  # Strategy settings
+  boolean :heloc_pays_rental_expenses, default: true
+  boolean :use_rental_for_primary_prepayment, default: true
+
+  # Tax settings
+  decimal :marginal_tax_rate
+  string :tax_owner  # 'monika', 'ruben', 'combined'
+  string :province_or_state  # 'ON', 'BC', 'CA', etc.
+
+  # Auto-stop rules
+  decimal :auto_stop_heloc_percentage, default: 0.90   # Stop at 90% of limit
+  decimal :auto_stop_heloc_balance
+  boolean :auto_stop_on_primary_paid, default: true
+
+  # Validate strategy is available for jurisdiction
+  validate :strategy_available_for_jurisdiction
+
+  # 🔧 Factory pattern: return appropriate simulator class
+  def simulator
+    case strategy_type
+    when 'modified_smith'
+      CanadianSmithManoeuvrSimulator.new(self)  # 🇨🇦
+    when 'heloc_arbitrage'
+      UsHelocArbitrageSimulator.new(self)       # 🇺🇸 Future
+    when 'offset_mortgage'
+      UkOffsetMortgageSimulator.new(self)       # 🇬🇧 Future
+    else
+      BaselineSimulator.new(self)               # 🌍 Universal
+    end
+  end
+
+  def simulate(months:)
+    simulator.run(months: months)
+  end
+
+  # Generate annual tax report (CRA, IRS, HMRC)
+  def generate_tax_report(year)
+    DebtOptimizationStrategy::AuditTrail.new(self).generate_annual_report(year)
+  end
+
+  private
+
+  def strategy_available_for_jurisdiction
+    available = jurisdiction.available_debt_optimization_strategies
+    unless available.include?(strategy_type.to_sym)
+      errors.add(:strategy_type, "not available for #{jurisdiction.country_name}")
+    end
+  end
+end
+```
+
+---
+
+## Canadian Modified Smith Manoeuvre (Primary Implementation)
+
+### What is the Modified Smith Manoeuvre?
+
+**Canadian tax strategy** to convert non-deductible mortgage interest into deductible investment loan interest.
+
+**How it works (Canadian CRA tax rules)**:
+1. Rental income → Pay down primary mortgage (non-deductible per CRA)
+2. HELOC → Fund rental expenses (deductible interest per CRA)
+3. As primary decreases, HELOC limit increases (readvanceable mortgage)
+4. Net effect: Shift debt from non-deductible to deductible (CRA-compliant)
+
+### Canadian Account Flow Example
+
+```
+Rental Income Flow (Monika's Setup):
+  Tenant → Monika CIBC Account (net $1,805 = $1,900 - $95 mgmt)
+    → Monika adds personal $95
+    → BMO Joint Account ($1,900 total)
+    → Primary mortgage prepayment
+
+HELOC Flow:
+  HELOC → Rental mortgage payment
+  HELOC → Rental operating expenses
+  (All HELOC draws = rental expenses → deductible per CRA)
+```
+
+### Simulator Implementation
+
+```ruby
+# app/services/canadian_smith_manoeuvre_simulator.rb 🇨🇦
+class CanadianSmithManoeuvrSimulator
+  def initialize(strategy)
+    @strategy = strategy
+    @tax_config = strategy.jurisdiction.tax_calculator_config
+    @primary = strategy.primary_mortgage
+    @heloc = strategy.heloc
+    @rental = strategy.rental_mortgage
+  end
+
+  def run(months:)
+    # Validate CRA compliance requirements
+    validate_cra_requirements
+
+    results = {
+      baseline: simulate_baseline(months),
+      modified: simulate_modified_smith(months)
+    }
+
+    # Compare: total interest paid, total tax refunds, net cost
+    {
+      baseline_total_interest: results[:baseline][:total_interest],
+      baseline_tax_benefit: results[:baseline][:tax_benefit],
+      modified_total_interest: results[:modified][:total_interest],
+      modified_tax_benefit: results[:modified][:tax_benefit],
+      net_savings: calculate_net_savings(results),
+      years_to_payoff_baseline: results[:baseline][:months_to_payoff] / 12.0,
+      years_to_payoff_modified: results[:modified][:months_to_payoff] / 12.0,
+      month_by_month: results[:modified][:ledger],
+      cra_audit_trail: generate_cra_audit_trail(results[:modified])  # 🇨🇦
+    }
+  end
+
+  private
+
+  def simulate_baseline(months)
+    # Traditional flow:
+    # Rental income → rental mortgage + expenses
+    # Primary mortgage → regular payments only
+    # HELOC not used
+
+    total_interest = 0
+    tax_benefit = 0
+    primary_balance = @primary.balance
+    rental_balance = @rental.balance
+    months_to_payoff = 0
+
+    months.times do |month|
+      # Primary mortgage: regular payment only
+      primary_interest = primary_balance * (@primary.interest_rate / 12)
+      primary_principal = @primary.monthly_payment - primary_interest
+      primary_balance -= primary_principal
+      total_interest += primary_interest
+
+      # Rental mortgage: paid from rental income
+      rental_interest = rental_balance * (@rental.interest_rate / 12)
+      rental_principal = @strategy.rental_income_monthly - rental_interest - @strategy.rental_expenses_monthly
+      rental_balance -= rental_principal if rental_principal > 0
+      total_interest += rental_interest
+
+      # 🇨🇦 Tax benefit: only rental mortgage interest is deductible
+      tax_benefit += rental_interest * @strategy.marginal_tax_rate
+
+      months_to_payoff = month if primary_balance <= 0 && months_to_payoff == 0
+    end
+
+    {
+      total_interest: total_interest,
+      tax_benefit: tax_benefit,
+      months_to_payoff: months_to_payoff
+    }
+  end
+
+  def simulate_modified_smith(months)
+    ledger = []
+    total_interest = 0
+    tax_benefit = 0
+
+    primary_balance = @primary.balance
+    heloc_balance = 0
+    rental_balance = @rental.balance
+    months_to_payoff = 0
+    strategy_stopped = false
+
+    months.times do |month|
+      entry = {
+        month_number: month + 1,
+        calendar_month: Date.today + month.months
+      }
+
+      # 🇨🇦 Rental income → primary mortgage prepayment (non-deductible per CRA)
+      entry[:rental_income] = @strategy.rental_income_monthly
+      entry[:property_mgmt_fee] = @strategy.property_management_fee
+      entry[:net_rental_income] = entry[:rental_income] - entry[:property_mgmt_fee]
+
+      unless strategy_stopped
+        entry[:primary_prepayment] = entry[:net_rental_income]
+        primary_balance -= entry[:primary_prepayment]
+      end
+
+      # Primary mortgage: regular payment
+      primary_interest = primary_balance * (@primary.interest_rate / 12)
+      primary_principal = @primary.monthly_payment - primary_interest
+      primary_balance -= primary_principal
+      total_interest += primary_interest
+
+      # 🇨🇦 HELOC → rental expenses (deductible per CRA)
+      unless strategy_stopped
+        rental_mortgage_payment = @rental.monthly_payment
+        heloc_draw = rental_mortgage_payment + @strategy.rental_expenses_monthly
+        entry[:heloc_draw] = heloc_draw
+        heloc_balance += heloc_draw
+
+        # HELOC interest (tax deductible per CRA rules)
+        heloc_interest = heloc_balance * (@heloc.interest_rate / 12)
+        entry[:heloc_interest] = heloc_interest
+        entry[:tax_refund_monthly] = heloc_interest * @strategy.marginal_tax_rate
+        tax_benefit += entry[:tax_refund_monthly]
+        total_interest += heloc_interest
+
+        heloc_balance += heloc_interest  # Interest capitalizes
+      end
+
+      # Balances
+      entry[:primary_balance_start] = primary_balance + primary_principal
+      entry[:primary_balance_end] = primary_balance
+      entry[:heloc_balance_end] = heloc_balance
+      entry[:rental_balance_end] = rental_balance
+
+      # Validate CRA compliance
+      validate_cra_compliance(entry)
+
+      # Check auto-stop conditions
+      if should_stop?(entry)
+        entry[:strategy_stopped] = true
+        entry[:stop_reason] = determine_stop_reason(entry)
+        strategy_stopped = true
+      end
+
+      entry[:cumulative_tax_benefit] = tax_benefit
+
+      ledger << entry
+      months_to_payoff = month if primary_balance <= 0 && months_to_payoff == 0
+    end
+
+    {
+      ledger: ledger,
+      total_interest: total_interest,
+      tax_benefit: tax_benefit,
+      months_to_payoff: months_to_payoff
+    }
+  end
+
+  def validate_cra_requirements
+    # 🇨🇦 CRA requires HELOC to be used exclusively for rental expenses
+    unless @tax_config.deductibility_rules["heloc_for_rental_expenses"]
+      raise "HELOC interest not deductible in this jurisdiction"
+    end
+
+    # 🇨🇦 CRA requires purpose tracking
+    unless @tax_config.requires_purpose_tracking
+      Rails.logger.warn("Jurisdiction does not require purpose tracking - CRA compliance may not be necessary")
+    end
+  end
+
+  def validate_cra_compliance(entry)
+    # 🇨🇦 Check: HELOC used exclusively for rental (CRA requirement)
+    # Check: Proper documentation trail exists
+    # This validation is specific to Canadian tax law
+  end
+
+  def should_stop?(entry)
+    # Check all auto-stop conditions
+    return true if @strategy.auto_stop_on_primary_paid && entry[:primary_balance_end] <= 0
+
+    if @strategy.auto_stop_heloc_percentage
+      heloc_percentage = entry[:heloc_balance_end] / @heloc.credit_limit
+      return true if heloc_percentage >= @strategy.auto_stop_heloc_percentage
+    end
+
+    if @strategy.auto_stop_heloc_balance
+      return true if entry[:heloc_balance_end] >= @strategy.auto_stop_heloc_balance
+    end
+
+    # Tax coverage ratio: stop if tax refund < HELOC interest for N consecutive months
+    # (Strategy becomes unprofitable)
+
+    false
+  end
+
+  def determine_stop_reason(entry)
+    return "Primary mortgage paid off" if entry[:primary_balance_end] <= 0
+
+    if @strategy.auto_stop_heloc_percentage
+      heloc_percentage = entry[:heloc_balance_end] / @heloc.credit_limit
+      return "HELOC limit reached (#{(heloc_percentage * 100).round(1)}%)" if heloc_percentage >= @strategy.auto_stop_heloc_percentage
+    end
+
+    if @strategy.auto_stop_heloc_balance
+      return "HELOC balance threshold reached ($#{entry[:heloc_balance_end].to_i})" if entry[:heloc_balance_end] >= @strategy.auto_stop_heloc_balance
+    end
+
+    "Auto-stop rule triggered"
+  end
+
+  def calculate_net_savings(results)
+    baseline_net_cost = results[:baseline][:total_interest] - results[:baseline][:tax_benefit]
+    modified_net_cost = results[:modified][:total_interest] - results[:modified][:tax_benefit]
+    baseline_net_cost - modified_net_cost
+  end
+
+  def generate_cra_audit_trail(results)
+    # Generate CRA-specific compliance report
+    # See CRA Audit Trail Compliance section below
+  end
+end
+```
+
+---
+
+## Month-by-Month Ledger Pattern
+
+### Ledger Entry Model
+
+```ruby
+# app/models/debt_optimization_ledger_entry.rb
+class DebtOptimizationLedgerEntry < ApplicationRecord
+  belongs_to :debt_optimization_strategy
+
+  # Month identification
+  integer :month_number      # 1, 2, 3, ...
+  date :calendar_month       # 2025-08-01, 2025-09-01, ...
+
+  # Income flows
+  decimal :gross_rental_income
+  decimal :property_mgmt_fee
+  decimal :net_rental_income
+  decimal :personal_funds_added  # To make up mgmt fee
+
+  # Mortgage payments
+  decimal :primary_mortgage_payment
+  decimal :primary_prepayment
+  decimal :rental_mortgage_payment
+
+  # HELOC activity
+  decimal :heloc_draw
+  decimal :heloc_interest_paid
+  decimal :heloc_balance_end
+
+  # Balances
+  decimal :primary_balance_start
+  decimal :primary_balance_end
+  decimal :rental_balance_start
+  decimal :rental_balance_end
+
+  # Tax
+  decimal :deductible_interest
+  decimal :tax_refund_monthly
+  decimal :cumulative_tax_benefit
+
+  # Events
+  boolean :strategy_stopped      # Did we stop Modified this month?
+  string :stop_reason            # "HELOC limit reached", "Primary paid off", etc.
+  boolean :primary_paid_off
+  boolean :rental_paid_off
+
+  # Validation
+  validates :month_number, presence: true
+  validates :calendar_month, presence: true
+end
+```
+
+### Ledger Display Component
+
+```ruby
+# app/components/debt_optimization_ledger_component.rb
+class DebtOptimizationLedgerComponent < ViewComponent::Base
+  def initialize(strategy:, year: nil)
+    @strategy = strategy
+    @year = year
+    @entries = year ? entries_for_year(year) : @strategy.ledger_entries.order(:month_number)
+  end
+
+  def annual_summary
+    {
+      total_rental_income: @entries.sum(:gross_rental_income),
+      total_property_mgmt_fees: @entries.sum(:property_mgmt_fee),
+      total_heloc_draws: @entries.sum(:heloc_draw),
+      total_deductible_interest: @entries.sum(:deductible_interest),
+      total_tax_benefit: @entries.sum(:tax_refund_monthly),
+      ending_heloc_balance: @entries.last&.heloc_balance_end || 0,
+      ending_primary_balance: @entries.last&.primary_balance_end || 0
+    }
+  end
+
+  private
+
+  def entries_for_year(year)
+    start_date = Date.new(year, 1, 1)
+    end_date = Date.new(year, 12, 31)
+    @strategy.ledger_entries.where(calendar_month: start_date..end_date).order(:month_number)
+  end
+end
+```
+
+---
+
+## Auto-Stop Rules Pattern
+
+### Why Auto-Stop Rules Matter
+
+Strategy becomes risky if:
+- HELOC grows too large
+- Tax benefit diminishes (tax refund < HELOC interest)
+- Need to monitor and adjust automatically
+
+### Auto-Stop Rule Model
+
+```ruby
+# app/models/debt_optimization_strategy/auto_stop_rule.rb
+class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
+  belongs_to :debt_optimization_strategy
+
+  enum rule_type: {
+    heloc_limit_percentage: 0,   # Stop when HELOC reaches X% of limit
+    heloc_balance_threshold: 1,  # Stop when HELOC balance exceeds $X
+    heloc_interest_threshold: 2, # Stop when monthly HELOC interest >= $X
+    primary_paid_off: 3,         # Stop when primary mortgage is fully paid
+    tax_coverage_ratio: 4,       # Stop when tax refund < X × HELOC interest for N consecutive months
+    manual_date: 5               # Stop on specific date
+  }
+
+  boolean :enabled, default: true
+  decimal :threshold_value
+  integer :consecutive_months  # For tax coverage ratio
+
+  def check(ledger_entry)
+    return false unless enabled
+
+    case rule_type
+    when "heloc_limit_percentage"
+      heloc_limit = ledger_entry.debt_optimization_strategy.heloc.credit_limit
+      (ledger_entry.heloc_balance_end / heloc_limit) >= threshold_value
+    when "heloc_balance_threshold"
+      ledger_entry.heloc_balance_end >= threshold_value
+    when "heloc_interest_threshold"
+      ledger_entry.heloc_interest_paid >= threshold_value
+    when "primary_paid_off"
+      ledger_entry.primary_balance_end <= 0
+    when "tax_coverage_ratio"
+      check_tax_coverage(ledger_entry)
+    when "manual_date"
+      ledger_entry.calendar_month >= Date.parse(threshold_value.to_s)
+    else
+      false
+    end
+  end
+
+  def explanation
+    case rule_type
+    when "heloc_limit_percentage"
+      "Strategy stops when HELOC reaches #{(threshold_value * 100).round(0)}% of its limit to prevent overleveraging."
+    when "heloc_balance_threshold"
+      "Strategy stops when HELOC balance exceeds $#{threshold_value.to_i} to limit exposure."
+    when "primary_paid_off"
+      "Strategy stops when primary mortgage is fully paid off (goal achieved!)."
+    when "tax_coverage_ratio"
+      "Strategy stops when tax refund doesn't cover at least #{(threshold_value * 100).round(0)}% of HELOC interest for #{consecutive_months} consecutive months."
+    else
+      "Custom auto-stop rule"
+    end
+  end
+
+  private
+
+  def check_tax_coverage(entry)
+    # Check if tax refund < (threshold_value × HELOC interest)
+    # for consecutive_months in a row
+    recent_entries = entry.debt_optimization_strategy.ledger_entries
+      .where("month_number <= ?", entry.month_number)
+      .order(month_number: :desc)
+      .limit(consecutive_months)
+
+    return false if recent_entries.size < consecutive_months
+
+    recent_entries.all? do |e|
+      coverage_ratio = e.tax_refund_monthly / e.heloc_interest_paid
+      coverage_ratio < threshold_value
+    end
+  end
+end
+```
+
+---
+
+## CRA Audit Trail Compliance (Canadian)
+
+### Critical Requirement
+
+Money flows must be traceable for CRA audit.
+
+### Best Practice Flow (per CRA requirements)
+
+```
+Rental Income Flow:
+  Tenant → Monika CIBC Account (net $1,805 = $1,900 - $95 mgmt fee)
+    → Monika adds personal $95
+    → BMO Joint Account ($1,900 total)
+    → Primary mortgage prepayment
+
+HELOC Flow:
+  HELOC → Rental mortgage payment
+  HELOC → Rental operating expenses
+  (All HELOC draws are for rental expenses → deductible per CRA)
+
+HELOC Interest Payment:
+  BMO Joint Account → HELOC interest (paid monthly, not capitalized)
+  (Keeps clean separation: HELOC balance = rental expenses only)
+```
+
+### Audit Trail Generator
+
+```ruby
+# app/models/debt_optimization_strategy/audit_trail.rb 🇨🇦
+class DebtOptimizationStrategy::AuditTrail
+  def initialize(strategy)
+    @strategy = strategy
+  end
+
+  # Generate tax authority report (CRA for Canada)
+  def generate_annual_report(year)
+    ledger_entries = @strategy.ledger_entries.where(
+      "EXTRACT(YEAR FROM calendar_month) = ?", year
+    )
+
+    {
+      taxpayer: @strategy.tax_owner,
+      year: year,
+      tax_authority: @strategy.tax_calculator_config.authority_name,  # "CRA" for Canada
+
+      rental_income: {
+        gross_rental_income: ledger_entries.sum(:gross_rental_income),
+        property_management_fees: ledger_entries.sum(:property_mgmt_fee),
+        net_rental_income: ledger_entries.sum(:net_rental_income)
+      },
+
+      rental_expenses: {
+        mortgage_interest: calculate_rental_mortgage_interest(ledger_entries),
+        operating_expenses: @strategy.rental_expenses_monthly * ledger_entries.count,
+        heloc_interest_deductible: ledger_entries.sum(:deductible_interest),
+        total_deductible: calculate_total_deductible(ledger_entries)
+      },
+
+      heloc_usage: {
+        beginning_balance: ledger_entries.first&.heloc_balance_end || 0,
+        ending_balance: ledger_entries.last&.heloc_balance_end || 0,
+        total_draws: ledger_entries.sum(:heloc_draw),
+        purpose: "Rental property expenses (100% business use)",  # CRA requirement
+        proof_of_business_use: generate_purpose_breakdown(ledger_entries)
+      },
+
+      tax_impact: {
+        total_deductible_interest: ledger_entries.sum(:deductible_interest),
+        marginal_tax_rate: @strategy.marginal_tax_rate,
+        estimated_tax_benefit: ledger_entries.sum(:tax_refund_monthly),
+        province: @strategy.province_or_state
+      },
+
+      cra_compliance_notes: [
+        "HELOC used exclusively for rental property expenses",
+        "Primary mortgage prepayments from rental income (non-deductible)",
+        "Interest deductibility per CRA IT-533R guidelines"
+      ]
+    }
+  end
+
+  def generate_pdf(year)
+    # Generate PDF with all flows, suitable for CRA review
+    # Include: month-by-month ledger, annual summaries, account flow diagram
+    DebtOptimizationReportPdf.new(@strategy, year).render
+  end
+
+  private
+
+  def calculate_rental_mortgage_interest(entries)
+    # Calculate interest portion of rental mortgage payments
+    # Based on rental mortgage balance and interest rate
+  end
+
+  def calculate_total_deductible(entries)
+    entries.sum(:deductible_interest)
+  end
+
+  def generate_purpose_breakdown(entries)
+    # Detailed breakdown showing HELOC usage:
+    # - Rental mortgage payments
+    # - Rental operating expenses
+    # Demonstrates 100% business use for CRA
+    entries.map do |entry|
+      {
+        month: entry.calendar_month.strftime("%B %Y"),
+        rental_mortgage: entry.rental_mortgage_payment,
+        operating_expenses: @strategy.rental_expenses_monthly,
+        total: entry.heloc_draw
+      }
+    end
+  end
+end
+
+# View: PDF report generator 🇨🇦
+class DebtOptimizationReportPdf < Prawn::Document
+  def initialize(strategy, year)
+    super()
+    @strategy = strategy
+    @year = year
+    @audit_trail = DebtOptimizationStrategy::AuditTrail.new(strategy)
+    generate
+  end
+
+  def generate
+    # Title page
+    text "CRA Tax Compliance Report", size: 24, style: :bold
+    text "Modified Smith Manoeuvre - #{@year}", size: 18
+    move_down 20
+
+    # Summary section
+    render_summary
+
+    # Detailed ledger
+    render_monthly_ledger
+
+    # Account flow diagram
+    render_flow_diagram
+
+    # Tax calculations
+    render_tax_calculations
+  end
+
+  private
+
+  def render_summary
+    data = @audit_trail.generate_annual_report(@year)
+    # Render summary table with Prawn
+  end
+
+  def render_flow_diagram
+    # Visual diagram showing money movement between accounts
+    # Color-coded: Blue (income), Green (deductible), Red (non-deductible)
+  end
+end
+```
+
+---
+
+## Scenario Comparison Charts
+
+### Chart Series Builder
+
+```ruby
+# app/models/debt_optimization_strategy/chart_series_builder.rb
+class DebtOptimizationStrategy::ChartSeriesBuilder
+  def initialize(strategy)
+    @strategy = strategy
+    @baseline_entries = strategy.ledger_entries.where(baseline: true).order(:month_number)
+    @modified_entries = strategy.ledger_entries.where(baseline: false).order(:month_number)
+  end
+
+  def debt_comparison_series
+    {
+      labels: calendar_months,
+      datasets: [
+        {
+          label: "Baseline - Primary Mortgage",
+          data: @baseline_entries.pluck(:primary_balance_end),
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239, 68, 68, 0.1)",
+          fill: true
+        },
+        {
+          label: "Modified - Primary Mortgage",
+          data: @modified_entries.pluck(:primary_balance_end),
+          borderColor: "#10b981",
+          backgroundColor: "rgba(16, 185, 129, 0.1)",
+          fill: true
+        },
+        {
+          label: "Modified - HELOC",
+          data: @modified_entries.pluck(:heloc_balance_end),
+          borderColor: "#6366f1",
+          borderDash: [5, 5],
+          fill: false
+        },
+        {
+          label: "Δ Total Debt (Modified - Baseline)",
+          data: delta_total_debt,
+          yAxisID: "y2",
+          borderColor: "#f59e0b",
+          fill: false
+        }
+      ]
+    }
+  end
+
+  def cumulative_tax_benefit_series
+    {
+      labels: calendar_months,
+      datasets: [
+        {
+          label: "Cumulative Tax Benefit",
+          data: @modified_entries.pluck(:cumulative_tax_benefit),
+          borderColor: "#10b981",
+          backgroundColor: "rgba(16, 185, 129, 0.2)",
+          fill: true
+        }
+      ]
+    }
+  end
+
+  def net_cost_comparison_series
+    {
+      labels: calendar_months,
+      datasets: [
+        {
+          label: "Baseline Net Cost",
+          data: baseline_net_costs,
+          borderColor: "#ef4444"
+        },
+        {
+          label: "Modified Net Cost",
+          data: modified_net_costs,
+          borderColor: "#10b981"
+        }
+      ]
+    }
+  end
+
+  private
+
+  def calendar_months
+    @modified_entries.pluck(:calendar_month).map { |d| d.strftime("%b %Y") }
+  end
+
+  def delta_total_debt
+    @modified_entries.map.with_index do |entry, idx|
+      baseline_entry = @baseline_entries[idx]
+      modified_total = entry.primary_balance_end + entry.heloc_balance_end
+      baseline_total = baseline_entry.primary_balance_end
+      modified_total - baseline_total
+    end
+  end
+
+  def baseline_net_costs
+    # Cumulative interest paid - tax benefit
+  end
+
+  def modified_net_costs
+    # Cumulative interest paid - tax benefit
+  end
+end
+```
+
+---
+
+## Integration with Existing Maybe Finance Models
+
+```ruby
+# Leverage existing models
+Account (type: Loan)
+  → Primary Mortgage (non-deductible in Canada, deductible in US)
+  → Rental Mortgage (deductible)
+  → HELOC (mixed deductibility - track usage)
+
+Account (type: Property)
+  → Rental Property
+  → Has associated rental income transactions
+
+Transaction
+  → Rental income deposits
+  → Mortgage payments
+  → HELOC draws
+  → Tag with "tax_deductible" flag
+
+# New models needed 🔧
+DebtOptimizationStrategy (orchestrates multiple accounts, jurisdiction-aware)
+DebtOptimizationLedgerEntry (month-by-month simulation)
+DebtOptimizationStrategy::AutoStopRule
+DebtOptimizationStrategy::AuditTrail
+```
+
+---
+
+## Testing Patterns
+
+```ruby
+# test/services/canadian_smith_manoeuvre_simulator_test.rb
+class CanadianSmithManoeuvrSimulatorTest < ActiveSupport::TestCase
+  setup do
+    @strategy = debt_optimization_strategies(:monika_modified_smith)
+    @simulator = CanadianSmithManoeuvrSimulator.new(@strategy)
+  end
+
+  test "modified strategy reduces primary mortgage faster than baseline" do
+    results = @simulator.run(months: 360)
+
+    assert results[:years_to_payoff_modified] < results[:years_to_payoff_baseline],
+           "Modified strategy should pay off primary mortgage faster"
+  end
+
+  test "HELOC interest is fully deductible" do
+    results = @simulator.run(months: 12)
+    ledger = results[:month_by_month]
+
+    ledger.each do |entry|
+      # All HELOC interest should be deductible (100% rental use)
+      assert_equal entry[:heloc_interest], entry[:deductible_interest]
+    end
+  end
+
+  test "auto-stop rule triggers when HELOC reaches limit" do
+    @strategy.auto_stop_heloc_percentage = 0.90
+    @strategy.heloc.credit_limit = 50000
+
+    results = @simulator.run(months: 360)
+    stopped_entry = results[:month_by_month].find { |e| e[:strategy_stopped] }
+
+    assert stopped_entry, "Strategy should have stopped"
+    assert_operator stopped_entry[:heloc_balance_end], :>=, 45000  # 90% of 50K
+  end
+
+  test "tax benefit calculation uses correct marginal rate" do
+    @strategy.marginal_tax_rate = 0.45
+
+    results = @simulator.run(months: 1)
+    entry = results[:month_by_month].first
+
+    expected_tax_refund = entry[:deductible_interest] * 0.45
+    assert_in_delta expected_tax_refund, entry[:tax_refund_monthly], 0.01
+  end
+
+  test "baseline strategy does not use HELOC" do
+    results = @simulator.run(months: 12)
+    baseline_ledger = results[:baseline]
+
+    # Baseline should not have any HELOC activity
+    assert_equal 0, baseline_ledger[:heloc_total_draws] || 0
+  end
+end
+```
+
+---
+
+## References
+
+- See DESIGN_VISION.md Part 2.2 for detailed debt optimization concepts
+- See DESIGN_VISION.md Part 2.3 for CRA audit trail requirements
+- See DESIGN_VISION.md Part 2.4 for integration with Maybe Finance models

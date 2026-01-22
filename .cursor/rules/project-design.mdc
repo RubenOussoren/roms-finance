@@ -247,3 +247,123 @@ class ConcreteProvider < Provider
   end
 end
 ```
+
+---
+
+## Financial Domain Models
+
+The application includes sophisticated financial planning features with jurisdiction-aware architecture.
+
+### Jurisdiction and Tax Configuration
+
+**`Jurisdiction`** - Country registry with tax and projection standards
+- Stores country code, name, currency code
+- Has many `ProjectionStandard` records
+- Tax configuration stored directly as `tax_config` JSONB column (tax brackets and rates)
+- Boolean flags: `interest_deductible`, `has_smith_manoeuvre`
+- Provides `marginal_tax_rate(income:)` calculation from stored brackets
+- Defaults to Canada (primary market)
+
+**`ProjectionStandard`** - Professional standards (PAG 2025, CFP Board, etc.)
+- Belongs to `Jurisdiction`
+- Stores asset class assumptions (nominal return, volatility, real return)
+- Compliance badge text for reports
+- Published date and active status
+
+### Investment Projections
+
+**`Account::Projection`** - Stores projection scenarios
+- Belongs to `Account`
+- Date, projected value, actual value (for accuracy tracking)
+- Expected and actual contributions
+- Calculates forecast error and accuracy metrics
+
+**`Milestone`** - Financial goal tracking
+- Belongs to `Account` (through Projectable concern)
+- Target amount, name, and currency
+- Status: pending, in_progress, achieved
+- Progress percentage with automatic updates
+- Projected dates and days remaining
+- Standard milestones ($10K, $25K, $50K, $100K, etc.) and custom goals
+
+**Milestone UI Components** (Phase 4 Complete):
+- `UI::Account::MilestoneCard` - Individual milestone display with progress bar, status badge, projected date
+- `UI::Account::MilestoneTracker` - Container showing next goal (highlighted), upcoming, and achieved milestones
+- `MilestonesController` - CRUD for custom milestones (nested under accounts)
+- Routes: `resources :accounts { resources :milestones }` with shallow routing
+
+**`ProjectionAssumption`** - Asset class assumptions
+- Belongs to `Security` (optional), `Family`, and `ProjectionStandard` (optional)
+- Asset class classification (Canadian equity, US equity, etc.)
+- Nominal return, real return, volatility, inflation rate
+- PAG 2025 compliance flag
+- Automatically classifies securities by ticker/exchange
+
+### Debt Optimization (Planned - Phase 3)
+
+**`DebtOptimizationStrategy`** - Debt simulator scenarios (planned)
+- Belongs to `Family` and `Jurisdiction`
+- Uses `Jurisdiction#tax_config` for tax calculations
+- Links to `primary_mortgage`, `heloc`, and `rental_mortgage` accounts
+- Strategy type: baseline, modified_smith (🇨🇦), heloc_arbitrage (🇺🇸), offset_mortgage (🇬🇧)
+- Rental income and expense settings
+- Tax settings (marginal rate, tax owner, province/state)
+- Auto-stop rules (HELOC percentage, balance thresholds, primary paid off)
+- Factory pattern: `strategy.simulator` returns appropriate simulator class
+
+**`DebtOptimizationLedgerEntry`** - Month-by-month simulation results
+- Belongs to `DebtOptimizationStrategy`
+- Income flows (rental income, property mgmt fees, personal funds)
+- Mortgage payments (primary, rental, HELOC activity)
+- Balances (start and end for each account)
+- Tax impact (deductible interest, tax refund, cumulative benefit)
+- Strategy events (stopped?, stop_reason, payoff flags)
+
+**`DebtOptimizationStrategy::AutoStopRule`** - Auto-stop conditions
+- Belongs to `DebtOptimizationStrategy`
+- Rule types: HELOC limit %, HELOC balance, primary paid off, tax coverage ratio
+- Threshold values and consecutive month requirements
+- Checks simulation ledger entries for trigger conditions
+
+### Calculator and Simulator Services
+
+**Calculators** - Pure functions for financial math (no side effects)
+- `ProjectionCalculator` - Investment growth over time
+- `ForecastAccuracyCalculator` - MAPE, RMSE, Tracking Signal metrics
+- `MilestoneCalculator` - Goal timeline projections
+- `AmortizationCalculator` - Mortgage payment schedules
+
+**Simulators** - Complex scenario modeling with state changes
+- `CanadianSmithManoeuvrSimulator` - 🇨🇦 CRA-compliant debt optimization
+- `BaselineSimulator` - 🌍 No-optimization baseline strategy
+- `MonteCarloSimulator` - Probabilistic portfolio projections
+- `RebalancingSimulator` - Portfolio rebalancing strategies
+
+### Multi-Jurisdiction Architecture Pattern
+
+This architecture extends the existing Provider pattern for jurisdiction-specific rules:
+
+```rb
+# Existing pattern
+Provider::Registry.get_provider(:synth)  # Market data
+Provider::Registry.get_provider(:plaid)  # Bank connectivity
+
+# Extended for jurisdictions
+Jurisdiction.find_by(country_code: 'CA')  # Canada
+  → .projection_standard                   # PAG 2025
+  → .tax_calculator_config                 # CRA rules
+  → .available_strategies                  # Modified Smith Manoeuvre
+
+# Benefits:
+# - Configuration over code (add countries via seed data)
+# - User families can have jurisdiction association
+# - Defaults to Canadian rules (primary market)
+# - No refactoring required to add US/UK/EU support
+```
+
+For detailed patterns, see:
+- `.cursor/rules/financial-architecture.mdc` - Calculator and simulator patterns
+- `.cursor/rules/jurisdiction-architecture.mdc` - Multi-jurisdiction design
+- `.cursor/rules/investment-projections.mdc` - Investment projection features
+- `.cursor/rules/debt-optimization.mdc` - Debt optimization strategies
+- `.cursor/rules/financial-testing.mdc` - Testing financial calculations

@@ -1,13 +1,16 @@
 class UI::AccountPage < ApplicationComponent
-  attr_reader :account, :chart_view, :chart_period
+  attr_reader :account, :chart_view, :chart_period, :projection_years
 
   renders_one :activity_feed, ->(feed_data:, pagy:, search:) { UI::Account::ActivityFeed.new(feed_data: feed_data, pagy: pagy, search: search) }
+  renders_one :milestone_tracker, -> { UI::Account::MilestoneTracker.new(account: account) }
+  renders_one :projection_chart, ->(years: nil) { UI::Account::ProjectionChart.new(account: account, years: years || projection_years) }
 
-  def initialize(account:, chart_view: nil, chart_period: nil, active_tab: nil)
+  def initialize(account:, chart_view: nil, chart_period: nil, active_tab: nil, projection_years: nil)
     @account = account
     @chart_view = chart_view
     @chart_period = chart_period
     @active_tab = active_tab
+    @projection_years = projection_years || 10
   end
 
   def id
@@ -55,5 +58,9 @@ class UI::AccountPage < ApplicationComponent
       # Accountable is responsible for implementing the partial in the correct folder
       render "#{account.accountable_type.downcase.pluralize}/tabs/#{tab}", account: account
     end
+  end
+
+  def show_projection_chart?
+    account.accountable_type.in?(%w[Investment Crypto])
   end
 end

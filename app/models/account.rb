@@ -1,5 +1,6 @@
 class Account < ApplicationRecord
   include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable
+  include Projectable, JurisdictionAware, DataQualityCheckable
 
   validates :name, :balance, :currency, presence: true
 
