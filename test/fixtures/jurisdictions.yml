@@ -1,0 +1,30 @@
+# 🇨🇦 Jurisdiction fixtures
+canada:
+  country_code: CA
+  name: Canada
+  currency_code: CAD
+  interest_deductible: true
+  has_smith_manoeuvre: true
+  tax_config:
+    brackets:
+      - min: 0
+        max: 55867
+        rate: 0.15
+      - min: 55867
+        max: 111733
+        rate: 0.205
+      - min: 111733
+        max: null
+        rate: 0.26
+  metadata: {}
+
+# 🇺🇸 US jurisdiction for testing extensibility
+united_states:
+  country_code: US
+  name: United States
+  currency_code: USD
+  interest_deductible: false
+  has_smith_manoeuvre: false
+  tax_config: {}
+  metadata:
+    status: placeholder
