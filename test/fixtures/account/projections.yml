@@ -1,0 +1,39 @@
+# Account projection fixtures
+month_1:
+  account: investment
+  projection_assumption: default_assumption
+  projection_date: <%= 1.month.from_now.end_of_month.to_date %>
+  projected_balance: 10550.0
+  currency: USD
+  contribution: 500.0
+  is_adaptive: false
+  percentiles: {}
+  metadata: {}
+
+month_6:
+  account: investment
+  projection_assumption: default_assumption
+  projection_date: <%= 6.months.from_now.end_of_month.to_date %>
+  projected_balance: 13608.25
+  actual_balance: 13500.0
+  currency: USD
+  contribution: 500.0
+  is_adaptive: false
+  percentiles: {}
+  metadata: {}
+
+month_12:
+  account: investment
+  projection_assumption: default_assumption
+  projection_date: <%= 12.months.from_now.end_of_month.to_date %>
+  projected_balance: 17356.79
+  currency: USD
+  contribution: 500.0
+  is_adaptive: false
+  percentiles:
+    p10: 15000.0
+    p25: 16000.0
+    p50: 17356.79
+    p75: 18500.0
+    p90: 20000.0
+  metadata: {}
