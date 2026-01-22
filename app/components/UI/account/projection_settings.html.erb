@@ -1,0 +1,78 @@
+<% if show_settings? %>
+  <details class="bg-container shadow-border-xs rounded-xl">
+    <summary class="px-4 py-3 cursor-pointer flex items-center justify-between list-none">
+      <div class="flex items-center gap-2">
+        <%= helpers.icon "sliders-horizontal", size: "sm", class: "text-secondary" %>
+        <span class="text-sm font-medium text-primary">Projection Settings</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-tertiary"><%= compliance_badge %></span>
+        <%= helpers.icon "chevron-down", size: "sm", class: "text-secondary transition-transform duration-200 details-open:rotate-180" %>
+      </div>
+    </summary>
+
+    <div class="px-4 pb-4 border-t border-primary pt-4">
+      <%= form_with url: account_projection_settings_path(account), method: :patch, data: { controller: "auto-submit-form", turbo_frame: dom_id(account, :projection_chart) } do |form| %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-secondary">Expected Return (%)</label>
+            <%= form.number_field :expected_return,
+                value: expected_return_percent,
+                step: 0.1,
+                min: 0,
+                max: 30,
+                class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
+                data: { "auto-submit-form-target": "auto" },
+                disabled: use_pag_defaults? %>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-secondary">Monthly Contribution (<%= currency_symbol %>)</label>
+            <%= form.number_field :monthly_contribution,
+                value: monthly_contribution,
+                step: 100,
+                min: 0,
+                class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
+                data: { "auto-submit-form-target": "auto" } %>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-secondary">Volatility (%)</label>
+            <%= form.number_field :volatility,
+                value: volatility_percent,
+                step: 0.5,
+                min: 0,
+                max: 50,
+                class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
+                data: { "auto-submit-form-target": "auto" },
+                disabled: use_pag_defaults? %>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-secondary">Projection Horizon</label>
+            <%= form.select :projection_years,
+                [[" 5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
+                { selected: 10 },
+                class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-0",
+                data: { "auto-submit-form-target": "auto" } %>
+          </div>
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+          <%= form.check_box :use_pag_defaults,
+              checked: use_pag_defaults?,
+              class: "rounded border-secondary text-blue-500 focus:ring-blue-500",
+              data: { "auto-submit-form-target": "auto", action: "change->auto-submit-form#submit" } %>
+          <label class="text-sm text-secondary">Use PAG 2025 default assumptions</label>
+        </div>
+
+        <% if use_pag_defaults? %>
+          <p class="mt-2 text-xs text-tertiary">
+            Using FP Canada PAG 2025 guidelines: <%= expected_return_percent %>% expected return,
+            <%= inflation_percent %>% inflation, <%= volatility_percent %>% volatility.
+          </p>
+        <% end %>
+      <% end %>
+    </div>
+  </details>
+<% end %>

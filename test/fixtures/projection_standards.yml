@@ -1,0 +1,13 @@
+# PAG 2025 fixture
+pag_2025:
+  jurisdiction: canada
+  name: FP Canada PAG 2025
+  code: PAG_2025
+  effective_year: 2025
+  equity_return: 0.0628
+  fixed_income_return: 0.0409
+  cash_return: 0.0295
+  inflation_rate: 0.021
+  volatility_equity: 0.18
+  volatility_fixed_income: 0.05
+  metadata: {}

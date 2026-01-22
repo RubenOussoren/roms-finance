@@ -1,0 +1,25 @@
+# Default projection assumptions
+default_assumption:
+  family: dylan_family
+  projection_standard: pag_2025
+  name: Default Assumptions
+  expected_return: 0.06
+  inflation_rate: 0.021
+  monthly_contribution: 500.0
+  volatility: 0.18
+  use_pag_defaults: true
+  is_active: true
+  custom_overrides: {}
+  metadata: {}
+
+custom_assumption:
+  family: dylan_family
+  name: Aggressive Growth
+  expected_return: 0.10
+  inflation_rate: 0.025
+  monthly_contribution: 1000.0
+  volatility: 0.25
+  use_pag_defaults: false
+  is_active: false
+  custom_overrides: {}
+  metadata: {}

@@ -1,0 +1,52 @@
+<% if show_chart? %>
+  <div id="<%= dom_id(account, :projection_chart) %>" class="bg-container shadow-border-xs rounded-xl space-y-2">
+    <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
+      <div class="space-y-2 w-full">
+        <div class="flex items-center gap-1">
+          <p class="text-sm font-medium text-secondary">Projected Growth</p>
+        </div>
+        <div class="flex flex-row gap-2 items-baseline">
+          <p class="text-primary text-3xl font-medium truncate"><%= projected_balance_formatted %></p>
+          <p class="text-sm font-medium text-secondary">in <%= years %> years</p>
+        </div>
+        <p class="text-xs text-tertiary"><%= assumption_summary %></p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <%= form_with url: account_path(account), method: :get, data: { controller: "auto-submit-form" } do |form| %>
+          <%= form.select :projection_years,
+              [[" 5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
+              { selected: years },
+              class: "bg-container border border-secondary rounded-lg text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
+              data: { "auto-submit-form-target": "auto" } %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="h-64 pb-4">
+      <div
+        id="<%= dom_id(account, :projection_chart_canvas) %>"
+        class="w-full h-full"
+        data-controller="projection-chart"
+        data-projection-chart-data-value="<%= chart_data.to_json %>">
+      </div>
+    </div>
+
+    <div class="px-4 pb-4">
+      <div class="flex items-center gap-4 text-xs text-tertiary">
+        <div class="flex items-center gap-1">
+          <span class="w-3 h-0.5 bg-gray-400"></span>
+          <span>Historical</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="w-3 h-0.5 border-t border-dashed border-blue-500"></span>
+          <span>Projected (median)</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="w-3 h-2 bg-blue-500/20 rounded-sm"></span>
+          <span>Confidence bands (10th-90th percentile)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
