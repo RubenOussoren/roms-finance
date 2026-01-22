@@ -1,0 +1,147 @@
+<%= form_with model: strategy, class: "space-y-6" do |f| %>
+  <% if strategy.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div class="flex gap-3">
+        <%= icon "alert-circle", class: "w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" %>
+        <div class="text-sm">
+          <p class="font-medium text-red-800">Please fix the following errors:</p>
+          <ul class="list-disc list-inside text-red-700 mt-1">
+            <% strategy.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Basic Info -->
+  <div class="bg-container border border-primary rounded-lg p-4">
+    <h3 class="font-medium text-primary mb-4">Basic Information</h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :name, "Strategy Name", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.text_field :name,
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+              placeholder: "e.g., Smith Manoeuvre - Rental Property" %>
+      </div>
+
+      <div>
+        <%= f.label :strategy_type, "Strategy Type", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.select :strategy_type,
+              [["Modified Smith Manoeuvre", "modified_smith"], ["Baseline (No Optimization)", "baseline"]],
+              {},
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accounts -->
+  <div class="bg-container border border-primary rounded-lg p-4">
+    <h3 class="font-medium text-primary mb-2">Linked Accounts</h3>
+    <p class="text-sm text-secondary mb-4">Select the mortgage and HELOC accounts for this strategy</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <%= f.label :primary_mortgage_id, "Primary Mortgage", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.collection_select :primary_mortgage_id,
+              loan_accounts,
+              :id,
+              :name,
+              { include_blank: "Select mortgage..." },
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+        <p class="text-xs text-secondary mt-1">Your primary residence mortgage</p>
+      </div>
+
+      <div>
+        <%= f.label :heloc_id, "HELOC", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.collection_select :heloc_id,
+              loan_accounts,
+              :id,
+              :name,
+              { include_blank: "Select HELOC..." },
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+        <p class="text-xs text-secondary mt-1">Home equity line of credit</p>
+      </div>
+
+      <div>
+        <%= f.label :rental_mortgage_id, "Rental Property Mortgage", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.collection_select :rental_mortgage_id,
+              loan_accounts,
+              :id,
+              :name,
+              { include_blank: "Select mortgage..." },
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+        <p class="text-xs text-secondary mt-1">Investment property mortgage</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rental Property Details -->
+  <div class="bg-container border border-primary rounded-lg p-4">
+    <h3 class="font-medium text-primary mb-2">Rental Property Cash Flow</h3>
+    <p class="text-sm text-secondary mb-4">Enter your monthly rental income and expenses</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <%= f.label :rental_income, "Monthly Rental Income", class: "block text-sm font-medium text-primary mb-1" %>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">$</span>
+          <%= f.number_field :rental_income,
+                step: 0.01,
+                min: 0,
+                class: "w-full rounded-md border border-primary bg-container pl-7 pr-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+                placeholder: "2500.00" %>
+        </div>
+      </div>
+
+      <div>
+        <%= f.label :rental_expenses, "Monthly Rental Expenses", class: "block text-sm font-medium text-primary mb-1" %>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">$</span>
+          <%= f.number_field :rental_expenses,
+                step: 0.01,
+                min: 0,
+                class: "w-full rounded-md border border-primary bg-container pl-7 pr-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+                placeholder: "500.00" %>
+        </div>
+        <p class="text-xs text-secondary mt-1">Property tax, insurance, maintenance, etc.</p>
+      </div>
+
+      <div>
+        <%= f.label :heloc_interest_rate, "HELOC Interest Rate (%)", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.number_field :heloc_interest_rate,
+              step: 0.01,
+              min: 0,
+              max: 30,
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+              placeholder: "7.00" %>
+        <p class="text-xs text-secondary mt-1">Leave blank to use account rate</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulation Settings -->
+  <div class="bg-container border border-primary rounded-lg p-4">
+    <h3 class="font-medium text-primary mb-2">Simulation Settings</h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :simulation_months, "Simulation Period (months)", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.number_field :simulation_months,
+              min: 12,
+              max: 600,
+              step: 12,
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+        <p class="text-xs text-secondary mt-1"><%= strategy.simulation_months.present? ? "#{(strategy.simulation_months / 12.0).round(1)} years" : "25 years default" %></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="flex items-center justify-between pt-4 border-t border-primary">
+    <%= link_to "Cancel", strategy.persisted? ? debt_optimization_strategy_path(strategy) : debt_optimization_strategies_path, class: "text-secondary hover:text-primary" %>
+    <%= f.submit strategy.persisted? ? "Update Strategy" : "Create Strategy", class: "btn btn--primary" %>
+  </div>
+<% end %>

@@ -1,0 +1,46 @@
+<div class="bg-container border border-primary rounded-lg p-4 hover:border-secondary transition-colors">
+  <div class="flex items-start justify-between mb-3">
+    <div>
+      <h3 class="text-primary font-medium">
+        <%= link_to strategy.name, debt_optimization_strategy_path(strategy), class: "hover:text-blue-600" %>
+      </h3>
+      <p class="text-sm text-secondary"><%= strategy_type_label %></p>
+    </div>
+    <span class="px-2 py-1 text-xs font-medium rounded-full <%= status_badge_classes %>">
+      <%= status_label %>
+    </span>
+  </div>
+
+  <div class="grid grid-cols-3 gap-4 mb-4">
+    <div>
+      <p class="text-xs text-secondary uppercase tracking-wide">Tax Benefit</p>
+      <p class="text-lg font-semibold text-green-600"><%= formatted_tax_benefit %></p>
+    </div>
+    <div>
+      <p class="text-xs text-secondary uppercase tracking-wide">Interest Saved</p>
+      <p class="text-lg font-semibold text-primary"><%= formatted_interest_saved %></p>
+    </div>
+    <div>
+      <p class="text-xs text-secondary uppercase tracking-wide">Time Saved</p>
+      <p class="text-lg font-semibold text-primary"><%= months_accelerated_text %></p>
+    </div>
+  </div>
+
+  <div class="border-t border-primary pt-3">
+    <div class="grid grid-cols-3 gap-2 text-sm">
+      <div>
+        <span class="text-secondary">Primary:</span>
+        <span class="text-primary"><%= primary_mortgage_name %></span>
+      </div>
+      <div>
+        <span class="text-secondary">HELOC:</span>
+        <span class="text-primary"><%= heloc_name %></span>
+      </div>
+      <div>
+        <span class="text-secondary">Rental:</span>
+        <span class="text-primary"><%= rental_mortgage_name %></span>
+      </div>
+    </div>
+    <p class="text-xs text-secondary mt-2"><%= last_simulated_text %></p>
+  </div>
+</div>

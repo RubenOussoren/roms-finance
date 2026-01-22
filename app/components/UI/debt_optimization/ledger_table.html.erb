@@ -1,0 +1,54 @@
+<div class="overflow-x-auto">
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-3 py-2 text-left text-xs font-medium text-secondary uppercase tracking-wider">Month</th>
+        <th class="px-3 py-2 text-right text-xs font-medium text-secondary uppercase tracking-wider">Primary Mortgage</th>
+        <th class="px-3 py-2 text-right text-xs font-medium text-secondary uppercase tracking-wider">Prepayment</th>
+        <th class="px-3 py-2 text-right text-xs font-medium text-secondary uppercase tracking-wider">HELOC Balance</th>
+        <th class="px-3 py-2 text-right text-xs font-medium text-secondary uppercase tracking-wider">Deductible Interest</th>
+        <th class="px-3 py-2 text-right text-xs font-medium text-secondary uppercase tracking-wider">Tax Benefit</th>
+        <th class="px-3 py-2 text-right text-xs font-medium text-secondary uppercase tracking-wider">Total Debt</th>
+        <th class="px-3 py-2 text-left text-xs font-medium text-secondary uppercase tracking-wider">Status</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% entries.each do |entry| %>
+        <tr class="<%= row_classes(entry) %>">
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-primary">
+            <%= format_month(entry.calendar_month) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-right text-primary">
+            <%= format_amount(entry.primary_mortgage_balance) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-right text-green-600">
+            <%= format_amount(entry.primary_mortgage_prepayment) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-right text-primary">
+            <%= format_amount(entry.heloc_balance) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-right text-blue-600">
+            <%= format_amount(entry.deductible_interest) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-right text-green-600">
+            <%= format_amount(entry.tax_benefit) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-primary">
+            <%= format_amount(entry.total_debt) %>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap text-sm">
+            <% if entry.strategy_stopped %>
+              <span class="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">Stopped</span>
+            <% elsif entry.primary_mortgage_paid_off? %>
+              <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">Mortgage Paid!</span>
+            <% elsif entry.all_debt_paid_off? %>
+              <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">Debt Free!</span>
+            <% else %>
+              <span class="px-2 py-1 text-xs bg-gray-100 text-secondary rounded-full">Active</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

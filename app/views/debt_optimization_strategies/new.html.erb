@@ -1,0 +1,28 @@
+<div class="max-w-3xl mx-auto">
+  <div class="mb-6">
+    <div class="flex items-center gap-2 mb-1">
+      <%= link_to debt_optimization_strategies_path, class: "text-secondary hover:text-primary" do %>
+        <%= icon "arrow-left", class: "w-4 h-4" %>
+      <% end %>
+      <h1 class="text-2xl font-semibold text-primary">New Debt Optimization Strategy</h1>
+    </div>
+    <p class="text-secondary">Configure your Modified Smith Manoeuvre strategy</p>
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <div class="flex gap-3">
+      <%= icon "info", class: "w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" %>
+      <div class="text-sm">
+        <p class="font-medium text-blue-800">How the Modified Smith Manoeuvre Works</p>
+        <ul class="text-blue-700 mt-2 space-y-1 list-disc list-inside">
+          <li>Rental income is used to prepay your primary mortgage (accelerates payoff)</li>
+          <li>HELOC covers rental property expenses (creates tax-deductible interest)</li>
+          <li>You convert non-deductible mortgage interest into tax-deductible HELOC interest</li>
+          <li>The strategy continues until your HELOC reaches its limit or mortgage is paid off</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <%= render "form", strategy: @strategy, loan_accounts: @loan_accounts %>
+</div>

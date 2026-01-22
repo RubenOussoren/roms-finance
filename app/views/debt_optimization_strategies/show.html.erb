@@ -1,0 +1,148 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-start justify-between">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <%= link_to debt_optimization_strategies_path, class: "text-secondary hover:text-primary" do %>
+          <%= icon "arrow-left", class: "w-4 h-4" %>
+        <% end %>
+        <h1 class="text-2xl font-semibold text-primary"><%= @strategy.name %></h1>
+        <span class="px-2 py-1 text-xs font-medium rounded-full <%= status_badge_classes(@strategy) %>">
+          <%= @strategy.status.titleize %>
+        </span>
+      </div>
+      <p class="text-secondary"><%= strategy_type_label(@strategy) %></p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <% if @strategy.draft? || @strategy.simulated? %>
+        <%= button_to simulate_debt_optimization_strategy_path(@strategy),
+              method: :post,
+              class: "btn btn--primary flex items-center gap-2" do %>
+          <%= icon "play", class: "w-4 h-4" %>
+          Run Simulation
+        <% end %>
+      <% end %>
+      <%= link_to edit_debt_optimization_strategy_path(@strategy),
+            class: "btn btn--secondary flex items-center gap-2" do %>
+        <%= icon "edit", class: "w-4 h-4" %>
+        Edit
+      <% end %>
+    </div>
+  </div>
+
+  <% if @strategy.simulated? || @strategy.active? %>
+    <!-- Summary Metrics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-container border border-primary rounded-lg p-4">
+        <p class="text-xs text-secondary uppercase tracking-wide">Total Tax Benefit</p>
+        <p class="text-2xl font-bold text-green-600"><%= format_money(Money.new(@summary_metrics[:total_tax_benefit] || 0, @strategy.currency)) %></p>
+      </div>
+      <div class="bg-container border border-primary rounded-lg p-4">
+        <p class="text-xs text-secondary uppercase tracking-wide">Interest Saved</p>
+        <p class="text-2xl font-bold text-primary"><%= format_money(Money.new(@summary_metrics[:total_interest_saved] || 0, @strategy.currency)) %></p>
+      </div>
+      <div class="bg-container border border-primary rounded-lg p-4">
+        <p class="text-xs text-secondary uppercase tracking-wide">Time Saved</p>
+        <p class="text-2xl font-bold text-primary"><%= months_to_years(@summary_metrics[:months_accelerated]) %></p>
+      </div>
+      <div class="bg-container border border-primary rounded-lg p-4">
+        <p class="text-xs text-secondary uppercase tracking-wide">Final HELOC Balance</p>
+        <p class="text-2xl font-bold text-orange-600"><%= format_money(Money.new(@summary_metrics[:final_heloc_balance] || 0, @strategy.currency)) %></p>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <%= render UI::DebtOptimization::ComparisonChart.new(chart_series: @chart_series, chart_type: "debt_comparison") %>
+      <%= render UI::DebtOptimization::ComparisonChart.new(chart_series: @chart_series, chart_type: "cumulative_tax_benefit") %>
+    </div>
+
+    <!-- Ledger Tabs -->
+    <div class="bg-container border border-primary rounded-lg">
+      <div class="border-b border-primary px-4 py-3">
+        <h3 class="font-medium text-primary">Month-by-Month Breakdown</h3>
+        <p class="text-sm text-secondary">Modified Smith Manoeuvre simulation results</p>
+      </div>
+
+      <div class="p-4">
+        <%= render UI::DebtOptimization::LedgerTable.new(entries: @strategy_entries) %>
+      </div>
+    </div>
+
+    <% if @summary_metrics[:strategy_stopped] %>
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div class="flex gap-3">
+          <%= icon "alert-triangle", class: "w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" %>
+          <div class="text-sm">
+            <p class="font-medium text-yellow-800">Strategy Auto-Stopped</p>
+            <p class="text-yellow-700"><%= @summary_metrics[:stop_reason] %></p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+  <% else %>
+    <!-- Not Simulated -->
+    <div class="bg-container border border-primary rounded-lg p-8 text-center">
+      <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+        <%= icon "play-circle", class: "w-8 h-8 text-blue-600" %>
+      </div>
+      <h3 class="text-lg font-medium text-primary mb-2">Ready to Simulate</h3>
+      <p class="text-secondary mb-4">
+        Run the simulation to see how the Modified Smith Manoeuvre will
+        affect your mortgage payoff timeline and tax benefits.
+      </p>
+      <%= button_to simulate_debt_optimization_strategy_path(@strategy),
+            method: :post,
+            class: "btn btn--primary" do %>
+        <%= icon "play", class: "w-4 h-4 mr-2" %>
+        Run Simulation
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- Strategy Configuration -->
+  <div class="bg-container border border-primary rounded-lg">
+    <div class="border-b border-primary px-4 py-3">
+      <h3 class="font-medium text-primary">Strategy Configuration</h3>
+    </div>
+    <div class="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div>
+        <p class="text-xs text-secondary uppercase tracking-wide">Primary Mortgage</p>
+        <p class="text-primary font-medium"><%= @strategy.primary_mortgage&.name || "Not set" %></p>
+      </div>
+      <div>
+        <p class="text-xs text-secondary uppercase tracking-wide">HELOC</p>
+        <p class="text-primary font-medium"><%= @strategy.heloc&.name || "Not set" %></p>
+      </div>
+      <div>
+        <p class="text-xs text-secondary uppercase tracking-wide">Rental Mortgage</p>
+        <p class="text-primary font-medium"><%= @strategy.rental_mortgage&.name || "Not set" %></p>
+      </div>
+      <div>
+        <p class="text-xs text-secondary uppercase tracking-wide">Monthly Rental Income</p>
+        <p class="text-primary font-medium"><%= format_money(Money.new(@strategy.rental_income || 0, @strategy.currency)) %></p>
+      </div>
+      <div>
+        <p class="text-xs text-secondary uppercase tracking-wide">Monthly Rental Expenses</p>
+        <p class="text-primary font-medium"><%= format_money(Money.new(@strategy.rental_expenses || 0, @strategy.currency)) %></p>
+      </div>
+      <div>
+        <p class="text-xs text-secondary uppercase tracking-wide">Simulation Period</p>
+        <p class="text-primary font-medium"><%= @strategy.simulation_months %> months (<%= (@strategy.simulation_months / 12.0).round(1) %> years)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete -->
+  <div class="border-t border-primary pt-4">
+    <%= button_to debt_optimization_strategy_path(@strategy),
+          method: :delete,
+          data: { confirm: "Are you sure you want to delete this strategy?" },
+          class: "text-red-600 hover:text-red-700 text-sm" do %>
+      <%= icon "trash-2", class: "w-4 h-4 inline mr-1" %>
+      Delete Strategy
+    <% end %>
+  </div>
+</div>

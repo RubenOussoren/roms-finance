@@ -1,0 +1,26 @@
+# 🇨🇦 Test fixtures for debt optimization strategies
+smith_manoeuvre:
+  family: dylan_family
+  name: "Test Smith Manoeuvre Strategy"
+  strategy_type: "modified_smith"
+  status: "draft"
+  rental_income: 2500
+  rental_expenses: 500
+  simulation_months: 120
+  currency: "CAD"
+  metadata: {}
+
+baseline:
+  family: dylan_family
+  name: "Baseline Comparison"
+  strategy_type: "baseline"
+  status: "simulated"
+  rental_income: 2500
+  rental_expenses: 500
+  simulation_months: 120
+  currency: "CAD"
+  total_tax_benefit: 15000
+  total_interest_saved: 25000
+  months_accelerated: 36
+  last_simulated_at: <%= 1.day.ago.to_fs(:db) %>
+  metadata: {}
