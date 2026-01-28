@@ -1,39 +1,35 @@
-# 🌍 Universal: Time-to-goal milestone calculator
+# Universal: Time-to-goal milestone calculator
+# Supports both growth milestones (reach target) and debt milestones (reduce to target)
 class MilestoneCalculator
-  attr_reader :current_balance, :assumption, :currency
+  attr_reader :current_balance, :assumption, :currency, :target_type
 
-  def initialize(current_balance:, assumption:, currency: "CAD")
+  def initialize(current_balance:, assumption:, currency: "CAD", target_type: "reach")
     @current_balance = current_balance.to_d
     @assumption = assumption
     @currency = currency
+    @target_type = target_type
+  end
+
+  def reduction_milestone?
+    target_type == "reduce_to"
   end
 
   # Calculate time to reach a target amount
   def time_to_target(target:)
-    return { achieved: true, months: 0, years: 0 } if current_balance >= target
-
-    calculator = ProjectionCalculator.new(
-      principal: current_balance,
-      rate: assumption.effective_return,
-      contribution: assumption.monthly_contribution,
-      currency: currency
-    )
-
-    months = calculator.months_to_target(target: target)
-    return { achievable: false } if months.nil?
-
-    {
-      achieved: false,
-      achievable: true,
-      months: months,
-      years: (months / 12.0).round(1),
-      projected_date: Date.current + months.months
-    }
+    if reduction_milestone?
+      time_to_reduce_to(target)
+    else
+      time_to_grow_to(target)
+    end
   end
 
   # Calculate required contribution to reach target by date
   def required_contribution(target:, target_date:)
-    return { achieved: true, required: 0 } if current_balance >= target
+    if reduction_milestone?
+      return { achieved: true, required: 0 } if current_balance.abs <= target
+    else
+      return { achieved: true, required: 0 } if current_balance >= target
+    end
 
     months = ((target_date - Date.current) / 30).to_i
     return { achievable: false, reason: "Target date is in the past" } if months <= 0
@@ -59,12 +55,15 @@ class MilestoneCalculator
 
   # Analyze all standard milestones
   def analyze_standard_milestones
-    Milestone::STANDARD_MILESTONES.map do |milestone|
-      result = time_to_target(target: milestone[:amount])
+    milestones = reduction_milestone? ? debt_milestones : Milestone::STANDARD_MILESTONES
+
+    milestones.map do |milestone|
+      target = milestone[:amount] || milestone[:target]
+      result = time_to_target(target: target)
       {
         name: milestone[:name],
-        amount: milestone[:amount],
-        progress: [ (current_balance / milestone[:amount] * 100).round(1), 100 ].min
+        amount: target,
+        progress: calculate_milestone_progress(target)
       }.merge(result)
     end
   end
@@ -78,7 +77,11 @@ class MilestoneCalculator
 
   # Calculate milestone probability using Monte Carlo
   def milestone_probability(target:, months:, simulations: 1000)
-    return { probability: 100.0, achieved: true } if current_balance >= target
+    if reduction_milestone?
+      return { probability: 100.0, achieved: true } if current_balance.abs <= target
+    else
+      return { probability: 100.0, achieved: true } if current_balance >= target
+    end
 
     calculator = ProjectionCalculator.new(
       principal: current_balance,
@@ -126,7 +129,8 @@ class MilestoneCalculator
       calc = MilestoneCalculator.new(
         current_balance: current_balance,
         assumption: test_assumption,
-        currency: currency
+        currency: currency,
+        target_type: target_type
       )
 
       result = calc.time_to_target(target: target)
@@ -141,6 +145,88 @@ class MilestoneCalculator
   end
 
   private
+
+    def time_to_grow_to(target)
+      return { achieved: true, months: 0, years: 0 } if current_balance >= target
+
+      calculator = ProjectionCalculator.new(
+        principal: current_balance,
+        rate: assumption.effective_return,
+        contribution: assumption.monthly_contribution,
+        currency: currency
+      )
+
+      months = calculator.months_to_target(target: target)
+      return { achievable: false } if months.nil?
+
+      {
+        achieved: false,
+        achievable: true,
+        months: months,
+        years: (months / 12.0).round(1),
+        projected_date: Date.current + months.months
+      }
+    end
+
+    def time_to_reduce_to(target)
+      current_abs = current_balance.abs
+      return { achieved: true, months: 0, years: 0 } if current_abs <= target
+
+      # For debt payoff, we need to calculate how long to pay down the balance
+      # Using the assumption's monthly_contribution as the payment amount
+      payment = assumption.monthly_contribution.abs
+      return { achievable: false, reason: "No payment configured" } if payment.zero?
+
+      # Simple debt payoff calculation (with interest)
+      interest_rate = assumption.effective_return.abs  # Interest rate for debt
+      monthly_rate = interest_rate / 12.0
+
+      remaining = current_abs - target
+      return { achievable: false, reason: "Cannot pay off with current payment" } if payment <= (remaining * monthly_rate)
+
+      if monthly_rate.zero?
+        # No interest case
+        months = (remaining / payment).ceil
+      else
+        # With interest: n = -log(1 - (r * P) / M) / log(1 + r)
+        # where P = principal, M = monthly payment, r = monthly rate
+        numerator = Math.log(1 - (monthly_rate * remaining / payment))
+        denominator = Math.log(1 + monthly_rate)
+        months = (-numerator / denominator).ceil
+      end
+
+      return { achievable: false } if months.negative? || months > 1200  # Cap at 100 years
+
+      {
+        achieved: false,
+        achievable: true,
+        months: months,
+        years: (months / 12.0).round(1),
+        projected_date: Date.current + months.months
+      }
+    rescue Math::DomainError
+      { achievable: false, reason: "Payment too low to overcome interest" }
+    end
+
+    def calculate_milestone_progress(target)
+      if reduction_milestone?
+        # For debt: progress = (starting - current) / (starting - target) * 100
+        # Simplified: just show how much of target we've reached
+        return 100.0 if current_balance.abs <= target
+        remaining = current_balance.abs
+        [ ((remaining - target) / remaining * 100), 100 ].min.round(1).clamp(0, 100)
+      else
+        [ (current_balance / target * 100).round(1), 100 ].min
+      end
+    end
+
+    def debt_milestones
+      # Generate milestones based on current balance
+      Milestone::DEBT_MILESTONES.map do |m|
+        target = (current_balance.abs * (1 - m[:percentage])).round(2)
+        { name: m[:name], target: target }
+      end
+    end
 
     def estimate_probability(target:, values:, percentiles:)
       return 100.0 if target <= values.first

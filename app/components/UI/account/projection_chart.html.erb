@@ -2,13 +2,24 @@
   <div id="<%= dom_id(account, :projection_chart) %>" class="bg-container shadow-border-xs rounded-xl space-y-2">
     <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
       <div class="space-y-2 w-full">
+        <%# Primary: Projected Balance (Monte Carlo median) %>
         <div class="flex items-center gap-1">
-          <p class="text-sm font-medium text-secondary">Projected Growth</p>
+          <p class="text-sm font-medium text-secondary">Projected Balance</p>
         </div>
         <div class="flex flex-row gap-2 items-baseline">
-          <p class="text-primary text-3xl font-medium truncate"><%= projected_balance_formatted %></p>
+          <p class="text-primary text-3xl font-medium truncate"><%= expected_balance_formatted %></p>
           <p class="text-sm font-medium text-secondary">in <%= years %> years</p>
         </div>
+
+        <%# Secondary: Growth amount %>
+        <p class="text-sm text-green-600">+<%= expected_growth_formatted %> growth</p>
+
+        <%# Confidence range from Monte Carlo %>
+        <div class="flex items-center gap-2 text-xs text-tertiary">
+          <span>Likely range:</span>
+          <span class="text-secondary"><%= conservative_estimate %> - <%= optimistic_estimate %></span>
+        </div>
+
         <p class="text-xs text-tertiary"><%= assumption_summary %></p>
       </div>
 
@@ -33,18 +44,18 @@
     </div>
 
     <div class="px-4 pb-4">
-      <div class="flex items-center gap-4 text-xs text-tertiary">
+      <div class="flex flex-wrap items-center gap-4 text-xs text-tertiary">
         <div class="flex items-center gap-1">
           <span class="w-3 h-0.5 bg-gray-400"></span>
           <span>Historical</span>
         </div>
         <div class="flex items-center gap-1">
           <span class="w-3 h-0.5 border-t border-dashed border-blue-500"></span>
-          <span>Projected (median)</span>
+          <span>Projected median</span>
         </div>
         <div class="flex items-center gap-1">
           <span class="w-3 h-2 bg-blue-500/20 rounded-sm"></span>
-          <span>Confidence bands (10th-90th percentile)</span>
+          <span>Volatility range (Monte Carlo simulation)</span>
         </div>
       </div>
     </div>

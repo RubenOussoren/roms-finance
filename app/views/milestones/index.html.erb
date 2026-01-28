@@ -1,3 +1,58 @@
-<%= turbo_frame_tag dom_id(@account, :milestones) do %>
-  <%= render UI::Account::MilestoneTracker.new(account: @account) %>
-<% end %>
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <%= link_to account_path(@account), class: "text-secondary hover:text-primary" do %>
+        <%= icon "arrow-left", class: "w-5 h-5" %>
+      <% end %>
+      <div>
+        <h1 class="text-2xl font-semibold text-primary">Milestones</h1>
+        <p class="text-secondary"><%= @account.name %></p>
+      </div>
+    </div>
+
+    <%= link_to new_account_milestone_path(@account),
+        class: "btn btn--primary",
+        data: { turbo_frame: "modal" } do %>
+      <%= icon "plus", class: "w-4 h-4 mr-2" %>
+      New Milestone
+    <% end %>
+  </div>
+
+  <% pending = @milestones.where(status: %w[pending in_progress]) %>
+  <% achieved = @milestones.where(status: "achieved") %>
+
+  <% if pending.any? %>
+    <div class="space-y-4">
+      <h2 class="text-lg font-medium text-primary">In Progress</h2>
+      <div class="space-y-3">
+        <% pending.each do |milestone| %>
+          <%= render UI::Account::MilestoneCard.new(milestone: milestone) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if achieved.any? %>
+    <div class="space-y-4">
+      <h2 class="text-lg font-medium text-primary">Achieved</h2>
+      <div class="space-y-3">
+        <% achieved.each do |milestone| %>
+          <%= render UI::Account::MilestoneCard.new(milestone: milestone) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @milestones.empty? %>
+    <div class="bg-container shadow-border-xs rounded-xl p-8 text-center">
+      <%= icon "target", class: "w-12 h-12 text-secondary mx-auto mb-4" %>
+      <h3 class="text-lg font-medium text-primary mb-2">No milestones yet</h3>
+      <p class="text-secondary mb-4">Set financial goals to track your progress.</p>
+      <%= link_to new_account_milestone_path(@account),
+          class: "btn btn--primary",
+          data: { turbo_frame: "modal" } do %>
+        Add your first milestone
+      <% end %>
+    </div>
+  <% end %>
+</div>

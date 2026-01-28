@@ -1,0 +1,65 @@
+<%= turbo_frame_tag milestones_frame_id do %>
+  <div class="pt-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-medium text-primary"><%= title %></h3>
+      <%= render DS::Menu.new(variant: "button") do |menu| %>
+        <% menu.with_button(text: "Add", variant: "ghost", icon: "plus", size: "sm") %>
+        <% menu.with_item(
+            variant: "link",
+            text: "Custom milestone",
+            icon: "target",
+            href: new_milestone_path,
+            data: { turbo_frame: :modal }) %>
+      <% end %>
+    </div>
+
+    <% if has_milestones? %>
+      <div class="space-y-3">
+        <% if next_milestone.present? %>
+          <div>
+            <p class="text-xs font-medium text-secondary uppercase tracking-wide mb-2">Next Goal</p>
+            <%= render UI::Account::MilestoneCard.new(milestone: next_milestone, highlight: true, return_to: milestone_return_to) %>
+          </div>
+        <% end %>
+
+        <% other_pending = pending_milestones.reject { |m| m == next_milestone } %>
+        <% if other_pending.any? %>
+          <div>
+            <p class="text-xs font-medium text-secondary uppercase tracking-wide mb-2">Upcoming</p>
+            <div class="space-y-2">
+              <% other_pending.each do |milestone| %>
+                <%= render UI::Account::MilestoneCard.new(milestone: milestone, return_to: milestone_return_to) %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <% if achieved_milestones.any? %>
+          <details class="group/achieved">
+            <summary class="flex items-center gap-2 cursor-pointer text-sm text-secondary hover:text-primary py-2 list-none">
+              <%= helpers.icon("chevron-right", size: "sm", class: "transition-transform group-open/achieved:rotate-90") %>
+              <span>Achieved (<%= achieved_count %>)</span>
+            </summary>
+            <div class="space-y-2 mt-2 pl-6">
+              <% achieved_milestones.each do |milestone| %>
+                <%= render UI::Account::MilestoneCard.new(milestone: milestone, return_to: milestone_return_to) %>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-6 bg-surface-inset rounded-lg">
+        <%= helpers.icon("target", size: "lg", class: "text-secondary mx-auto mb-2") %>
+        <p class="text-sm text-secondary mb-2">No <%= title.downcase %> yet</p>
+        <% if empty_description.present? %>
+          <p class="text-xs text-subdued mb-2"><%= empty_description %></p>
+        <% end %>
+        <%= link_to "Add your first milestone",
+            new_milestone_path,
+            class: "text-sm text-link hover:underline",
+            data: { turbo_frame: :modal } %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

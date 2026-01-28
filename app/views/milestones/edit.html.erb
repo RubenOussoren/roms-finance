@@ -1,25 +1,51 @@
-<%= render DS::Dialog.new do |dialog| %>
-  <% dialog.with_header(title: "Edit Milestone") %>
-  <% dialog.with_body do %>
-    <%= styled_form_with model: @milestone, url: milestone_path(@milestone), method: :patch, class: "space-y-4" do |form| %>
-      <div class="space-y-3">
-        <%= form.text_field :name,
-            label: "Name",
-            required: true,
-            placeholder: "e.g., Emergency Fund $10K" %>
+<%= turbo_frame_tag "modal" do %>
+  <%= render DS::Dialog.new do |dialog| %>
+    <% dialog.with_header(title: @milestone.reduction_milestone? ? "Edit Debt Milestone" : "Edit Milestone") %>
+    <% dialog.with_body do %>
+      <%= styled_form_with model: @milestone, url: milestone_path(@milestone, return_to: params[:return_to]), method: :patch, class: "space-y-4" do |form| %>
+        <div class="space-y-3">
+          <%= form.text_field :name,
+              label: "Name",
+              required: true,
+              placeholder: @milestone.reduction_milestone? ? "e.g., Paid Off!, 50% Paid" : "e.g., Emergency Fund $10K" %>
 
-        <%= form.money_field :target_amount,
-            label: "Target Amount",
-            required: true,
-            disable_currency: true %>
+          <% if @milestone.reduction_milestone? %>
+            <div>
+              <label class="block text-sm font-medium text-primary mb-1">Payoff Target *</label>
+              <div class="flex items-center gap-2">
+                <input type="number"
+                       name="milestone[target_percentage]"
+                       id="milestone_target_percentage"
+                       min="0"
+                       max="100"
+                       step="1"
+                       required
+                       autocomplete="off"
+                       value="<%= @milestone.target_percentage %>"
+                       placeholder="e.g., 50"
+                       class="flex-1 rounded-lg border border-secondary bg-container px-3 py-2 text-primary focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <span class="text-secondary">% paid off</span>
+              </div>
+              <p class="text-xs text-secondary mt-1">
+                Starting balance: <%= format_money(Money.new(@milestone.starting_balance || @account.balance.abs, @milestone.currency)) %>.
+                Use 100 for full payoff.
+              </p>
+            </div>
+          <% else %>
+            <%= form.money_field :target_amount,
+                label: "Target Amount",
+                required: true,
+                disable_currency: true %>
+          <% end %>
 
-        <%= form.date_field :target_date,
-            label: "Target Date (optional)",
-            min: Date.current,
-            help_text: "Set a target date to track if you're on schedule" %>
-      </div>
+          <%= form.date_field :target_date,
+              label: "Target Date (optional)",
+              min: Date.current,
+              help_text: "Set a target date to track if you're on schedule" %>
+        </div>
 
-      <%= form.submit "Update Milestone" %>
+        <%= form.submit "Update Milestone" %>
+      <% end %>
     <% end %>
   <% end %>
 <% end %>

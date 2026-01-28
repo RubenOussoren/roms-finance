@@ -4,6 +4,8 @@ class Account < ApplicationRecord
 
   validates :name, :balance, :currency, presence: true
 
+  after_create :create_standard_milestones, if: :liability?
+
   belongs_to :family
   belongs_to :import, optional: true
 
@@ -14,6 +16,7 @@ class Account < ApplicationRecord
   has_many :trades, through: :entries, source: :entryable, source_type: "Trade"
   has_many :holdings, dependent: :destroy
   has_many :balances, dependent: :destroy
+  has_one :projection_assumption, dependent: :destroy
 
   monetize :balance, :cash_balance
 
@@ -126,7 +129,11 @@ class Account < ApplicationRecord
   end
 
   def first_valuation
-    entries.valuations.order(:date).first
+    @first_valuation ||= if entries.loaded?
+      entries.select { |e| e.entryable_type == "Valuation" }.min_by(&:date)
+    else
+      entries.valuations.order(:date).first
+    end
   end
 
   def first_valuation_amount
@@ -161,4 +168,20 @@ class Account < ApplicationRecord
       raise "Unknown account type: #{accountable_type}"
     end
   end
+
+  # Returns account-specific assumption or falls back to family default
+  def effective_projection_assumption
+    ProjectionAssumption.for_account(self)
+  end
+
+  # Returns true if account has custom projection settings
+  def custom_projection_settings?
+    projection_assumption.present?
+  end
+
+  private
+
+    def create_standard_milestones
+      Milestone.create_standard_milestones_for(self)
+    end
 end

@@ -1,0 +1,75 @@
+<%# Strategies tab: Debt optimization strategies %>
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-lg font-medium text-primary">Debt Optimization Strategies</h2>
+      <p class="text-sm text-secondary">Optimize your debt repayment with advanced strategies</p>
+    </div>
+    <%= link_to new_debt_optimization_strategy_path, class: "btn btn--primary flex items-center gap-2" do %>
+      <%= icon "plus", class: "w-4 h-4" %>
+      New Strategy
+    <% end %>
+  </div>
+
+  <% if strategies.present? && strategies.any? %>
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <% strategies.each do |strategy| %>
+        <%= render UI::DebtOptimization::StrategyCard.new(strategy: strategy) %>
+      <% end %>
+    </div>
+
+    <%# Smith Manoeuvre explanation %>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div class="flex gap-3">
+        <%= icon "info", class: "w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" %>
+        <div class="text-sm">
+          <p class="font-medium text-blue-800">About the Modified Smith Manoeuvre</p>
+          <p class="text-blue-700 mt-1">
+            This Canadian tax strategy uses rental property cash flow to prepay your primary mortgage
+            while using a HELOC to cover rental expenses. Since HELOC interest used for investment
+            purposes is tax-deductible in Canada, you effectively convert non-deductible mortgage
+            interest into tax-deductible interest.
+          </p>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="bg-container shadow-border-xs rounded-xl p-8 text-center">
+      <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+        <%= icon "trending-down", class: "w-8 h-8 text-blue-600" %>
+      </div>
+      <h3 class="text-lg font-medium text-primary mb-2">No strategies yet</h3>
+      <p class="text-secondary mb-4">
+        Create your first debt optimization strategy to see how the Modified Smith Manoeuvre
+        can help you pay off your mortgage faster while converting non-deductible interest
+        into tax-deductible interest.
+      </p>
+      <%= link_to new_debt_optimization_strategy_path, class: "btn btn--primary" do %>
+        <%= icon "plus", class: "w-4 h-4 mr-2" %>
+        Create Strategy
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Quick actions %>
+  <div class="bg-container shadow-border-xs rounded-xl p-4">
+    <h3 class="text-md font-medium text-primary mb-3">Quick Actions</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <%= link_to debt_optimization_strategies_path, class: "flex items-center gap-3 p-3 bg-surface-inset rounded-lg hover:bg-surface-inset-hover transition-colors" do %>
+        <%= icon "list", class: "w-5 h-5 text-secondary" %>
+        <div>
+          <p class="font-medium text-primary">View All Strategies</p>
+          <p class="text-sm text-secondary">See detailed strategy comparisons</p>
+        </div>
+      <% end %>
+
+      <%= link_to new_debt_optimization_strategy_path, class: "flex items-center gap-3 p-3 bg-surface-inset rounded-lg hover:bg-surface-inset-hover transition-colors" do %>
+        <%= icon "calculator", class: "w-5 h-5 text-secondary" %>
+        <div>
+          <p class="font-medium text-primary">Run New Simulation</p>
+          <p class="text-sm text-secondary">Compare different payoff scenarios</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

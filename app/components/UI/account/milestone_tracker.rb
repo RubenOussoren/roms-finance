@@ -39,6 +39,6 @@ class UI::Account::MilestoneTracker < ApplicationComponent
   end
 
   def new_milestone_path
-    helpers.account_milestones_path(account)
+    helpers.new_account_milestone_path(account)
   end
 end

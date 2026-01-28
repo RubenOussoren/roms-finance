@@ -95,4 +95,55 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     assert final[:p50] < final[:p90]
     assert_not_nil final[:mean]
   end
+
+  test "project with analytical bands returns deterministic distribution" do
+    calc = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 500)
+
+    results = calc.project_with_analytical_bands(months: 12, volatility: 0.18)
+
+    assert_equal 12, results.count
+
+    # Check structure
+    first = results.first
+    assert_equal 1, first[:month]
+    assert_not_nil first[:date]
+    assert_not_nil first[:p10]
+    assert_not_nil first[:p25]
+    assert_not_nil first[:p50]
+    assert_not_nil first[:p75]
+    assert_not_nil first[:p90]
+    assert_not_nil first[:mean]
+
+    # Check ordering (p10 < p25 < p50 < p75 < p90)
+    final = results.last
+    assert final[:p10] < final[:p25]
+    assert final[:p25] < final[:p50]
+    assert final[:p50] < final[:p75]
+    assert final[:p75] < final[:p90]
+
+    # p50 should equal mean (deterministic expected value)
+    assert_equal final[:p50], final[:mean]
+  end
+
+  test "analytical bands widen over time with sqrt scaling" do
+    calc = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 0)
+
+    results = calc.project_with_analytical_bands(months: 24, volatility: 0.15)
+
+    # Band width should increase over time
+    month_1 = results[0]
+    month_12 = results[11]
+    month_24 = results[23]
+
+    width_1 = month_1[:p90] - month_1[:p10]
+    width_12 = month_12[:p90] - month_12[:p10]
+    width_24 = month_24[:p90] - month_24[:p10]
+
+    assert width_12 > width_1, "Bands should widen over time"
+    assert width_24 > width_12, "Bands should continue widening"
+
+    # Approximately sqrt(12)/sqrt(1) ≈ 3.46 ratio for width scaling
+    # Allow for some tolerance due to compounding effects
+    assert_in_delta 3.46, width_12 / width_1, 0.5
+  end
 end

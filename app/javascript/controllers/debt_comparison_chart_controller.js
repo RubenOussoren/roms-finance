@@ -8,17 +8,23 @@ export default class extends Controller {
     hasBaseline: Boolean
   }
 
+  _resizeTimeout = null
+
   connect() {
     this.drawChart()
-    window.addEventListener("resize", this.handleResize.bind(this))
+    this._boundHandleResize = this.handleResize.bind(this)
+    window.addEventListener("resize", this._boundHandleResize)
   }
 
   disconnect() {
-    window.removeEventListener("resize", this.handleResize.bind(this))
+    window.removeEventListener("resize", this._boundHandleResize)
+    clearTimeout(this._resizeTimeout)
   }
 
   handleResize() {
-    this.drawChart()
+    // Debounce resize to prevent freeze during sidebar toggle
+    clearTimeout(this._resizeTimeout)
+    this._resizeTimeout = setTimeout(() => this.drawChart(), 150)
   }
 
   drawChart() {

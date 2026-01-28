@@ -32,8 +32,8 @@ class UI::Account::ProjectionChartTest < ActiveSupport::TestCase
     assert_includes data.keys, :today
 
     assert_kind_of Array, data[:projections]
-    # 5 years * 12 months = 60 data points
-    assert_equal 60, data[:projections].length
+    # 1 anchor point + (5 years * 12 months) = 61 data points
+    assert_equal 61, data[:projections].length
   end
 
   test "projection data contains percentile values" do
@@ -49,10 +49,10 @@ class UI::Account::ProjectionChartTest < ActiveSupport::TestCase
     assert_includes projection_point.keys, :p90
   end
 
-  test "projected_balance_formatted returns formatted median projection" do
+  test "expected_balance_formatted returns formatted median projection" do
     component = UI::Account::ProjectionChart.new(account: @investment_account, years: 10)
 
-    formatted = component.projected_balance_formatted
+    formatted = component.expected_balance_formatted
     assert_not_nil formatted
     assert_match(/\$/, formatted)
   end

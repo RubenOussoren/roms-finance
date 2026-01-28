@@ -4,7 +4,8 @@ class ProjectionSettingsController < ApplicationController
   before_action :set_account
 
   def update
-    @assumption = ProjectionAssumption.default_for(Current.family)
+    # Create or get account-specific assumption
+    @assumption = get_or_create_account_assumption
 
     if projection_settings_params[:use_pag_defaults] == "1"
       @assumption.apply_pag_defaults!
@@ -20,12 +21,42 @@ class ProjectionSettingsController < ApplicationController
     years = projection_settings_params[:projection_years]&.to_i || 10
 
     respond_to do |format|
-      format.html { redirect_to account_path(@account, projection_years: years) }
+      format.html { redirect_to projections_path(tab: "investments") }
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          dom_id(@account, :projection_chart),
-          UI::Account::ProjectionChart.new(account: @account, years: years, assumption: @assumption)
-        )
+        render turbo_stream: [
+          turbo_stream.replace(
+            dom_id(@account, :projection_chart),
+            UI::Account::ProjectionChart.new(account: @account, years: years, assumption: @assumption)
+          ),
+          turbo_stream.replace(
+            dom_id(@account, :projection_settings),
+            UI::Projections::AccountSettingsInline.new(account: @account, projection_years: years)
+          )
+        ]
+      end
+    end
+  end
+
+  def reset
+    # Delete account-specific assumption to fall back to family defaults
+    @account.projection_assumption&.destroy
+
+    years = params[:projection_years]&.to_i || 10
+    @assumption = @account.effective_projection_assumption
+
+    respond_to do |format|
+      format.html { redirect_to projections_path(tab: "investments") }
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.replace(
+            dom_id(@account, :projection_chart),
+            UI::Account::ProjectionChart.new(account: @account.reload, years: years, assumption: @assumption)
+          ),
+          turbo_stream.replace(
+            dom_id(@account, :projection_settings),
+            UI::Projections::AccountSettingsInline.new(account: @account, projection_years: years)
+          )
+        ]
       end
     end
   end
@@ -34,6 +65,14 @@ class ProjectionSettingsController < ApplicationController
 
     def set_account
       @account = Current.family.accounts.find(params[:account_id])
+    end
+
+    def get_or_create_account_assumption
+      # If account already has custom settings, use those
+      return @account.projection_assumption if @account.projection_assumption.present?
+
+      # Otherwise, create account-specific settings based on family defaults
+      ProjectionAssumption.create_for_account(@account)
     end
 
     def projection_settings_params

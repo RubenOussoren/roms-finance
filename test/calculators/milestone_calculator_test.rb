@@ -152,4 +152,117 @@ class MilestoneCalculatorTest < ActiveSupport::TestCase
       assert double_contrib[:months] < zero_contrib[:months]
     end
   end
+
+  # ============================================
+  # Debt Milestone Calculator Tests
+  # ============================================
+
+  test "debt time to target returns achieved when already paid off" do
+    debt_assumption = OpenStruct.new(
+      effective_return: 0.05,  # 5% interest
+      monthly_contribution: 1000,  # $1000/month payment
+      effective_volatility: 0
+    )
+
+    calc = MilestoneCalculator.new(
+      current_balance: 5000,
+      assumption: debt_assumption,
+      target_type: "reduce_to"
+    )
+
+    result = calc.time_to_target(target: 10000)  # Target higher than current = already achieved
+
+    assert result[:achieved]
+    assert_equal 0, result[:months]
+  end
+
+  test "debt time to target calculates payoff timeline" do
+    debt_assumption = OpenStruct.new(
+      effective_return: 0.05,  # 5% interest
+      monthly_contribution: 500,  # $500/month payment
+      effective_volatility: 0
+    )
+
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,  # $10,000 debt
+      assumption: debt_assumption,
+      target_type: "reduce_to"
+    )
+
+    result = calc.time_to_target(target: 0)  # Pay off completely
+
+    assert_not result[:achieved]
+    assert result[:achievable]
+    assert result[:months] > 0
+    assert result[:years] > 0
+    assert result[:projected_date].present?
+  end
+
+  test "debt time to target fails without payment" do
+    no_payment_assumption = OpenStruct.new(
+      effective_return: 0.05,
+      monthly_contribution: 0,
+      effective_volatility: 0
+    )
+
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: no_payment_assumption,
+      target_type: "reduce_to"
+    )
+
+    result = calc.time_to_target(target: 0)
+
+    assert_not result[:achievable]
+  end
+
+  test "reduction_milestone? returns true for reduce_to type" do
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: @assumption,
+      target_type: "reduce_to"
+    )
+
+    assert calc.reduction_milestone?
+  end
+
+  test "reduction_milestone? returns false for reach type" do
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: @assumption,
+      target_type: "reach"
+    )
+
+    assert_not calc.reduction_milestone?
+  end
+
+  test "analyzes debt milestones for reduction calculator" do
+    debt_assumption = OpenStruct.new(
+      effective_return: 0.05,
+      monthly_contribution: 1000,
+      effective_volatility: 0
+    )
+
+    calc = MilestoneCalculator.new(
+      current_balance: 100000,  # $100k debt
+      assumption: debt_assumption,
+      target_type: "reduce_to"
+    )
+
+    milestones = calc.analyze_standard_milestones
+
+    assert_equal Milestone::DEBT_MILESTONES.count, milestones.count
+
+    # Paid Off milestone should have target of 0 (using constant to get exact name)
+    paid_off_name = Milestone::DEBT_MILESTONES.find { |m| m[:percentage] == 1.0 }[:name]
+    paid_off = milestones.find { |m| m[:name] == paid_off_name }
+    assert_not_nil paid_off
+    assert_equal 0, paid_off[:amount]
+
+    # 50% Paid Off should have target of 50000 (using constant to get exact name)
+    half_paid_name = Milestone::DEBT_MILESTONES.find { |m| m[:percentage] == 0.50 }[:name]
+    half_paid = milestones.find { |m| m[:name] == half_paid_name }
+    assert_not_nil half_paid
+    assert_equal 50000, half_paid[:amount]
+  end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_21_235000) do
+ActiveRecord::Schema[7.2].define(version: 2026_01_27_033328) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -578,9 +578,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_235000) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "target_type", default: "reach", null: false
+    t.decimal "starting_balance", precision: 19, scale: 4
     t.index ["account_id", "target_amount"], name: "index_milestones_on_account_id_and_target_amount", unique: true, where: "(is_custom = false)"
     t.index ["account_id"], name: "index_milestones_on_account_id"
     t.index ["status"], name: "index_milestones_on_status"
+    t.index ["target_type"], name: "index_milestones_on_target_type"
   end
 
   create_table "mobile_devices", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -712,6 +715,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_235000) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "account_id"
+    t.decimal "extra_monthly_payment", precision: 19, scale: 4, default: "0.0"
+    t.date "target_payoff_date"
+    t.index ["account_id"], name: "index_projection_assumptions_on_account_id"
+    t.index ["account_id"], name: "index_projection_assumptions_unique_account", unique: true, where: "(account_id IS NOT NULL)"
     t.index ["family_id", "is_active"], name: "index_projection_assumptions_on_family_id_and_is_active", where: "(is_active = true)"
     t.index ["family_id"], name: "index_projection_assumptions_on_family_id"
     t.index ["projection_standard_id"], name: "index_projection_assumptions_on_projection_standard_id"
@@ -1032,6 +1040,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_21_235000) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "plaid_accounts", "plaid_items"
   add_foreign_key "plaid_items", "families"
+  add_foreign_key "projection_assumptions", "accounts"
   add_foreign_key "projection_assumptions", "families"
   add_foreign_key "projection_assumptions", "projection_standards"
   add_foreign_key "projection_standards", "jurisdictions"

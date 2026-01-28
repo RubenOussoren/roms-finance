@@ -1,0 +1,51 @@
+<%# Debts tab: Loan payoff timelines and cards %>
+<div class="space-y-6">
+  <% if loan_accounts.present? && loan_accounts.any? %>
+    <%# Summary metrics %>
+    <% latest_payoff = loan_payoffs.compact.map { |p| p[:payoff_date] }.compact.max %>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-container shadow-border-xs rounded-xl p-4">
+        <p class="text-sm text-secondary">Total Debt</p>
+        <p class="text-2xl font-semibold text-primary">
+          <%= format_money(Money.new(loan_accounts.sum(&:balance).abs, Current.family.currency)) %>
+        </p>
+      </div>
+
+      <div class="bg-container shadow-border-xs rounded-xl p-4">
+        <p class="text-sm text-secondary">Loan Accounts</p>
+        <p class="text-2xl font-semibold text-primary"><%= loan_accounts.count %></p>
+      </div>
+
+      <div class="bg-container shadow-border-xs rounded-xl p-4">
+        <p class="text-sm text-secondary">Debt-Free Date</p>
+        <p class="text-2xl font-semibold text-primary">
+          <%= latest_payoff ? latest_payoff.strftime("%b %Y") : "--" %>
+        </p>
+      </div>
+    </div>
+
+    <%# Section heading %>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-medium text-primary">Loan Details</h2>
+      <p class="text-sm text-secondary">Click to expand for chart, settings &amp; milestones</p>
+    </div>
+
+    <%# Each loan in its own card %>
+    <div class="space-y-4">
+      <% loan_payoffs.each do |payoff| %>
+        <%= render UI::Projections::DebtPayoffCard.new(payoff: payoff) %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-container shadow-border-xs rounded-xl p-8 text-center">
+      <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+        <%= icon "check-circle", class: "w-8 h-8 text-green-600" %>
+      </div>
+      <h3 class="text-lg font-medium text-primary mb-2">No loans</h3>
+      <p class="text-secondary">
+        You don't have any loan accounts. Great job staying debt-free!
+      </p>
+    </div>
+  <% end %>
+</div>

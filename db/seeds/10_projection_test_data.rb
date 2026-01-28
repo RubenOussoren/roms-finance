@@ -40,95 +40,126 @@ user = User.create!(
   email: "test.canadian@example.com",
   password: "password123",
   role: "admin",
-  onboarded_at: Time.current
+  onboarded_at: 2.years.ago,  # User has been using app for 2 years
+  show_ai_sidebar: false  # Disable Maybe AI sidebar
 )
 
 puts "    Created family: #{family.name} (#{family.country}/#{family.currency})"
 puts "    Created user: #{user.email}"
+
+# Create subscription (ensures seeded user works even if SELF_HOSTED is disabled)
+family.create_subscription!(
+  status: "trialing",
+  trial_ends_at: 1.year.from_now
+)
+puts "    Created trialing subscription (expires: #{1.year.from_now.to_date})"
 
 # ============================================================================
 # B. Canadian Investment Accounts
 # ============================================================================
 puts "  Creating investment accounts..."
 
-# TFSA Account (~$50K)
+# HELOC Tool portfolio values:
+# RRSP: $8,123.67, TFSA: $2,021.76, Non-Registered: $497.69, Crypto: $1,023.40
+
+# TFSA Account (~$2,022)
 tfsa = Account.create!(
   family: family,
   name: "TFSA",
-  balance: 52_345.67,
-  cash_balance: 52_345.67,
+  balance: 2_021.76,
+  cash_balance: 0,  # All in holdings
   currency: "CAD",
   subtype: "retirement",
   accountable: Investment.create!
 )
 
-# RRSP Account (~$100K)
+# RRSP Account (~$8,124)
 rrsp = Account.create!(
   family: family,
   name: "RRSP",
-  balance: 103_456.78,
-  cash_balance: 103_456.78,
+  balance: 8_123.67,
+  cash_balance: 0,  # All in holdings
   currency: "CAD",
   subtype: "retirement",
   accountable: Investment.create!
 )
 
-# Non-registered Brokerage (~$30K)
+# Non-registered Brokerage (~$498)
 brokerage = Account.create!(
   family: family,
   name: "Non-Registered Brokerage",
-  balance: 31_234.56,
-  cash_balance: 31_234.56,
+  balance: 497.69,
+  cash_balance: 0,  # All in holdings
   currency: "CAD",
   subtype: "brokerage",
   accountable: Investment.create!
 )
 
-# HELOC for Smith Manoeuvre testing
-heloc = Account.create!(
+# Crypto Account (~$1,023)
+crypto_account = Account.create!(
   family: family,
-  name: "HELOC",
-  balance: -75_000.00,  # Liability (negative)
-  cash_balance: -75_000.00,
+  name: "Crypto Portfolio",
+  balance: 1_023.40,
+  cash_balance: 0,  # All in holdings
   currency: "CAD",
   subtype: "other",
-  accountable: Loan.create!(
-    rate_type: "variable",
-    interest_rate: 7.20,
-    initial_balance: 150_000
-  )
+  accountable: Crypto.create!
 )
 
-investment_accounts = [ tfsa, rrsp, brokerage ]
-puts "    Created accounts: #{investment_accounts.map(&:name).join(', ')}, #{heloc.name}"
+investment_accounts = [ tfsa, rrsp, brokerage, crypto_account ]
+puts "    Created accounts: #{investment_accounts.map(&:name).join(', ')}"
+
+# ============================================================================
+# B2. Add Opening Valuations (required for balance calculations)
+# ============================================================================
+puts "  Adding opening valuations..."
+
+# Investment account opening valuations
+# Account-specific start dates based on HELOC Tool:
+# - RRSP: Dec 2024 (~13 months of trades)
+# - TFSA: Nov 2025 (~3 months of trades)
+# - Non-registered: Dec 2025 (~2 months of trades)
+# - Crypto: Jun 2025 (~8 months of trades)
+
+account_start_dates = {
+  "RRSP" => Date.new(2024, 12, 1),
+  "TFSA" => Date.new(2025, 11, 1),
+  "Non-Registered Brokerage" => Date.new(2025, 12, 1),
+  "Crypto Portfolio" => Date.new(2025, 6, 1)
+}
+
+investment_accounts.each do |account|
+  start_date = account_start_dates[account.name] || 1.year.ago.to_date
+  # Opening valuation with zero balance (all value comes from trades/holdings)
+  account.entries.create!(
+    entryable: Valuation.new(kind: "opening_anchor"),
+    amount: 0,  # Started with zero, built up through trades
+    name: Valuation.build_opening_anchor_name(account.accountable_type),
+    currency: account.currency,
+    date: start_date
+  )
+end
+
+puts "    Added opening valuations for #{investment_accounts.count} accounts"
 
 # ============================================================================
 # C. Milestones for Investment Accounts
 # ============================================================================
 puts "  Creating milestones..."
 
-investment_accounts.each do |account|
-  # Create standard milestones
+# Only create milestones for traditional investment accounts (not crypto)
+milestone_accounts = investment_accounts.reject { |a| a.accountable_type == "Crypto" }
+
+milestone_accounts.each do |account|
+  # Create standard milestones only
   Milestone.create_standard_milestones_for(account)
 
   # Update progress based on current balance
   account.milestones.each { |m| m.update_progress!(account.balance) }
-
-  # Add custom milestone
-  Milestone.create!(
-    account: account,
-    name: "Retirement Goal",
-    target_amount: 500_000,
-    currency: account.currency,
-    target_date: 20.years.from_now.to_date,
-    is_custom: true,
-    status: account.balance >= 500_000 ? "achieved" : "in_progress",
-    progress_percentage: [ (account.balance / 500_000 * 100), 100 ].min.round(2)
-  )
 end
 
-total_milestones = Milestone.where(account: investment_accounts).count
-puts "    Created #{total_milestones} milestones across #{investment_accounts.count} accounts"
+total_milestones = Milestone.where(account: milestone_accounts).count
+puts "    Created #{total_milestones} milestones across #{milestone_accounts.count} accounts"
 
 # ============================================================================
 # D. Projection Assumptions
@@ -178,22 +209,30 @@ puts "    Created #{family.projection_assumptions.count} projection assumptions"
 puts "    PAG-compliant: #{pag_assumption.pag_compliant?}"
 
 # ============================================================================
-# E. Historical Projections with Actuals (12 months back)
+# E. Historical Projections with Actuals
 # ============================================================================
 puts "  Creating historical projections..."
 
-investment_accounts.each do |account|
+# Only create projections for non-crypto accounts with sufficient history
+projection_accounts = investment_accounts.reject { |a| a.accountable_type == "Crypto" }
+
+projection_accounts.each do |account|
+  start_date = account_start_dates[account.name]
+  months_of_history = ((Date.current - start_date) / 30).to_i.clamp(1, 12)
+
   calculator = ProjectionCalculator.new(
-    principal: account.balance * 0.85, # Estimate starting balance 12 months ago
+    principal: account.balance * 0.5, # Estimate starting balance
     rate: pag_assumption.effective_return,
     contribution: pag_assumption.monthly_contribution,
     currency: account.currency
   )
 
-  12.times do |i|
-    month_offset = 11 - i # 11, 10, 9, ... 0
+  months_of_history.times do |i|
+    month_offset = months_of_history - 1 - i
     projection_date = (Date.current - month_offset.months).end_of_month
-    projected_balance = calculator.future_value_at_month(12 - month_offset)
+    next if projection_date < start_date
+
+    projected_balance = calculator.future_value_at_month(months_of_history - month_offset)
 
     # Simulate actual performance with some variance (-5% to +5%)
     variance = rand(-0.05..0.05)
@@ -228,7 +267,8 @@ puts "    Created #{historical_count} historical projections with actuals"
 # ============================================================================
 puts "  Creating future projections..."
 
-investment_accounts.each do |account|
+# Only create projections for non-crypto accounts
+projection_accounts.each do |account|
   calculator = ProjectionCalculator.new(
     principal: account.balance,
     rate: pag_assumption.effective_return,
@@ -244,7 +284,6 @@ investment_accounts.each do |account|
     # Generate Monte Carlo percentiles
     volatility = pag_assumption.effective_volatility
     monthly_vol = volatility / Math.sqrt(12)
-    monthly_rate = pag_assumption.effective_return / 12
 
     # Simplified percentile estimation based on normal distribution
     # Using z-scores: p10=-1.28, p25=-0.67, p50=0, p75=0.67, p90=1.28
@@ -286,7 +325,11 @@ puts ""
 puts "Summary:"
 puts "  - Family: #{family.name} (#{family.country})"
 puts "  - Investment accounts: #{investment_accounts.count}"
-puts "  - Total milestones: #{Milestone.where(account: investment_accounts).count}"
+puts "    - RRSP: $#{rrsp.balance.round(2)}"
+puts "    - TFSA: $#{tfsa.balance.round(2)}"
+puts "    - Non-Registered: $#{brokerage.balance.round(2)}"
+puts "    - Crypto: $#{crypto_account.balance.round(2)}"
+puts "  - Total milestones: #{Milestone.where(account: milestone_accounts).count}"
 puts "  - Projection assumptions: #{family.projection_assumptions.count}"
 puts "  - Historical projections: #{historical_count}"
 puts "  - Future projections: #{future_count}"

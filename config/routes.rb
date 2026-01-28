@@ -94,6 +94,8 @@ Rails.application.routes.draw do
     resources :budget_categories, only: %i[index show update]
   end
 
+  resources :projections, only: [ :index ]
+
   resources :family_merchants, only: %i[index new create edit update destroy]
 
   resources :transfers, only: %i[new create destroy show update]
@@ -168,7 +170,12 @@ Rails.application.routes.draw do
     end
 
     resources :milestones, only: %i[index new create edit update destroy]
-    resource :projection_settings, only: [ :update ]
+    resource :projection_settings, only: [ :update ] do
+      delete :reset, on: :member
+    end
+    resource :debt_repayment_settings, only: [ :update ] do
+      delete :reset, on: :member
+    end
   end
 
   # Convenience routes for polymorphic paths

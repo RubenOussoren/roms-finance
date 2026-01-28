@@ -24,13 +24,16 @@ class ProjectionDataFlowTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :redirect
-    @assumption.reload
+
+    # Controller creates account-specific assumption, reload from account
+    @investment_account.reload
+    account_assumption = @investment_account.projection_assumption
 
     # Verify assumption was updated
-    assert_in_delta 0.10, @assumption.expected_return, 0.001
-    assert_in_delta 2000.0, @assumption.monthly_contribution, 0.01
-    assert_in_delta 0.25, @assumption.volatility, 0.001
-    assert_not_equal original_return, @assumption.expected_return
+    assert_in_delta 0.10, account_assumption.expected_return, 0.001
+    assert_in_delta 2000.0, account_assumption.monthly_contribution, 0.01
+    assert_in_delta 0.25, account_assumption.volatility, 0.001
+    assert_not_equal original_return, account_assumption.expected_return
   end
 
   test "projection chart uses updated assumptions" do
@@ -76,12 +79,15 @@ class ProjectionDataFlowTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :redirect
-    @assumption.reload
+
+    # Controller creates account-specific assumption, reload from account
+    @investment_account.reload
+    account_assumption = @investment_account.projection_assumption
 
     # PAG defaults should be applied
-    assert @assumption.use_pag_defaults
+    assert account_assumption.use_pag_defaults
     # The effective values should come from PAG standard now
-    assert @assumption.expected_return != 0.15 || @assumption.use_pag_defaults
+    assert account_assumption.expected_return != 0.15 || account_assumption.use_pag_defaults
   end
 
   test "projection settings component reflects assumption state" do
@@ -115,18 +121,21 @@ class ProjectionDataFlowTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :redirect
-    @assumption.reload
+
+    # Controller creates account-specific assumption, reload from account
+    @investment_account.reload
+    account_assumption = @investment_account.projection_assumption
 
     # 2. Create components with updated data
     settings_component = UI::Account::ProjectionSettings.new(
       account: @investment_account,
-      assumption: @assumption
+      assumption: account_assumption
     )
 
     chart_component = UI::Account::ProjectionChart.new(
       account: @investment_account,
       years: 15,
-      assumption: @assumption
+      assumption: account_assumption
     )
 
     # 3. Verify consistency
@@ -134,7 +143,7 @@ class ProjectionDataFlowTest < ActionDispatch::IntegrationTest
     assert_equal 750, settings_component.monthly_contribution
 
     chart_data = chart_component.chart_data
-    # 15 years * 12 months = 180 data points
-    assert_equal 180, chart_data[:projections].length
+    # 15 years * 12 months = 180 data points + 1 anchor point = 181
+    assert_equal 181, chart_data[:projections].length
   end
 end

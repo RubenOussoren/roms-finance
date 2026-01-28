@@ -129,6 +129,29 @@ class ProjectionCalculator
     results
   end
 
+  # Generate projections with analytical confidence bands
+  # Uses deterministic compound growth for the main line
+  # and volatility-based bands that widen over time (√t scaling)
+  def project_with_analytical_bands(months:, volatility:)
+    monthly_vol = volatility.to_d / Math.sqrt(12)
+
+    (1..months).map do |month|
+      base_value = future_value_at_month(month)
+      cumulative_vol = monthly_vol * Math.sqrt(month)
+
+      {
+        month: month,
+        date: Date.current + month.months,
+        p10: (base_value * Math.exp(-1.28 * cumulative_vol)).round(2),
+        p25: (base_value * Math.exp(-0.67 * cumulative_vol)).round(2),
+        p50: base_value.round(2),
+        p75: (base_value * Math.exp(0.67 * cumulative_vol)).round(2),
+        p90: (base_value * Math.exp(1.28 * cumulative_vol)).round(2),
+        mean: base_value.round(2)
+      }
+    end
+  end
+
   private
 
     def simulate_path(months:, monthly_rate:, monthly_vol:)

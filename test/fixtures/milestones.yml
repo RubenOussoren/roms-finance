@@ -1,4 +1,6 @@
 # Milestone fixtures
+
+# Growth milestones (for investment accounts)
 first_100k:
   account: investment
   name: $100K
@@ -7,6 +9,7 @@ first_100k:
   status: pending
   progress_percentage: 10.0
   is_custom: false
+  target_type: reach
   metadata: {}
 
 half_million:
@@ -17,6 +20,7 @@ half_million:
   status: pending
   progress_percentage: 2.0
   is_custom: false
+  target_type: reach
   metadata: {}
 
 custom_goal:
@@ -28,4 +32,42 @@ custom_goal:
   status: in_progress
   progress_percentage: 13.33
   is_custom: true
+  target_type: reach
+  metadata: {}
+
+# Debt milestones (for loan accounts)
+loan_half_paid:
+  account: loan
+  name: 50% Paid
+  target_amount: 250000.0
+  starting_balance: 500000.0
+  currency: USD
+  status: pending
+  progress_percentage: 0.0
+  is_custom: false
+  target_type: reduce_to
+  metadata: {}
+
+loan_paid_off:
+  account: loan
+  name: Paid Off!
+  target_amount: 0.0
+  starting_balance: 500000.0
+  currency: USD
+  status: pending
+  progress_percentage: 0.0
+  is_custom: false
+  target_type: reduce_to
+  metadata: {}
+
+credit_card_payoff:
+  account: credit_card
+  name: Credit Card Paid Off
+  target_amount: 0.0
+  starting_balance: 1000.0
+  currency: USD
+  status: pending
+  progress_percentage: 0.0
+  is_custom: true
+  target_type: reduce_to
   metadata: {}

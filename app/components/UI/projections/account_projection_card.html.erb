@@ -1,0 +1,52 @@
+<div class="bg-container shadow-border-xs rounded-xl overflow-hidden">
+  <details class="group">
+    <summary class="p-4 hover:bg-surface-hover transition-colors cursor-pointer list-none">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3 min-w-0">
+        <%= render "accounts/logo", account: account, size: "md" %>
+        <div class="min-w-0">
+          <%= link_to account.name, account_path(account), class: "font-medium text-primary hover:text-blue-600 truncate block" %>
+          <p class="text-sm <%= account_type_color %>"><%= account_type_label %></p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-8 shrink-0">
+        <div class="text-right hidden md:block">
+          <p class="text-sm text-secondary">Current</p>
+          <p class="font-medium text-primary"><%= current_balance_formatted %></p>
+        </div>
+
+        <div class="text-right">
+          <p class="text-sm text-secondary"><%= projection_years %>y projected</p>
+          <p class="font-medium text-primary"><%= projected_balance_formatted %></p>
+        </div>
+
+        <div class="text-right hidden sm:block">
+          <p class="text-sm text-secondary">Growth</p>
+          <p class="font-medium text-green-600">+<%= growth_percentage %>%</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <% if has_milestones? %>
+            <span class="text-xs text-secondary"><%= pending_count %> milestones</span>
+          <% end %>
+          <%= helpers.icon "chevron-right", class: "w-5 h-5 text-secondary transition-transform group-open:rotate-90" %>
+        </div>
+      </div>
+    </div>
+  </summary>
+
+  <%# Expanded content with projection chart, settings, and milestones %>
+  <div class="px-4 pb-4 border-t border-secondary">
+    <%# Projection chart %>
+    <div class="pt-4 mb-4">
+      <%= render UI::Account::ProjectionChart.new(account: account, years: projection_years) %>
+    </div>
+
+    <%# Inline projection settings %>
+    <%= render UI::Projections::AccountSettingsInline.new(account: account, projection_years: projection_years) %>
+
+    <%= render UI::Projections::MilestonesSection.new(account: account, tab_name: "investments") %>
+  </div>
+  </details>
+</div>

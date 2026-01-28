@@ -12,12 +12,12 @@
       </div>
 
       <p class="text-lg font-semibold text-primary mb-3">
-        <%= formatted_target %>
+        <%= target_display %>
       </p>
 
       <div class="mb-2">
         <div class="flex items-center justify-between text-xs text-secondary mb-1">
-          <span>Progress</span>
+          <span><%= progress_label %></span>
           <span><%= formatted_progress %>%</span>
         </div>
         <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -57,24 +57,21 @@
         <%= helpers.icon("trophy", size: "lg", color: "success") %>
       <% end %>
 
-      <% if custom? %>
-        <div class="flex items-center gap-1">
-          <%= helpers.link_to edit_path,
-                class: "p-1 text-secondary hover:text-primary rounded hover:bg-gray-100",
-                data: { turbo_frame: "modal" },
-                title: "Edit milestone" do %>
-            <%= helpers.icon("edit", size: "sm") %>
-          <% end %>
+      <div class="flex items-center gap-1">
+        <%= helpers.link_to helpers.icon("edit", size: "sm"),
+              edit_path,
+              class: "inline-flex items-center justify-center p-1 text-secondary hover:text-primary rounded hover:bg-gray-100",
+              data: { turbo_frame: "modal" },
+              title: "Edit milestone" %>
 
-          <%= helpers.button_to delete_path,
-                method: :delete,
-                data: { turbo_confirm: "Are you sure you want to delete this milestone?" },
-                class: "p-1 text-secondary hover:text-red-600 rounded hover:bg-gray-100",
-                title: "Delete milestone" do %>
-            <%= helpers.icon("trash-2", size: "sm") %>
-          <% end %>
-        </div>
-      <% end %>
+        <%= helpers.button_to helpers.icon("trash-2", size: "sm"),
+              delete_path,
+              method: :delete,
+              data: { turbo_confirm: "Are you sure you want to delete this milestone?" },
+              form_class: "contents",
+              class: "inline-flex items-center justify-center p-1 text-secondary hover:text-red-600 rounded hover:bg-gray-100",
+              title: "Delete milestone" %>
+      </div>
     </div>
   </div>
 <% end %>

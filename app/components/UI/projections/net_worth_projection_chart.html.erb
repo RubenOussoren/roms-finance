@@ -1,0 +1,48 @@
+<div class="bg-container shadow-border-xs rounded-xl space-y-2">
+  <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
+    <div class="space-y-2 w-full">
+      <div class="flex items-center gap-1">
+        <p class="text-sm font-medium text-secondary">Net Worth Projection</p>
+      </div>
+      <div class="flex flex-row gap-2 items-baseline">
+        <p class="text-primary text-3xl font-medium truncate"><%= projected_net_worth_formatted %></p>
+        <p class="text-sm font-medium text-secondary">in <%= years %> years</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <% if growth_positive? %>
+          <%= helpers.icon "trending-up", class: "w-4 h-4 text-green-500" %>
+          <p class="text-sm text-green-600">+<%= growth_formatted %> growth</p>
+        <% elsif growth_amount && growth_amount < 0 %>
+          <%= helpers.icon "trending-down", class: "w-4 h-4 text-red-500" %>
+          <p class="text-sm text-red-600"><%= growth_formatted %></p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="h-64 pb-4">
+    <div
+      id="net-worth-projection-chart"
+      class="w-full h-full"
+      data-controller="projection-chart"
+      data-projection-chart-data-value="<%= chart_data %>">
+    </div>
+  </div>
+
+  <div class="px-4 pb-4">
+    <div class="flex items-center gap-4 text-xs text-tertiary">
+      <div class="flex items-center gap-1">
+        <span class="w-3 h-0.5 bg-gray-400"></span>
+        <span>Historical</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <span class="w-3 h-0.5 border-t border-dashed border-blue-500"></span>
+        <span>Projected (median)</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <span class="w-3 h-2 bg-blue-500/20 rounded-sm"></span>
+        <span>Confidence bands (10th-90th percentile)</span>
+      </div>
+    </div>
+  </div>
+</div>

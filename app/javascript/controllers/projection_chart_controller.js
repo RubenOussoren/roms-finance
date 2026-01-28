@@ -16,6 +16,9 @@ export default class extends Controller {
   _historicalDataPoints = [];
   _projectionDataPoints = [];
   _resizeObserver = null;
+  _resizeTimeout = null;
+  _guideline = null;
+  _dataCircle = null;
 
   connect() {
     this._install();
@@ -267,6 +270,23 @@ export default class extends Controller {
 
     const bisectDate = d3.bisector((d) => d.date).left;
 
+    // Create reusable DOM elements once (toggle opacity instead of remove/add)
+    this._guideline = this._d3Group
+      .append("line")
+      .attr("class", "guideline fg-subdued")
+      .attr("y1", 0)
+      .attr("y2", this._d3ContainerHeight)
+      .attr("stroke", "currentColor")
+      .attr("stroke-dasharray", "4, 4")
+      .style("opacity", 0);
+
+    this._dataCircle = this._d3Group
+      .append("circle")
+      .attr("class", "data-point-circle")
+      .attr("r", 5)
+      .attr("pointer-events", "none")
+      .style("opacity", 0);
+
     this._d3Group
       .append("rect")
       .attr("class", "bg-container")
@@ -274,7 +294,7 @@ export default class extends Controller {
       .attr("height", this._d3ContainerHeight)
       .attr("fill", "none")
       .attr("pointer-events", "all")
-      .on("mousemove", (event) => {
+      .on("mousemove", this._throttle((event) => {
         const estimatedTooltipWidth = 200;
         const pageWidth = document.body.clientWidth;
         const tooltipX = event.pageX + 10;
@@ -291,34 +311,22 @@ export default class extends Controller {
         const d =
           xPos - this._d3XScale(d0.date) > this._d3XScale(d1.date) - xPos ? d1 : d0;
 
-        // Reset
-        this._d3Group.selectAll(".data-point-circle").remove();
-        this._d3Group.selectAll(".guideline").remove();
-
-        // Guideline
-        this._d3Group
-          .append("line")
-          .attr("class", "guideline fg-subdued")
+        // Update guideline position and show it
+        this._guideline
           .attr("x1", this._d3XScale(d.date))
-          .attr("y1", 0)
           .attr("x2", this._d3XScale(d.date))
-          .attr("y2", this._d3ContainerHeight)
-          .attr("stroke", "currentColor")
-          .attr("stroke-dasharray", "4, 4");
+          .style("opacity", 1);
 
-        // Circle
+        // Update circle position, color, and show it
         const yValue = d.type === "historical" ? d.value : d.p50;
         const circleColor =
           d.type === "historical" ? "var(--color-gray-400)" : "var(--color-blue-500)";
 
-        this._d3Group
-          .append("circle")
-          .attr("class", "data-point-circle")
+        this._dataCircle
           .attr("cx", this._d3XScale(d.date))
           .attr("cy", this._d3YScale(yValue))
-          .attr("r", 5)
           .attr("fill", circleColor)
-          .attr("pointer-events", "none");
+          .style("opacity", 1);
 
         // Render tooltip
         this._d3Tooltip
@@ -327,13 +335,14 @@ export default class extends Controller {
           .style("z-index", 999)
           .style("left", `${adjustedX}px`)
           .style("top", `${event.pageY - 10}px`);
-      })
+      }, 50)) // 50ms = 20 updates/sec max
       .on("mouseout", (event) => {
         const hoveringOnGuideline = event.toElement?.classList.contains("guideline");
 
         if (!hoveringOnGuideline) {
-          this._d3Group.selectAll(".guideline").remove();
-          this._d3Group.selectAll(".data-point-circle").remove();
+          // Hide elements instead of removing them
+          this._guideline.style("opacity", 0);
+          this._dataCircle.style("opacity", 0);
           this._d3Tooltip.style("opacity", 0);
         }
       });
@@ -476,8 +485,22 @@ export default class extends Controller {
 
   _setupResizeObserver() {
     this._resizeObserver = new ResizeObserver(() => {
-      this._reinstall();
+      // Debounce resize to prevent freeze during sidebar toggle
+      clearTimeout(this._resizeTimeout);
+      this._resizeTimeout = setTimeout(() => this._reinstall(), 150);
     });
     this._resizeObserver.observe(this.element);
+  }
+
+  // Throttle utility to limit event handler frequency
+  _throttle(func, limit) {
+    let inThrottle;
+    return (...args) => {
+      if (!inThrottle) {
+        func.apply(this, args);
+        inThrottle = true;
+        setTimeout(() => { inThrottle = false; }, limit);
+      }
+    };
   }
 }

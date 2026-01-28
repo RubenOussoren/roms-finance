@@ -1,0 +1,127 @@
+<%# Overview tab: Net worth projection + summary metrics + milestones %>
+<div class="space-y-6">
+  <%# Summary metrics grid %>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-container shadow-border-xs rounded-xl p-4">
+      <p class="text-sm text-secondary">Current Net Worth</p>
+      <p class="text-2xl font-semibold text-primary">
+        <%= format_money(balance_sheet.net_worth_money) %>
+      </p>
+    </div>
+
+    <div class="bg-container shadow-border-xs rounded-xl p-4">
+      <p class="text-sm text-secondary">Projected (<%= projection_years %>y)</p>
+      <p class="text-2xl font-semibold text-primary">
+        <% if net_worth_projection && net_worth_projection[:summary][:projected_net_worth] %>
+          <%= format_money(Money.new(net_worth_projection[:summary][:projected_net_worth], family.currency)) %>
+        <% else %>
+          --
+        <% end %>
+      </p>
+    </div>
+
+    <div class="bg-container shadow-border-xs rounded-xl p-4">
+      <p class="text-sm text-secondary">Total Assets</p>
+      <p class="text-2xl font-semibold text-green-600">
+        <%= format_money(balance_sheet.assets.total_money) %>
+      </p>
+    </div>
+
+    <div class="bg-container shadow-border-xs rounded-xl p-4">
+      <p class="text-sm text-secondary">Total Liabilities</p>
+      <p class="text-2xl font-semibold text-red-600">
+        <%= format_money(balance_sheet.liabilities.total_money) %>
+      </p>
+    </div>
+  </div>
+
+  <%# Net Worth Projection Chart %>
+  <% if net_worth_projection %>
+    <%= render UI::Projections::NetWorthProjectionChart.new(
+      projection_data: net_worth_projection,
+      years: projection_years,
+      family: family
+    ) %>
+  <% end %>
+
+  <%# Upcoming Milestones %>
+  <% if milestones.present? && milestones.any? %>
+    <div class="bg-container shadow-border-xs rounded-xl p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-medium text-primary">Upcoming Milestones</h2>
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-secondary"><%= milestones.size %> total</span>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <% milestones.first(5).each do |milestone| %>
+          <% is_debt = milestone.account.accountable_type == "Loan" %>
+          <div class="flex items-center justify-between p-3 bg-surface-inset rounded-lg hover:bg-surface-hover transition-colors">
+            <div class="flex items-center gap-3">
+              <%= icon "target", class: "w-5 h-5 #{is_debt ? 'text-red-500' : 'text-blue-500'}" %>
+              <div>
+                <p class="font-medium text-primary"><%= milestone.name %></p>
+                <div class="flex items-center gap-2">
+                  <p class="text-sm text-secondary"><%= milestone.account.name %></p>
+                  <span class="text-xs px-1.5 py-0.5 rounded <%= is_debt ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700" %>">
+                    <%= is_debt ? "Debt" : "Investment" %>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="font-medium text-primary">
+                <%= format_money(Money.new(milestone.target_amount, milestone.currency)) %>
+              </p>
+              <% if milestone.projected_date %>
+                <p class="text-sm text-secondary">
+                  Est. <%= milestone.projected_date.strftime("%b %Y") %>
+                </p>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <%# View all links grouped by type %>
+      <div class="mt-4 pt-4 border-t border-secondary flex items-center justify-between">
+        <p class="text-sm text-secondary">
+          Manage milestones in the Investments or Debts tab
+        </p>
+        <div class="flex items-center gap-3">
+          <% investment_count = milestones.count { |m| m.account.accountable_type.in?(%w[Investment Crypto]) } %>
+          <% debt_count = milestones.count { |m| m.account.accountable_type == "Loan" } %>
+          <% if investment_count > 0 %>
+            <%= link_to projections_path(tab: :investments), class: "text-sm text-link hover:underline" do %>
+              <%= investment_count %> investment
+            <% end %>
+          <% end %>
+          <% if debt_count > 0 %>
+            <%= link_to projections_path(tab: :debts), class: "text-sm text-link hover:underline" do %>
+              <%= debt_count %> debt
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="bg-container shadow-border-xs rounded-xl p-8 text-center">
+      <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+        <%= icon "target", class: "w-8 h-8 text-blue-600" %>
+      </div>
+      <h3 class="text-lg font-medium text-primary mb-2">No milestones yet</h3>
+      <p class="text-secondary mb-4">
+        Set milestones on your investment or loan accounts to track your progress toward financial goals.
+      </p>
+      <div class="flex items-center justify-center gap-4">
+        <%= link_to projections_path(tab: :investments), class: "text-sm text-link hover:underline" do %>
+          View investments
+        <% end %>
+        <%= link_to projections_path(tab: :debts), class: "text-sm text-link hover:underline" do %>
+          View debts
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

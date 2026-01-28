@@ -35,7 +35,9 @@ class DebtOptimizationStrategiesControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_redirected_to debt_optimization_strategy_path(DebtOptimizationStrategy.last)
+    # Find by unique name instead of using .last (unreliable in parallel tests)
+    created_strategy = DebtOptimizationStrategy.find_by(name: "New Baseline Strategy")
+    assert_redirected_to debt_optimization_strategy_path(created_strategy)
   end
 
   test "should show debt optimization strategy" do
@@ -89,10 +91,11 @@ class DebtOptimizationStrategiesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create adds default auto-stop rules for baseline strategy" do
+    strategy_name = "New Strategy with Rules #{Time.now.to_i}"
     assert_difference("DebtOptimizationStrategy.count") do
       post debt_optimization_strategies_path, params: {
         debt_optimization_strategy: {
-          name: "New Strategy with Rules #{Time.now.to_i}",
+          name: strategy_name,
           strategy_type: "baseline",
           rental_income: 2000,
           rental_expenses: 400,
@@ -101,9 +104,10 @@ class DebtOptimizationStrategiesControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_redirected_to debt_optimization_strategy_path(DebtOptimizationStrategy.last)
+    # Find by unique name instead of using .last (unreliable in parallel tests)
+    strategy = DebtOptimizationStrategy.find_by(name: strategy_name)
+    assert_redirected_to debt_optimization_strategy_path(strategy)
 
-    strategy = DebtOptimizationStrategy.last
     assert_equal 2, strategy.auto_stop_rules.count
     assert strategy.auto_stop_rules.find_by(rule_type: "heloc_limit_percentage").present?
     assert strategy.auto_stop_rules.find_by(rule_type: "primary_paid_off").present?

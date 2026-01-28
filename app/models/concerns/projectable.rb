@@ -40,12 +40,19 @@ module Projectable
     ForecastAccuracyCalculator.new(projections_with_actuals).calculate
   end
 
-  # Get next milestone
+  # Get next milestone (debt-aware)
   def next_milestone
-    milestones.where(status: %w[pending in_progress])
-              .ordered_by_target
-              .where("target_amount > ?", balance)
-              .first
+    pending = milestones.where(status: %w[pending in_progress])
+
+    if liability?
+      # For debts: find highest target below current balance (next reduction goal)
+      pending.where("target_amount < ?", balance.abs)
+             .order(target_amount: :desc).first
+    else
+      # For assets: find lowest target above current balance (next growth goal)
+      pending.where("target_amount > ?", balance)
+             .order(target_amount: :asc).first
+    end
   end
 
   # Get achieved milestones
@@ -64,16 +71,29 @@ module Projectable
     update_milestone_projections!
   end
 
-  # Update milestone projected dates based on projections
+  # Update milestone projected dates based on projections (debt-aware)
   def update_milestone_projections!
     milestones.where(status: %w[pending in_progress]).find_each do |milestone|
-      projected = projections
-        .future
-        .where("projected_balance >= ?", milestone.target_amount)
-        .ordered
-        .first
+      projected_date = if milestone.reduction_milestone? && respond_to?(:accountable) && accountable.is_a?(Loan)
+        # Use amortization schedule for loans (more accurate than projections)
+        LoanPayoffCalculator.new(self).projected_date_for_target(milestone.target_amount)
+      elsif milestone.reduction_milestone?
+        # Fall back to projection records for other liabilities
+        projections
+          .future
+          .where("projected_balance <= ?", milestone.target_amount)
+          .ordered
+          .first&.projection_date
+      else
+        # For growth milestones: find when projected_balance >= target
+        projections
+          .future
+          .where("projected_balance >= ?", milestone.target_amount)
+          .ordered
+          .first&.projection_date
+      end
 
-      milestone.update!(projected_date: projected&.projection_date)
+      milestone.update!(projected_date: projected_date)
     end
   end
 
@@ -95,7 +115,15 @@ module Projectable
   private
 
     def default_projection_assumption
-      return family.projection_assumptions.active.first if respond_to?(:family) && family.present?
+      # For accounts, prefer account-specific assumption, then fall back to family default
+      if respond_to?(:projection_assumption) && projection_assumption.present?
+        return projection_assumption
+      end
+
+      if respond_to?(:family) && family.present?
+        return ProjectionAssumption.default_for(family)
+      end
+
       nil
     end
 
@@ -113,25 +141,19 @@ module Projectable
     end
 
     def projection_data(years:, assumption:)
-      # First try to use pre-stored projections (much faster)
-      stored = projections.future.ordered.limit(years * 12)
-      if stored.any? && stored.first.percentiles.present?
-        return stored.map do |p|
-          {
-            date: p.projection_date.iso8601,
-            p10: p.percentile(10)&.to_f || p.projected_balance.to_f * 0.85,
-            p25: p.percentile(25)&.to_f || p.projected_balance.to_f * 0.92,
-            p50: p.percentile(50)&.to_f || p.projected_balance.to_f,
-            p75: p.percentile(75)&.to_f || p.projected_balance.to_f * 1.08,
-            p90: p.percentile(90)&.to_f || p.projected_balance.to_f * 1.15
-          }
-        end
-      end
+      current_balance = balance.to_f
+      anchor = {
+        date: Date.current.iso8601,
+        p10: current_balance,
+        p25: current_balance,
+        p50: current_balance,
+        p75: current_balance,
+        p90: current_balance
+      }
 
-      # Fall back to computing Monte Carlo (reduced simulations for speed)
       monthly_contribution = assumption&.monthly_contribution || 0
       expected_return = assumption&.effective_return || 0.06
-      volatility = assumption&.volatility || 0.15
+      volatility = assumption&.effective_volatility || 0.15
 
       calculator = ProjectionCalculator.new(
         principal: balance,
@@ -141,13 +163,12 @@ module Projectable
       )
 
       months = years * 12
-      results = calculator.project_with_percentiles(
+      results = calculator.project_with_analytical_bands(
         months: months,
-        volatility: volatility,
-        simulations: 100  # Reduced from 500 for faster page loads
+        volatility: volatility
       )
 
-      results.map do |r|
+      projection_data = results.map do |r|
         {
           date: r[:date].iso8601,
           p10: r[:p10].to_f,
@@ -157,5 +178,7 @@ module Projectable
           p90: r[:p90].to_f
         }
       end
+
+      [ anchor ] + projection_data
     end
 end
