@@ -1,25 +1,16 @@
+# ROMS Finance: Personal Finance Management
 
-<img width="1190" alt="maybe_hero" src="https://github.com/user-attachments/assets/5ed08763-a9ee-42b2-a436-e05038fcf573" />
+> [!NOTE]
+> This project is a fork of [Maybe Finance](https://github.com/maybe-finance/maybe), licensed under AGPLv3.
+> **This project is not affiliated with or endorsed by Maybe Finance Inc.**
 
-# Maybe: The personal finance app for everyone
+## About
 
-> [!IMPORTANT]
-> This repository is no longer actively maintained. You can read more about this in our [final release](https://github.com/maybe-finance/maybe/releases/tag/v0.6.0).
-
-## Maybe Hosting
-
-Maybe is a fully working personal finance app that can be [self hosted with Docker](docs/hosting/docker.md).
-
-## Forking and Attribution
-
-This repo is no longer maintained. You’re free to fork it under the AGPLv3. To stay compliant and avoid trademark issues:
-
-- Be sure to include the original [AGPLv3 license](https://github.com/maybe-finance/maybe/blob/main/LICENSE) and clearly state in your README that your fork is based on Maybe Finance but is **not affiliated with or endorsed by** Maybe Finance Inc.
-- "Maybe" is a trademark of Maybe Finance Inc. and therefore, use of it is NOT allowed in forked repositories (or the logo)
+ROMS Finance is a personal finance app that can be [self hosted with Docker](docs/hosting/docker.md).
 
 ## Local Development Setup
 
-**If you are trying to _self-host_ the Maybe app, stop here. You
+**If you are trying to _self-host_ the ROMS Finance app, stop here. You
 should [read this guide to get started](docs/hosting/docker.md).**
 
 The instructions below are for developers to get started with contributing to the app.
@@ -56,8 +47,9 @@ For further instructions, see guides below.
 - [Windows dev setup guide](https://github.com/maybe-finance/maybe/wiki/Windows-Dev-Setup-Guide)
 - Dev containers - visit [this guide](https://code.visualstudio.com/docs/devcontainers/containers) to learn more
 
-## Copyright & license
+## Copyright & License
 
-Maybe is distributed under
-an [AGPLv3 license](https://github.com/maybe-finance/maybe/blob/main/LICENSE). "
-Maybe" is a trademark of Maybe Finance, Inc.
+ROMS Finance is distributed under the [AGPLv3 license](LICENSE).
+
+This project is based on [Maybe Finance](https://github.com/maybe-finance/maybe).
+"Maybe" is a trademark of Maybe Finance, Inc. This project is not affiliated with or endorsed by Maybe Finance Inc.
