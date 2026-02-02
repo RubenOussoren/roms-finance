@@ -20,7 +20,7 @@ class DebtOptimizationTest < ApplicationSystemTestCase
 
     # Fill in basic strategy info
     fill_in "Name", with: "Test Baseline Strategy"
-    select "Baseline (No Optimization)", from: "Strategy type"
+    select "Baseline (No Optimization)", from: "Strategy Type"
     fill_in "debt_optimization_strategy[rental_income]", with: 2500
     fill_in "debt_optimization_strategy[rental_expenses]", with: 500
     fill_in "debt_optimization_strategy[simulation_months]", with: 120

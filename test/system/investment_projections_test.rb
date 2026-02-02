@@ -6,25 +6,33 @@ class InvestmentProjectionsTest < ApplicationSystemTestCase
     @investment_account = accounts(:investment)
   end
 
-  test "view investment account shows projection chart section" do
-    visit account_path(@investment_account)
+  test "investments tab shows projection chart for account" do
+    visit projections_path(tab: "investments")
 
-    # Verify account page loads with projection-related content
-    assert_selector "h2", text: @investment_account.name
+    # Verify the investments tab is shown
+    assert_text "Investment Accounts"
 
-    # The projection chart should be rendered for investment accounts
-    # Check for chart container with Stimulus controller
-    assert_selector "[data-controller='projection-chart']"
+    # Find the account card and expand it
+    account_card = find("details", text: @investment_account.name)
+    account_card.find("summary").click
+
+    # The projection chart should be rendered within the expanded details
+    within account_card do
+      assert_selector "[data-controller='projection-chart']"
+    end
   end
 
-  test "projection settings can be accessed for investment account" do
-    visit account_path(@investment_account)
+  test "expanded account card shows projection chart" do
+    visit projections_path(tab: "investments")
 
-    # Find and click the settings toggle/button
-    # The projection settings should be accessible
-    within "[data-controller='projection-chart']" do
-      # Check that the chart is displayed
-      assert_selector "canvas", wait: 5
+    # Find and expand the account card
+    account_card = find("details", text: @investment_account.name)
+    account_card.find("summary").click
+
+    within account_card do
+      # Check that the projection chart controller and related content is displayed
+      assert_selector "[data-controller='projection-chart']"
+      assert_text "Projected Balance"
     end
   end
 end
