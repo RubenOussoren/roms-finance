@@ -50,9 +50,19 @@ class FamilyProjectionCalculator
 
     def project_net_worth(months:)
       # Aggregate projections from all accounts
-      # Eager load accountable and entries to prevent N+1 queries when calculating loan payments
-      asset_accounts = family.accounts.where(classification: "asset").active.includes(:accountable, :entries)
-      liability_accounts = family.accounts.where(classification: "liability").active.includes(:accountable, :entries)
+      # Eager load accountable, entries, and projection_assumption to prevent N+1 queries
+      asset_accounts = family.accounts.where(classification: "asset").active.includes(:accountable, :entries, :projection_assumption)
+      liability_accounts = family.accounts.where(classification: "liability").active.includes(:accountable, :entries, :projection_assumption)
+
+      # Validate currency consistency
+      all_accounts = asset_accounts + liability_accounts
+      mismatched = all_accounts.reject { |a| a.currency == family.currency }
+      if mismatched.any?
+        Rails.logger.warn "FamilyProjectionCalculator: #{mismatched.size} accounts have non-family currency, projections may be inaccurate"
+      end
+
+      # Calculate aggregate volatility from asset accounts for percentile bands
+      volatility = aggregate_volatility(asset_accounts)
 
       # Build monthly projections
       (1..months).map do |month|
@@ -71,17 +81,49 @@ class FamilyProjectionCalculator
         # Net worth = assets - liabilities
         net_worth = projected_assets - projected_liabilities
 
+        # Calculate percentile bands using proper statistical methods
+        percentiles = calculate_percentiles(net_worth, month, volatility)
+
         {
           date: date.iso8601,
-          p10: (net_worth * 0.85).to_f.round(2),
-          p25: (net_worth * 0.92).to_f.round(2),
-          p50: net_worth.to_f.round(2),
-          p75: (net_worth * 1.08).to_f.round(2),
-          p90: (net_worth * 1.15).to_f.round(2),
+          p10: percentiles[:p10],
+          p25: percentiles[:p25],
+          p50: percentiles[:p50],
+          p75: percentiles[:p75],
+          p90: percentiles[:p90],
           assets: projected_assets.to_f.round(2),
           liabilities: projected_liabilities.to_f.round(2)
         }
       end
+    end
+
+    # Calculate portfolio-weighted volatility from asset accounts
+    def aggregate_volatility(asset_accounts)
+      return 0.15 if asset_accounts.empty? # Default 15%
+
+      total_balance = asset_accounts.sum(&:balance)
+      return 0.15 if total_balance.zero?
+
+      asset_accounts.sum do |account|
+        assumption = ProjectionAssumption.for_account(account)
+        weight = account.balance / total_balance
+        volatility = assumption&.effective_volatility || 0.15
+        weight * volatility
+      end
+    end
+
+    # Calculate percentile bands using log-normal distribution
+    def calculate_percentiles(net_worth, month, volatility)
+      time_factor = Math.sqrt(month / 12.0)
+      sigma = volatility * time_factor
+
+      {
+        p10: (net_worth * Math.exp(-1.28 * sigma)).to_f.round(2),
+        p25: (net_worth * Math.exp(-0.67 * sigma)).to_f.round(2),
+        p50: net_worth.to_f.round(2),
+        p75: (net_worth * Math.exp(0.67 * sigma)).to_f.round(2),
+        p90: (net_worth * Math.exp(1.28 * sigma)).to_f.round(2)
+      }
     end
 
     def project_account_balance(account, month)
@@ -126,7 +168,12 @@ class FamilyProjectionCalculator
 
       interest_rate = loan.interest_rate || 5.0
       monthly_rate = interest_rate / 100.0 / 12
-      payment = loan.monthly_payment&.amount || 0
+
+      # Include extra payment from assumption
+      base_payment = loan.monthly_payment&.amount || 0
+      assumption = ProjectionAssumption.for_account(account)
+      extra_payment = assumption&.extra_monthly_payment || 0
+      payment = base_payment + extra_payment
 
       return account.balance if payment <= 0
 

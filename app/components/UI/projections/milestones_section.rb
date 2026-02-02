@@ -17,6 +17,8 @@ class UI::Projections::MilestonesSection < ApplicationComponent
       case tab_name
       when "debt"
         "Track paydown goals like \"Pay off by 2028\" or \"Reduce to $100K\""
+      when "investments"
+        "Set targets like \"Reach $100K\" or \"Save for down payment\""
       else
         nil
       end

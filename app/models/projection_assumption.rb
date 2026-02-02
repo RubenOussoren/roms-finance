@@ -7,11 +7,27 @@ class ProjectionAssumption < ApplicationRecord
 
   validates :name, presence: true
   validate :account_belongs_to_family
-  validates :expected_return, numericality: { allow_nil: true }
-  validates :inflation_rate, numericality: { allow_nil: true }
-  validates :monthly_contribution, numericality: { allow_nil: true }
-  validates :volatility, numericality: { allow_nil: true }
+  validates :expected_return, numericality: {
+    greater_than_or_equal_to: -0.5,
+    less_than_or_equal_to: 0.5,
+    allow_nil: true
+  }
+  validates :volatility, numericality: {
+    greater_than_or_equal_to: 0,
+    less_than_or_equal_to: 1.0,
+    allow_nil: true
+  }
+  validates :inflation_rate, numericality: {
+    greater_than_or_equal_to: -0.2,
+    less_than_or_equal_to: 0.3,
+    allow_nil: true
+  }
+  validates :monthly_contribution, numericality: {
+    greater_than_or_equal_to: 0,
+    allow_nil: true
+  }
   validates :extra_monthly_payment, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :target_payoff_date, comparison: { greater_than: -> { Date.current } }, allow_nil: true
 
   scope :active, -> { where(is_active: true) }
   scope :using_pag, -> { where(use_pag_defaults: true) }

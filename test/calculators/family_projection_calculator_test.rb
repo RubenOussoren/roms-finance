@@ -1,0 +1,121 @@
+require "test_helper"
+
+class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
+  setup do
+    @family = families(:dylan_family)
+    @calculator = FamilyProjectionCalculator.new(@family)
+  end
+
+  test "project returns complete projection data" do
+    result = @calculator.project(years: 5)
+
+    assert_includes result.keys, :historical
+    assert_includes result.keys, :projections
+    assert_includes result.keys, :currency
+    assert_includes result.keys, :today
+    assert_includes result.keys, :summary
+    assert_equal @family.currency, result[:currency]
+    assert_equal 60, result[:projections].count # 5 years * 12 months
+  end
+
+  test "projection includes percentile bands" do
+    result = @calculator.project(years: 1)
+    first_month = result[:projections].first
+
+    assert_includes first_month.keys, :p10
+    assert_includes first_month.keys, :p25
+    assert_includes first_month.keys, :p50
+    assert_includes first_month.keys, :p75
+    assert_includes first_month.keys, :p90
+    assert_includes first_month.keys, :assets
+    assert_includes first_month.keys, :liabilities
+    assert_includes first_month.keys, :date
+  end
+
+  test "percentile bands are properly ordered" do
+    result = @calculator.project(years: 2)
+    final_month = result[:projections].last
+
+    assert final_month[:p10] <= final_month[:p25], "p10 should be <= p25"
+    assert final_month[:p25] <= final_month[:p50], "p25 should be <= p50"
+    assert final_month[:p50] <= final_month[:p75], "p50 should be <= p75"
+    assert final_month[:p75] <= final_month[:p90], "p75 should be <= p90"
+  end
+
+  test "percentile bands widen over time" do
+    result = @calculator.project(years: 2)
+
+    month_6 = result[:projections][5]
+    month_24 = result[:projections][23]
+
+    width_6 = month_6[:p90] - month_6[:p10]
+    width_24 = month_24[:p90] - month_24[:p10]
+
+    assert width_24 > width_6, "Bands should widen over time due to compounding uncertainty"
+  end
+
+  test "summary_metrics returns correct structure" do
+    metrics = @calculator.summary_metrics
+
+    assert_includes metrics.keys, :current_net_worth
+    assert_includes metrics.keys, :total_assets
+    assert_includes metrics.keys, :total_liabilities
+    assert_includes metrics.keys, :currency
+    assert_equal @family.currency, metrics[:currency]
+  end
+
+  test "calculate_percentiles uses analytical bands" do
+    # Test the internal percentile calculation method
+    net_worth = 100_000
+    month = 12
+    volatility = 0.15
+
+    percentiles = @calculator.send(:calculate_percentiles, net_worth, month, volatility)
+
+    # Check z-score based calculations (approx)
+    # p10 uses z = -1.28, p90 uses z = 1.28
+    # At 12 months with 15% volatility, sigma = 0.15 * sqrt(1) = 0.15
+    expected_p10 = net_worth * Math.exp(-1.28 * 0.15)
+    expected_p90 = net_worth * Math.exp(1.28 * 0.15)
+
+    assert_in_delta expected_p10, percentiles[:p10], 1.0
+    assert_in_delta expected_p90, percentiles[:p90], 1.0
+    assert_equal net_worth.to_f.round(2), percentiles[:p50]
+  end
+
+  test "aggregate_volatility with empty accounts returns default" do
+    volatility = @calculator.send(:aggregate_volatility, [])
+    assert_equal 0.15, volatility
+  end
+
+  test "aggregate_volatility calculates weighted average" do
+    asset_accounts = @family.accounts.where(classification: "asset").active
+
+    # Should not raise and should return a reasonable value
+    volatility = @calculator.send(:aggregate_volatility, asset_accounts)
+
+    assert volatility >= 0, "Volatility should be non-negative"
+    assert volatility <= 1.0, "Volatility should be <= 100%"
+  end
+
+  test "loan balance projection decreases over time" do
+    loan_account = accounts(:loan)
+
+    month_1 = @calculator.send(:project_loan_balance, loan_account, 1)
+    month_12 = @calculator.send(:project_loan_balance, loan_account, 12)
+    month_60 = @calculator.send(:project_loan_balance, loan_account, 60)
+
+    assert month_12 < loan_account.balance.abs, "Balance should decrease after payments"
+    assert month_60 < month_12, "Balance should continue decreasing"
+  end
+
+  test "investment balance projection increases over time" do
+    investment_account = accounts(:investment)
+
+    month_1 = @calculator.send(:project_investment_balance, investment_account, 1)
+    month_12 = @calculator.send(:project_investment_balance, investment_account, 12)
+
+    assert month_12 > investment_account.balance, "Investment should grow over time"
+    assert month_12 > month_1, "Growth should compound"
+  end
+end

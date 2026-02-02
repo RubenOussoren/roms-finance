@@ -41,7 +41,8 @@
     <% tabs.with_panel(tab_id: "debts") do %>
       <%= render "projections/debts",
           loan_accounts: @loan_accounts,
-          loan_payoffs: @loan_payoffs %>
+          loan_payoffs: @loan_payoffs,
+          projection_years: @projection_years %>
     <% end %>
 
     <% tabs.with_panel(tab_id: "strategies") do %>

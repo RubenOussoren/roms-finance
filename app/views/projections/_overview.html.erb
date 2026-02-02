@@ -64,7 +64,7 @@
                 <p class="font-medium text-primary"><%= milestone.name %></p>
                 <div class="flex items-center gap-2">
                   <p class="text-sm text-secondary"><%= milestone.account.name %></p>
-                  <span class="text-xs px-1.5 py-0.5 rounded <%= is_debt ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700" %>">
+                  <span class="text-xs px-1.5 py-0.5 rounded bg-surface-inset text-secondary">
                     <%= is_debt ? "Debt" : "Investment" %>
                   </span>
                 </div>
@@ -107,8 +107,8 @@
     </div>
   <% else %>
     <div class="bg-container shadow-border-xs rounded-xl p-8 text-center">
-      <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-        <%= icon "target", class: "w-8 h-8 text-blue-600" %>
+      <div class="mx-auto w-16 h-16 bg-surface-inset rounded-full flex items-center justify-center mb-4">
+        <%= icon "target", class: "w-8 h-8 text-secondary" %>
       </div>
       <h3 class="text-lg font-medium text-primary mb-2">No milestones yet</h3>
       <p class="text-secondary mb-4">
