@@ -107,3 +107,9 @@ scripts/
 .cursor/rules/dev_workflow.mdc
 .cursor/rules/taskmaster.mdc
 .claude/settings.local.json
+
+# Playwright
+.playwright-mcp
+
+# Python prototype (reference only - see CLAUDE.md)
+investment-dashboard/

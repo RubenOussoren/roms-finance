@@ -43,3 +43,6 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Python prototype (not needed in Rails image)
+/investment-dashboard/
