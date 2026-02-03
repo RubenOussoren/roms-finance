@@ -8,18 +8,26 @@ class FamilyProjectionCalculator
   end
 
   # Generate family-wide net worth projection
+  # Results are cached for 1 hour and invalidated when account data changes
   def project(years:)
-    months = years * 12
-    historical = historical_net_worth_data
-    projections = project_net_worth(months: months)
+    cache_key = family.build_cache_key(
+      "family_projection_#{years}",
+      invalidate_on_data_updates: true
+    )
 
-    {
-      historical: historical,
-      projections: projections,
-      currency: family.currency,
-      today: Date.current.iso8601,
-      summary: build_summary(projections)
-    }
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      months = years * 12
+      historical = historical_net_worth_data
+      projections = project_net_worth(months: months)
+
+      {
+        historical: historical,
+        projections: projections,
+        currency: family.currency,
+        today: Date.current.iso8601,
+        summary: build_summary(projections)
+      }
+    end
   end
 
   # Quick summary metrics for the overview
@@ -160,8 +168,9 @@ class FamilyProjectionCalculator
     end
 
     def project_investment_balance(account, month)
-      rate = cached_assumption&.effective_return || 0.06
-      contribution = cached_assumption&.monthly_contribution || 0
+      assumption = assumption_for(account)
+      rate = assumption&.effective_return || 0.06
+      contribution = assumption&.monthly_contribution || 0
 
       calculator = ProjectionCalculator.new(
         principal: account.balance,
@@ -172,39 +181,28 @@ class FamilyProjectionCalculator
       calculator.future_value_at_month(month)
     end
 
-    # Memoize projection_assumptions to avoid N+1 queries (120×N queries per page)
-    def cached_assumption
-      @cached_assumption ||= family.projection_assumptions.active.first
+    # Per-account assumption caching to avoid N+1 queries
+    # Each account may have its own assumption or fall back to family default
+    def assumption_for(account)
+      @assumption_cache ||= {}
+      @assumption_cache[account.id] ||= ProjectionAssumption.for_account(account)
     end
 
+    # Delegate to LoanPayoffCalculator for consistent amortization logic
+    # LoanPayoffCalculator has memoization, making this efficient even when called multiple times
     def project_loan_balance(account, month)
       loan = account.accountable
       return account.balance if loan.nil?
-
-      # Use amortization to project remaining balance
       return 0 if account.balance <= 0
 
-      interest_rate = loan.interest_rate || 5.0
-      monthly_rate = interest_rate / 100.0 / 12
-
-      # Include extra payment from assumption
-      base_payment = loan.monthly_payment&.amount || 0
-      assumption = ProjectionAssumption.for_account(account)
+      assumption = assumption_for(account)
       extra_payment = assumption&.extra_monthly_payment || 0
-      payment = base_payment + extra_payment
 
-      return account.balance if payment <= 0
+      calculator = LoanPayoffCalculator.new(account, extra_payment: extra_payment)
+      schedule = calculator.amortization_schedule
 
-      # Calculate remaining balance using amortization formula
-      balance = account.balance.abs
-      month.times do
-        break if balance <= 0
-        interest = balance * monthly_rate
-        principal_payment = [ payment - interest, balance ].min
-        balance -= principal_payment
-      end
-
-      [ balance, 0 ].max
+      entry = schedule.find { |e| e[:month] == month }
+      entry ? entry[:balance] : 0
     end
 
     def build_summary(projections)

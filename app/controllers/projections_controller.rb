@@ -38,10 +38,10 @@ class ProjectionsController < ApplicationController
       @loan_accounts = @family.accounts
         .where(accountable_type: "Loan")
         .active
-        .includes(:accountable, :entries, :milestones)
+        .includes(:accountable, :entries, :milestones, :projection_assumption)
 
-      # Update milestone projections for each loan (calculates projected dates)
-      @loan_accounts.each(&:update_milestone_projections!)
+      # Milestone projections are updated via background job (UpdateMilestoneProjectionsJob)
+      # triggered by balance changes, avoiding N+1 updates in the request cycle
 
       @loan_payoffs = @loan_accounts.map { |a| LoanPayoffCalculator.new(a).summary }
     end

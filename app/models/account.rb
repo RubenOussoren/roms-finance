@@ -5,6 +5,7 @@ class Account < ApplicationRecord
   validates :name, :balance, :currency, presence: true
 
   after_create :create_standard_milestones, if: :liability?
+  after_commit :schedule_milestone_update, if: :saved_change_to_balance?
 
   belongs_to :family
   belongs_to :import, optional: true
@@ -183,5 +184,12 @@ class Account < ApplicationRecord
 
     def create_standard_milestones
       Milestone.create_standard_milestones_for(self)
+    end
+
+    # Schedule background job to update milestone projected dates
+    # Triggered after balance changes to keep projections accurate
+    def schedule_milestone_update
+      return unless milestones.any?
+      UpdateMilestoneProjectionsJob.perform_later(id)
     end
 end

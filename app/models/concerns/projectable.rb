@@ -1,5 +1,21 @@
 # Projectable concern for accounts/families with projections
 # Provides adaptive projection capabilities and forecast accuracy tracking
+#
+# DUAL PROJECTION STORAGE PATTERN:
+# This system uses two complementary projection mechanisms:
+#
+# 1. Account::Projection database records
+#    - Used for forecast accuracy tracking via ForecastAccuracyCalculator
+#    - Stores "forecast checkpoints" with actual_balance for comparing predicted vs actual
+#    - Generated periodically via generate_projections!
+#
+# 2. On-the-fly calculations (ProjectionCalculator, LoanPayoffCalculator)
+#    - Used for real-time chart data reflecting current assumptions
+#    - Recalculated on each page load (with caching)
+#    - Immediately reflects changes to contribution/return assumptions
+#
+# These are complementary, not redundant - database records enable historical
+# accuracy analysis while on-the-fly calculations provide responsive UI.
 module Projectable
   extend ActiveSupport::Concern
 
