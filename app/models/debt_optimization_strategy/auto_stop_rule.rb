@@ -14,14 +14,17 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
     all_debt_paid_off: "all_debt_paid_off",                     # Stop when all debt is paid off
     max_months: "max_months",                                   # Stop after X months
     negative_cash_flow: "negative_cash_flow",                   # Stop if net cash flow becomes negative
-    heloc_interest_exceeds_benefit: "heloc_interest_exceeds_benefit" # Stop if HELOC interest > tax benefit
+    heloc_interest_exceeds_benefit: "heloc_interest_exceeds_benefit", # Stop if HELOC interest > tax benefit
+    heloc_interest_ceiling: "heloc_interest_ceiling",           # Stop if monthly HELOC interest exceeds X
+    tax_refund_coverage_ratio: "tax_refund_coverage_ratio",     # Stop if tax benefit < X% of HELOC interest
+    manual_stop_date: "manual_stop_date"                        # Stop on a specific date
   }.freeze
 
   enum :rule_type, RULE_TYPES, prefix: true
 
   validates :rule_type, presence: true
   validates :threshold_value, numericality: true, allow_nil: true
-  validates :threshold_unit, inclusion: { in: %w[percentage amount months] }, allow_nil: true
+  validates :threshold_unit, inclusion: { in: %w[percentage amount months date] }, allow_nil: true
 
   scope :enabled, -> { where(enabled: true) }
 
@@ -44,6 +47,12 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
       check_negative_cash_flow(ledger_entry)
     when "heloc_interest_exceeds_benefit"
       check_heloc_interest_exceeds_benefit(ledger_entry)
+    when "heloc_interest_ceiling"
+      check_heloc_interest_ceiling(ledger_entry)
+    when "tax_refund_coverage_ratio"
+      check_tax_refund_coverage_ratio(ledger_entry)
+    when "manual_stop_date"
+      check_manual_stop_date(ledger_entry)
     else
       false
     end
@@ -66,6 +75,12 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
       "Stop if net cash flow becomes negative"
     when "heloc_interest_exceeds_benefit"
       "Stop if HELOC interest exceeds tax benefit"
+    when "heloc_interest_ceiling"
+      "Stop if monthly HELOC interest exceeds $#{threshold_value.to_i.to_fs(:delimited)}"
+    when "tax_refund_coverage_ratio"
+      "Stop if tax benefit covers less than #{threshold_value}% of HELOC interest"
+    when "manual_stop_date"
+      "Stop on #{metadata['stop_date']}"
     else
       "Unknown rule type"
     end
@@ -108,5 +123,30 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
 
     def check_heloc_interest_exceeds_benefit(ledger_entry)
       ledger_entry.heloc_interest > ledger_entry.tax_benefit
+    end
+
+    # Stop if monthly HELOC interest exceeds a ceiling amount
+    def check_heloc_interest_ceiling(ledger_entry)
+      return false unless threshold_value.present?
+      ledger_entry.heloc_interest >= threshold_value
+    end
+
+    # Stop if tax benefit covers less than X% of HELOC interest
+    def check_tax_refund_coverage_ratio(ledger_entry)
+      return false unless threshold_value.present?
+      return false if ledger_entry.heloc_interest.zero?
+
+      coverage_ratio = (ledger_entry.tax_benefit / ledger_entry.heloc_interest) * 100
+      coverage_ratio < threshold_value
+    end
+
+    # Stop on a specific calendar date
+    def check_manual_stop_date(ledger_entry)
+      stop_date = metadata&.dig("stop_date")
+      return false unless stop_date.present?
+
+      ledger_entry.calendar_month >= Date.parse(stop_date)
+    rescue Date::Error
+      false
     end
 end

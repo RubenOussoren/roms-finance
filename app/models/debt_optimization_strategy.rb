@@ -101,9 +101,22 @@ class DebtOptimizationStrategy < ApplicationRecord
   def heloc_available_credit
     return 0 unless heloc.present?
 
-    credit_limit = heloc.accountable&.credit_limit || 0
+    credit_limit = effective_heloc_limit
     current_balance = heloc.balance.abs
     [ credit_limit - current_balance, 0 ].max
+  end
+
+  # Get effective HELOC limit (considers max limit cap)
+  def effective_heloc_limit
+    base_limit = heloc&.accountable&.credit_limit || 0
+    return base_limit unless heloc_max_limit.present? && heloc_max_limit > 0
+
+    [ base_limit, heloc_max_limit ].min
+  end
+
+  # Check if this strategy uses a readvanceable HELOC
+  def readvanceable_heloc?
+    heloc_readvanceable == true
   end
 
   private

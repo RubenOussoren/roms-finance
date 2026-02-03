@@ -8,6 +8,32 @@ class Loan < ApplicationRecord
     "other" => { short: "Other", long: "Other Loan" }
   }.freeze
 
+  # 🇨🇦 Canadian mortgage renewal validation
+  validates :renewal_rate, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }, allow_nil: true
+  validates :annual_lump_sum_month, inclusion: { in: 1..12 }, allow_nil: true
+
+  # Check if this is a Canadian-style mortgage with renewal
+  def canadian_mortgage?
+    renewal_date.present?
+  end
+
+  # Check if mortgage is due for renewal
+  def renewal_due?
+    canadian_mortgage? && renewal_date <= Date.current
+  end
+
+  # Calculate next renewal date (typically 5 years from current renewal)
+  def next_renewal_date
+    return nil unless canadian_mortgage?
+    renewal_date + 5.years
+  end
+
+  # Get the effective interest rate (accounts for pending renewals)
+  def effective_interest_rate
+    return interest_rate unless canadian_mortgage? && renewal_due?
+    renewal_rate || interest_rate
+  end
+
   def monthly_payment
     @monthly_payment ||= calculate_monthly_payment
   end

@@ -109,4 +109,42 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
     strategies = DebtOptimizationStrategy.for_family(@family)
     assert strategies.all? { |s| s.family_id == @family.id }
   end
+
+  # 🇨🇦 Canadian HELOC feature tests
+
+  test "effective_heloc_limit respects max_limit cap" do
+    # Create a HELOC account
+    heloc_loan = Loan.create!(interest_rate: 7.0, rate_type: "variable", credit_limit: 200_000)
+    heloc_account = Account.create!(
+      family: @family, name: "Test HELOC", balance: 0, currency: "CAD",
+      accountable: heloc_loan, status: "active"
+    )
+
+    @strategy.update!(heloc: heloc_account, heloc_max_limit: 150_000)
+
+    # Effective limit should be the lower of the two
+    assert_equal 150_000, @strategy.effective_heloc_limit
+  end
+
+  test "effective_heloc_limit returns base limit when no max_limit set" do
+    heloc_loan = Loan.create!(interest_rate: 7.0, rate_type: "variable", credit_limit: 200_000)
+    heloc_account = Account.create!(
+      family: @family, name: "Test HELOC", balance: 0, currency: "CAD",
+      accountable: heloc_loan, status: "active"
+    )
+
+    @strategy.update!(heloc: heloc_account, heloc_max_limit: nil)
+
+    assert_equal 200_000, @strategy.effective_heloc_limit
+  end
+
+  test "readvanceable_heloc? returns true when flag is set" do
+    @strategy.update!(heloc_readvanceable: true)
+    assert @strategy.readvanceable_heloc?
+  end
+
+  test "readvanceable_heloc? returns false when flag is not set" do
+    @strategy.update!(heloc_readvanceable: false)
+    assert_not @strategy.readvanceable_heloc?
+  end
 end
