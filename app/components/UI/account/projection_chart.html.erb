@@ -23,15 +23,17 @@
         <p class="text-xs text-tertiary"><%= assumption_summary %></p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <%= form_with url: account_path(account), method: :get, data: { controller: "auto-submit-form" } do |form| %>
-          <%= form.select :projection_years,
-              [[" 5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
-              { selected: years },
-              class: "bg-container border border-secondary rounded-lg text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
-              data: { "auto-submit-form-target": "auto" } %>
-        <% end %>
-      </div>
+      <% if show_years_selector %>
+        <div class="flex items-center gap-2">
+          <%= form_with url: account_path(account), method: :get, data: { controller: "auto-submit-form" } do |form| %>
+            <%= form.select :projection_years,
+                [[" 5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
+                { selected: years },
+                class: "bg-container border border-secondary rounded-lg text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
+                data: { "auto-submit-form-target": "auto" } %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
 
     <div class="h-64 pb-4">

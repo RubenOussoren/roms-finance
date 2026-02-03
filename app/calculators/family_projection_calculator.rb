@@ -113,17 +113,35 @@ class FamilyProjectionCalculator
     end
 
     # Calculate percentile bands using log-normal distribution
+    # Handles both positive and negative net worth correctly
+    # For positive: p10 (pessimistic) < p50 < p90 (optimistic)
+    # For negative: p10 (more negative) < p50 < p90 (less negative)
     def calculate_percentiles(net_worth, month, volatility)
       time_factor = Math.sqrt(month / 12.0)
       sigma = volatility * time_factor
 
-      {
-        p10: (net_worth * Math.exp(-1.28 * sigma)).to_f.round(2),
-        p25: (net_worth * Math.exp(-0.67 * sigma)).to_f.round(2),
-        p50: net_worth.to_f.round(2),
-        p75: (net_worth * Math.exp(0.67 * sigma)).to_f.round(2),
-        p90: (net_worth * Math.exp(1.28 * sigma)).to_f.round(2)
-      }
+      if net_worth >= 0
+        # Standard percentiles for positive net worth
+        {
+          p10: (net_worth * Math.exp(-1.28 * sigma)).to_f.round(2),
+          p25: (net_worth * Math.exp(-0.67 * sigma)).to_f.round(2),
+          p50: net_worth.to_f.round(2),
+          p75: (net_worth * Math.exp(0.67 * sigma)).to_f.round(2),
+          p90: (net_worth * Math.exp(1.28 * sigma)).to_f.round(2)
+        }
+      else
+        # For negative net worth, invert the multipliers
+        # p10 = pessimistic = more negative
+        # p90 = optimistic = less negative
+        abs_value = net_worth.abs
+        {
+          p10: -(abs_value * Math.exp(1.28 * sigma)).to_f.round(2),
+          p25: -(abs_value * Math.exp(0.67 * sigma)).to_f.round(2),
+          p50: net_worth.to_f.round(2),
+          p75: -(abs_value * Math.exp(-0.67 * sigma)).to_f.round(2),
+          p90: -(abs_value * Math.exp(-1.28 * sigma)).to_f.round(2)
+        }
+      end
     end
 
     def project_account_balance(account, month)

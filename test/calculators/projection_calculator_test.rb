@@ -146,4 +146,97 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     # Allow for some tolerance due to compounding effects
     assert_in_delta 3.46, width_12 / width_1, 0.5
   end
+
+  # Edge case tests for negative values (debt projections)
+  test "project with analytical bands handles negative principal (debt)" do
+    # Simulate a debt of $50,000
+    calc = ProjectionCalculator.new(principal: -50000, rate: 0.05, contribution: -500)
+
+    results = calc.project_with_analytical_bands(months: 12, volatility: 0.10)
+
+    assert_equal 12, results.count
+    final = results.last
+
+    # For negative values (debt):
+    # p10 should be the most negative (pessimistic - more debt)
+    # p90 should be the least negative (optimistic - less debt)
+    assert final[:p10] < final[:p50], "p10 (pessimistic) should be more negative than p50"
+    assert final[:p50] < final[:p90], "p50 should be more negative than p90 (optimistic)"
+
+    # All values should be negative since we're projecting debt
+    assert final[:p10] < 0, "p10 should be negative"
+    assert final[:p50] < 0, "p50 should be negative"
+    assert final[:p90] < 0, "p90 should be negative"
+  end
+
+  test "percentile ordering is correct for positive values" do
+    calc = ProjectionCalculator.new(principal: 10000, rate: 0.08, contribution: 500)
+
+    results = calc.project_with_analytical_bands(months: 60, volatility: 0.20)
+
+    results.each do |month_data|
+      assert month_data[:p10] < month_data[:p25], "p10 should be < p25 for month #{month_data[:month]}"
+      assert month_data[:p25] < month_data[:p50], "p25 should be < p50 for month #{month_data[:month]}"
+      assert month_data[:p50] < month_data[:p75], "p50 should be < p75 for month #{month_data[:month]}"
+      assert month_data[:p75] < month_data[:p90], "p75 should be < p90 for month #{month_data[:month]}"
+    end
+  end
+
+  test "percentile ordering is correct for negative values" do
+    calc = ProjectionCalculator.new(principal: -100000, rate: 0.06, contribution: -1000)
+
+    results = calc.project_with_analytical_bands(months: 24, volatility: 0.15)
+
+    results.each do |month_data|
+      assert month_data[:p10] < month_data[:p25], "p10 should be < p25 for month #{month_data[:month]}"
+      assert month_data[:p25] < month_data[:p50], "p25 should be < p50 for month #{month_data[:month]}"
+      assert month_data[:p50] < month_data[:p75], "p50 should be < p75 for month #{month_data[:month]}"
+      assert month_data[:p75] < month_data[:p90], "p75 should be < p90 for month #{month_data[:month]}"
+    end
+  end
+
+  test "high volatility edge case produces wider bands" do
+    calc_low_vol = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 0)
+    calc_high_vol = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 0)
+
+    low_vol_results = calc_low_vol.project_with_analytical_bands(months: 12, volatility: 0.10)
+    high_vol_results = calc_high_vol.project_with_analytical_bands(months: 12, volatility: 0.50)
+
+    low_vol_width = low_vol_results.last[:p90] - low_vol_results.last[:p10]
+    high_vol_width = high_vol_results.last[:p90] - high_vol_results.last[:p10]
+
+    assert high_vol_width > low_vol_width, "Higher volatility should produce wider bands"
+    # High volatility (50%) should produce roughly 5x wider bands than low volatility (10%)
+    assert_in_delta 5.0, high_vol_width / low_vol_width, 1.0
+  end
+
+  test "zero principal with contributions produces positive growth" do
+    calc = ProjectionCalculator.new(principal: 0, rate: 0.06, contribution: 500)
+
+    results = calc.project_with_analytical_bands(months: 12, volatility: 0.15)
+    final = results.last
+
+    assert final[:p50] > 0, "Should grow from contributions"
+    assert_in_delta 500 * 12, final[:p50], 500  # Roughly 12 months of contributions plus some growth
+  end
+
+  test "calculate_percentiles_for_value handles edge cases" do
+    calc = ProjectionCalculator.new(principal: 1000, rate: 0.06, contribution: 0)
+
+    # Test positive value
+    positive_percentiles = calc.calculate_percentiles_for_value(1000, 0.15)
+    assert positive_percentiles[:p10] < positive_percentiles[:p90]
+    assert_equal 1000.0, positive_percentiles[:p50]
+
+    # Test negative value (debt)
+    negative_percentiles = calc.calculate_percentiles_for_value(-1000, 0.15)
+    assert negative_percentiles[:p10] < negative_percentiles[:p90]
+    assert_equal(-1000.0, negative_percentiles[:p50])
+
+    # Test zero value
+    zero_percentiles = calc.calculate_percentiles_for_value(0, 0.15)
+    assert_equal 0.0, zero_percentiles[:p10]
+    assert_equal 0.0, zero_percentiles[:p50]
+    assert_equal 0.0, zero_percentiles[:p90]
+  end
 end

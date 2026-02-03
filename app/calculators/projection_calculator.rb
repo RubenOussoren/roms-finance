@@ -139,15 +139,45 @@ class ProjectionCalculator
       base_value = future_value_at_month(month)
       cumulative_vol = monthly_vol * Math.sqrt(month)
 
+      percentiles = calculate_percentiles_for_value(base_value, cumulative_vol)
+
       {
         month: month,
         date: Date.current + month.months,
-        p10: (base_value * Math.exp(-1.28 * cumulative_vol)).round(2),
-        p25: (base_value * Math.exp(-0.67 * cumulative_vol)).round(2),
-        p50: base_value.round(2),
-        p75: (base_value * Math.exp(0.67 * cumulative_vol)).round(2),
-        p90: (base_value * Math.exp(1.28 * cumulative_vol)).round(2),
+        p10: percentiles[:p10],
+        p25: percentiles[:p25],
+        p50: percentiles[:p50],
+        p75: percentiles[:p75],
+        p90: percentiles[:p90],
         mean: base_value.round(2)
+      }
+    end
+  end
+
+  # Calculate percentiles handling both positive and negative values
+  # For positive values: p10 (pessimistic) < p50 < p90 (optimistic)
+  # For negative values (debts): p10 (more debt) < p50 < p90 (less debt)
+  def calculate_percentiles_for_value(value, sigma)
+    if value >= 0
+      # Standard log-normal percentiles for positive values
+      {
+        p10: (value * Math.exp(-1.28 * sigma)).round(2),
+        p25: (value * Math.exp(-0.67 * sigma)).round(2),
+        p50: value.round(2),
+        p75: (value * Math.exp(0.67 * sigma)).round(2),
+        p90: (value * Math.exp(1.28 * sigma)).round(2)
+      }
+    else
+      # For negative values (debts), invert the multipliers
+      # p10 = pessimistic = more negative (multiply absolute value by exp(+1.28))
+      # p90 = optimistic = less negative (multiply absolute value by exp(-1.28))
+      abs_value = value.abs
+      {
+        p10: -(abs_value * Math.exp(1.28 * sigma)).round(2),
+        p25: -(abs_value * Math.exp(0.67 * sigma)).round(2),
+        p50: value.round(2),
+        p75: -(abs_value * Math.exp(-0.67 * sigma)).round(2),
+        p90: -(abs_value * Math.exp(-1.28 * sigma)).round(2)
       }
     end
   end

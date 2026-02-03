@@ -239,6 +239,71 @@ joint_account.entries.create!(
 
 puts "    Created #{chequing.name}, #{savings.name}, and #{joint_account.name}"
 
+# Add bi-weekly reconciliation valuations to keep cash balances realistic
+# (prevents massive accumulation -> drop when current_anchor is applied)
+# With ~$7,600/month surplus (~$3,800 bi-weekly), we need frequent reconciliations
+puts "  Adding reconciliation valuations for realistic balance history..."
+
+# Generate bi-weekly reconciliation dates from 23.5 months ago to 0.5 months ago
+# This creates ~47 reconciliation points over 24 months
+# (opening anchor is at 24 months, current anchor is at today)
+reconciliation_dates = []
+date = 24.months.ago.to_date + 14.days  # Start 2 weeks after opening anchor
+while date < Date.current - 7.days  # Stop 1 week before current anchor
+  reconciliation_dates << date
+  date += 14.days
+end
+
+total_periods = reconciliation_dates.length + 1  # +1 for the final period to current_anchor
+
+# Chequing: gradual growth from $4K (24mo ago) -> $6,279 (today)
+chequing_start = 4_000.00
+chequing_end = 6_279.42
+chequing_step = (chequing_end - chequing_start) / total_periods.to_f
+
+reconciliation_dates.each_with_index do |date, i|
+  balance = chequing_start + (chequing_step * (i + 1))
+  chequing.entries.create!(
+    entryable: Valuation.new(kind: "reconciliation"),
+    amount: balance.round(2),
+    name: "Balance Reconciliation",
+    currency: "CAD",
+    date: date
+  )
+end
+
+# Savings: gradual growth from $2K -> $4K
+savings_start = 2_000.00
+savings_end = 4_000.00
+savings_step = (savings_end - savings_start) / total_periods.to_f
+
+reconciliation_dates.each_with_index do |date, i|
+  balance = savings_start + (savings_step * (i + 1))
+  savings.entries.create!(
+    entryable: Valuation.new(kind: "reconciliation"),
+    amount: balance.round(2),
+    name: "Balance Reconciliation",
+    currency: "CAD",
+    date: date
+  )
+end
+
+# Joint account: gradual growth from $5K -> $10,100
+joint_start = 5_000.00
+joint_end = 10_100.00
+joint_step = (joint_end - joint_start) / total_periods.to_f
+
+reconciliation_dates.each_with_index do |date, i|
+  balance = joint_start + (joint_step * (i + 1))
+  joint_account.entries.create!(
+    entryable: Valuation.new(kind: "reconciliation"),
+    amount: balance.round(2),
+    name: "Balance Reconciliation",
+    currency: "CAD",
+    date: date
+  )
+end
+
 # ============================================================================
 # D. Credit Card Account
 # ============================================================================

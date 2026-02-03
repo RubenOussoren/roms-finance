@@ -1,10 +1,11 @@
 class UI::Account::ProjectionChart < ApplicationComponent
-  attr_reader :account, :years, :assumption
+  attr_reader :account, :years, :assumption, :show_years_selector
 
-  def initialize(account:, years: 10, assumption: nil)
+  def initialize(account:, years: 10, assumption: nil, show_years_selector: true)
     @account = account
     @years = years
     @assumption = assumption
+    @show_years_selector = show_years_selector
   end
 
   def chart_data

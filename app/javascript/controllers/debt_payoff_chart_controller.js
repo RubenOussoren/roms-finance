@@ -1,56 +1,15 @@
-import { Controller } from "@hotwired/stimulus";
-import * as d3 from "d3";
+import BaseD3ChartController, { d3 } from "controllers/base_d3_chart";
 
 const parseLocalDate = d3.timeParse("%Y-%m-%d");
 
-export default class extends Controller {
-  static values = {
-    data: Object,
-  };
-
-  _d3SvgMemo = null;
-  _d3GroupMemo = null;
-  _d3Tooltip = null;
-  _d3InitialContainerWidth = 0;
-  _d3InitialContainerHeight = 0;
+export default class extends BaseD3ChartController {
   _historicalDataPoints = [];
   _projectionDataPoints = [];
-  _resizeObserver = null;
-  _resizeTimeout = null;
-  _guideline = null;
-  _dataCircle = null;
-
-  connect() {
-    this._install();
-    document.addEventListener("turbo:load", this._reinstall);
-    this._setupResizeObserver();
-  }
-
-  disconnect() {
-    this._teardown();
-    document.removeEventListener("turbo:load", this._reinstall);
-    this._resizeObserver?.disconnect();
-  }
-
-  _reinstall = () => {
-    this._teardown();
-    this._install();
-  };
 
   _teardown() {
-    this._d3SvgMemo = null;
-    this._d3GroupMemo = null;
-    this._d3Tooltip = null;
+    super._teardown();
     this._historicalDataPoints = [];
     this._projectionDataPoints = [];
-
-    this._d3Container.selectAll("*").remove();
-  }
-
-  _install() {
-    this._normalizeDataPoints();
-    this._rememberInitialContainerSize();
-    this._draw();
   }
 
   _normalizeDataPoints() {
@@ -65,31 +24,12 @@ export default class extends Controller {
     }));
   }
 
-  _rememberInitialContainerSize() {
-    this._d3InitialContainerWidth = this._d3Container.node().clientWidth;
-    this._d3InitialContainerHeight = this._d3Container.node().clientHeight;
-  }
-
   _draw() {
     if (this._historicalDataPoints.length < 1 && this._projectionDataPoints.length < 1) {
-      this._drawEmpty();
+      this._drawEmpty("No debt payoff data available");
     } else {
       this._drawChart();
     }
-  }
-
-  _drawEmpty() {
-    this._d3Svg.selectAll(".tick").remove();
-    this._d3Svg.selectAll(".domain").remove();
-
-    this._d3Svg
-      .append("text")
-      .attr("x", this._d3InitialContainerWidth / 2)
-      .attr("y", this._d3InitialContainerHeight / 2)
-      .attr("text-anchor", "middle")
-      .attr("class", "fg-subdued")
-      .style("font-size", "14px")
-      .text("No debt payoff data available");
   }
 
   _drawChart() {
@@ -212,16 +152,6 @@ export default class extends Controller {
       .attr("dy", "0em");
   }
 
-  _drawTooltip() {
-    this._d3Tooltip = d3
-      .select(`#${this.element.id}`)
-      .append("div")
-      .attr(
-        "class",
-        "bg-container text-sm font-sans absolute p-2 border border-secondary rounded-lg pointer-events-none opacity-0",
-      );
-  }
-
   _trackMouseForShowingTooltip() {
     const allDataPoints = [
       ...this._historicalDataPoints.map((d) => ({
@@ -238,37 +168,11 @@ export default class extends Controller {
 
     const bisectDate = d3.bisector((d) => d.date).left;
 
-    // Create reusable DOM elements once (toggle opacity instead of remove/add)
-    this._guideline = this._d3Group
-      .append("line")
-      .attr("class", "guideline fg-subdued")
-      .attr("y1", 0)
-      .attr("y2", this._d3ContainerHeight)
-      .attr("stroke", "currentColor")
-      .attr("stroke-dasharray", "4, 4")
-      .style("opacity", 0);
+    this._createGuideline();
+    this._createDataCircle();
 
-    this._dataCircle = this._d3Group
-      .append("circle")
-      .attr("class", "data-point-circle")
-      .attr("r", 5)
-      .attr("pointer-events", "none")
-      .style("opacity", 0);
-
-    this._d3Group
-      .append("rect")
-      .attr("class", "bg-container")
-      .attr("width", this._d3ContainerWidth)
-      .attr("height", this._d3ContainerHeight)
-      .attr("fill", "none")
-      .attr("pointer-events", "all")
-      .on("mousemove", this._throttle((event) => {
-        const estimatedTooltipWidth = 200;
-        const pageWidth = document.body.clientWidth;
-        const tooltipX = event.pageX + 10;
-        const overflowX = tooltipX + estimatedTooltipWidth - pageWidth;
-        const adjustedX = overflowX > 0 ? event.pageX - overflowX - 20 : tooltipX;
-
+    this._createInteractionRect(
+      (event) => {
         const [xPos] = d3.pointer(event);
         const x0 = bisectDate(allDataPoints, this._d3XScale.invert(xPos), 1);
         const d0 = allDataPoints[Math.max(0, x0 - 1)];
@@ -280,39 +184,27 @@ export default class extends Controller {
           xPos - this._d3XScale(d0.date) > this._d3XScale(d1.date) - xPos ? d1 : d0;
 
         // Update guideline position and show it
-        this._guideline
-          .attr("x1", this._d3XScale(d.date))
-          .attr("x2", this._d3XScale(d.date))
-          .style("opacity", 1);
+        this._showGuideline(this._d3XScale(d.date));
 
         // Update circle position, color, and show it
         const circleColor =
           d.type === "historical" ? "var(--color-gray-400)" : "var(--color-blue-500)";
 
-        this._dataCircle
-          .attr("cx", this._d3XScale(d.date))
-          .attr("cy", this._d3YScale(d.value))
-          .attr("fill", circleColor)
-          .style("opacity", 1);
+        this._showDataCircle(this._d3XScale(d.date), this._d3YScale(d.value), circleColor);
 
-        // Render tooltip
-        this._d3Tooltip
-          .html(this._tooltipTemplate(d))
-          .style("opacity", 1)
-          .style("z-index", 999)
-          .style("left", `${adjustedX}px`)
-          .style("top", `${event.pageY - 10}px`);
-      }, 50)) // 50ms = 20 updates/sec max
-      .on("mouseout", (event) => {
+        // Render tooltip with smart positioning
+        this._positionTooltip(event, this._tooltipTemplate(d));
+      },
+      (event) => {
         const hoveringOnGuideline = event.toElement?.classList.contains("guideline");
 
         if (!hoveringOnGuideline) {
-          // Hide elements instead of removing them
-          this._guideline.style("opacity", 0);
-          this._dataCircle.style("opacity", 0);
-          this._d3Tooltip.style("opacity", 0);
+          this._hideGuideline();
+          this._hideDataCircle();
+          this._hideTooltip();
         }
-      });
+      }
+    );
   }
 
   _tooltipTemplate(datum) {
@@ -340,62 +232,8 @@ export default class extends Controller {
     `;
   }
 
-  _formatCurrency(value, currency) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  }
-
-  _createMainSvg() {
-    return this._d3Container
-      .append("svg")
-      .attr("width", this._d3InitialContainerWidth)
-      .attr("height", this._d3InitialContainerHeight)
-      .attr("viewBox", [
-        0,
-        0,
-        this._d3InitialContainerWidth,
-        this._d3InitialContainerHeight,
-      ]);
-  }
-
-  _createMainGroup() {
-    return this._d3Svg
-      .append("g")
-      .attr("transform", `translate(${this._margin.left},${this._margin.top})`);
-  }
-
-  get _d3Svg() {
-    if (!this._d3SvgMemo) {
-      this._d3SvgMemo = this._createMainSvg();
-    }
-    return this._d3SvgMemo;
-  }
-
-  get _d3Group() {
-    if (!this._d3GroupMemo) {
-      this._d3GroupMemo = this._createMainGroup();
-    }
-    return this._d3GroupMemo;
-  }
-
-  get _margin() {
-    return { top: 20, right: 0, bottom: 10, left: 0 };
-  }
-
-  get _d3ContainerWidth() {
-    return this._d3InitialContainerWidth - this._margin.left - this._margin.right;
-  }
-
-  get _d3ContainerHeight() {
-    return this._d3InitialContainerHeight - this._margin.top - this._margin.bottom;
-  }
-
-  get _d3Container() {
-    return d3.select(this.element);
+  get _chartAriaLabel() {
+    return "Debt payoff chart showing remaining balance over time";
   }
 
   get _d3XScale() {
@@ -404,10 +242,7 @@ export default class extends Controller {
       ...this._projectionDataPoints.map((d) => d.date),
     ];
 
-    return d3
-      .scaleTime()
-      .rangeRound([0, this._d3ContainerWidth])
-      .domain(d3.extent(allDates));
+    return this._createTimeScale(allDates);
   }
 
   get _d3YScale() {
@@ -415,45 +250,7 @@ export default class extends Controller {
     const projectionValues = this._projectionDataPoints.map((d) => d.value);
     const allValues = [...historicalValues, ...projectionValues];
 
-    const dataMin = d3.min(allValues);
-    const dataMax = d3.max(allValues);
-
-    // Handle edge case where all values are the same
-    if (dataMin === dataMax) {
-      const padding = dataMax === 0 ? 100 : Math.abs(dataMax) * 0.5;
-      return d3
-        .scaleLinear()
-        .rangeRound([this._d3ContainerHeight, 0])
-        .domain([dataMin - padding, dataMax + padding]);
-    }
-
-    const dataRange = dataMax - dataMin;
-    const padding = dataRange * 0.1;
-
-    return d3
-      .scaleLinear()
-      .rangeRound([this._d3ContainerHeight, 0])
-      .domain([Math.max(0, dataMin - padding), dataMax + padding]);
-  }
-
-  _setupResizeObserver() {
-    this._resizeObserver = new ResizeObserver(() => {
-      // Debounce resize to prevent freeze during sidebar toggle
-      clearTimeout(this._resizeTimeout);
-      this._resizeTimeout = setTimeout(() => this._reinstall(), 150);
-    });
-    this._resizeObserver.observe(this.element);
-  }
-
-  // Throttle utility to limit event handler frequency
-  _throttle(func, limit) {
-    let inThrottle;
-    return (...args) => {
-      if (!inThrottle) {
-        func.apply(this, args);
-        inThrottle = true;
-        setTimeout(() => { inThrottle = false; }, limit);
-      }
-    };
+    // Debt values are positive (absolute balance), so don't allow negative
+    return this._createLinearScale(allValues, { allowNegative: false });
   }
 }

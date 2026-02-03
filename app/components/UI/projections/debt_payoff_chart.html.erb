@@ -31,10 +31,12 @@
       </div>
 
       <%# Chart %>
-      <div class="h-64 pb-4">
+      <div class="h-48 sm:h-64 lg:h-80 pb-4">
         <div
           id="<%= chart_frame_id %>-chart"
           class="w-full h-full"
+          role="figure"
+          aria-label="Debt payoff chart showing remaining balance trajectory over time"
           data-controller="debt-payoff-chart"
           data-debt-payoff-chart-data-value="<%= chart_data %>">
         </div>

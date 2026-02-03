@@ -118,4 +118,65 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
     assert month_12 > investment_account.balance, "Investment should grow over time"
     assert month_12 > month_1, "Growth should compound"
   end
+
+  test "calculate_percentiles handles negative net worth correctly" do
+    net_worth = -50_000  # More debt than assets
+    month = 12
+    volatility = 0.15
+
+    percentiles = @calculator.send(:calculate_percentiles, net_worth, month, volatility)
+
+    # For negative net worth:
+    # p10 (pessimistic) should be more negative than p50
+    # p90 (optimistic) should be less negative than p50
+    assert percentiles[:p10] < percentiles[:p50], "p10 should be more negative than p50"
+    assert percentiles[:p50] < percentiles[:p90], "p50 should be more negative than p90"
+
+    # Verify ordering: p10 < p25 < p50 < p75 < p90
+    assert percentiles[:p10] < percentiles[:p25], "p10 should be < p25"
+    assert percentiles[:p25] < percentiles[:p50], "p25 should be < p50"
+    assert percentiles[:p50] < percentiles[:p75], "p50 should be < p75"
+    assert percentiles[:p75] < percentiles[:p90], "p75 should be < p90"
+  end
+
+  test "calculate_percentiles handles zero net worth" do
+    net_worth = 0
+    month = 12
+    volatility = 0.15
+
+    percentiles = @calculator.send(:calculate_percentiles, net_worth, month, volatility)
+
+    # Zero should result in all percentiles being zero
+    assert_equal 0.0, percentiles[:p10]
+    assert_equal 0.0, percentiles[:p50]
+    assert_equal 0.0, percentiles[:p90]
+  end
+
+  test "percentile bands remain properly ordered at high volatility" do
+    net_worth = 100_000
+    month = 24
+    volatility = 0.50  # 50% volatility
+
+    percentiles = @calculator.send(:calculate_percentiles, net_worth, month, volatility)
+
+    # Even with high volatility, ordering should be maintained
+    assert percentiles[:p10] < percentiles[:p25], "p10 should be < p25 at high volatility"
+    assert percentiles[:p25] < percentiles[:p50], "p25 should be < p50 at high volatility"
+    assert percentiles[:p50] < percentiles[:p75], "p50 should be < p75 at high volatility"
+    assert percentiles[:p75] < percentiles[:p90], "p75 should be < p90 at high volatility"
+  end
+
+  test "percentile bands remain properly ordered for negative net worth at high volatility" do
+    net_worth = -100_000
+    month = 24
+    volatility = 0.50  # 50% volatility
+
+    percentiles = @calculator.send(:calculate_percentiles, net_worth, month, volatility)
+
+    # Even with high volatility and negative values, ordering should be maintained
+    assert percentiles[:p10] < percentiles[:p25], "p10 should be < p25 at high volatility"
+    assert percentiles[:p25] < percentiles[:p50], "p25 should be < p50 at high volatility"
+    assert percentiles[:p50] < percentiles[:p75], "p50 should be < p75 at high volatility"
+    assert percentiles[:p75] < percentiles[:p90], "p75 should be < p90 at high volatility"
+  end
 end

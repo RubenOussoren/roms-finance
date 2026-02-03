@@ -20,10 +20,12 @@
     </div>
   </div>
 
-  <div class="h-64 pb-4">
+  <div class="h-48 sm:h-64 lg:h-80 pb-4">
     <div
       id="net-worth-projection-chart"
       class="w-full h-full"
+      role="figure"
+      aria-label="Net worth projection chart showing historical values and future projections with confidence bands"
       data-controller="projection-chart"
       data-projection-chart-data-value="<%= chart_data %>">
     </div>

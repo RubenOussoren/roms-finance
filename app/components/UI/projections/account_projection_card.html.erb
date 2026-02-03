@@ -40,7 +40,7 @@
   <div class="px-4 pb-4 border-t border-secondary">
     <%# Projection chart %>
     <div class="pt-4 mb-4">
-      <%= render UI::Account::ProjectionChart.new(account: account, years: projection_years) %>
+      <%= render UI::Account::ProjectionChart.new(account: account, years: projection_years, show_years_selector: false) %>
     </div>
 
     <%# Inline projection settings %>
