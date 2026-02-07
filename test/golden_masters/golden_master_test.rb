@@ -8,11 +8,12 @@ require "yaml"
 # documented inputs and compare outputs against recorded snapshots.
 # They exist to detect ANY change in financial calculation behavior.
 #
-# Golden master snapshots reflect PARTIALLY-CORRECTED behavior. Remaining issues
-# (documented in BASELINE.md) include:
+# Golden master snapshots reflect CORRECTED behavior as of phase 3.
+# Previously known issues now fixed:
 #   - CORRECTED: Tax rates now include federal + provincial (phase 2)
-#   - p50 shows mean not median for volatile portfolios
-# CORRECTED: Mortgage compounding now uses Canadian semi-annual (Interest Act)
+#   - CORRECTED: p50 now uses true median with drift correction (phase 3)
+#   - CORRECTED: Mortgage compounding now uses Canadian semi-annual (Interest Act)
+#   - CORRECTED: PAG 2025 safety margin applied (phase 3)
 #
 # To regenerate snapshots after intentional changes:
 #   REGENERATE_GOLDEN_MASTERS=true bin/rails test test/golden_masters/
@@ -378,7 +379,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
         "scenario" => "B",
         "calculator" => "ProjectionCalculator",
         "label" => label,
-        "pre_correction_note" => "p50 shows mean (deterministic), not true median. PAG safety margin not applied.",
+        "pre_correction_note" => "CORRECTED: p50 now uses drift-corrected median. PAG safety margin applied.",
         "inputs" => {
           "principal" => 100_000,
           "annual_return" => 0.07,

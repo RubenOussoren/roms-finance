@@ -27,8 +27,8 @@ current (incorrect) state. Future phases will fix these and regenerate snapshots
 | 1 | Monthly compounding instead of Canadian semi-annual `(1+r/2)^(1/6)-1` | Overstates monthly rate by ~0.02% | `BaselineSimulator#calculate_mortgage_payment` (line 155), `CanadianSmithManoeuvrSimulator#calculate_mortgage_payment` (line 317), `LoanPayoffCalculator#monthly_rate` (line 163), `Loan#calculate_monthly_payment` (line 48) |
 | 2 | Federal-only tax brackets (missing provincial) | Understates tax benefit by 30-45% | `Jurisdiction#marginal_tax_rate` (line 32), `test/fixtures/jurisdictions.yml` |
 | 3 | HELOC interest cash source untracked | No tracked outflow for HELOC interest payments | `CanadianSmithManoeuvrSimulator#simulate_modified_smith!` (line 134) |
-| 4 | PAG 2025 safety margin not applied | Returns overstated by 0.5% | `ProjectionStandard::PAG_2025_DEFAULTS` missing `safety_margin: -0.005` |
-| 5 | p50 shows deterministic mean, not true median | Optimistic bias for volatile portfolios | `ProjectionCalculator#project_with_analytical_bands` (line 149), `ProjectionCalculator#calculate_percentiles_for_value` (line 165) |
+| 4 | ~~PAG 2025 safety margin not applied~~ CORRECTED | ~~Returns overstated by 0.5%~~ | `ProjectionStandard::PAG_2025_DEFAULTS` now includes `safety_margin: -0.005` |
+| 5 | ~~p50 shows deterministic mean, not true median~~ CORRECTED | ~~Optimistic bias for volatile portfolios~~ | `ProjectionCalculator#calculate_percentiles_for_value` and `FamilyProjectionCalculator#calculate_percentiles` now use drift correction: `median = value * exp(-sigma²/2)` |
 
 ---
 
@@ -93,9 +93,9 @@ current (incorrect) state. Future phases will fix these and regenerate snapshots
 
 | Output | Value (10yr) | Value (25yr) | Source File | Method |
 |--------|-------------|-------------|-------------|--------|
-| `p50` at year 5 | $177,558.98 | $177,558.98 | `app/calculators/projection_calculator.rb` | `project_with_analytical_bands` (line 135) → `future_value_at_month` (line 15) |
-| `p50` at year 10 | $287,508.54 | $287,508.54 | Same | Same |
-| `p50` at year 25 | N/A | $977,577.67 | Same | Same |
+| `p50` at year 5 | $163,743.77 | $163,743.77 | `app/calculators/projection_calculator.rb` | `project_with_analytical_bands` (line 135) → `calculate_percentiles_for_value` with drift correction |
+| `p50` at year 10 | $244,509.11 | $244,509.11 | Same | Same |
+| `p50` at year 25 | N/A | $652,021.63 | Same | Same |
 | `p10` at year 10 | $138,748.62 | $138,748.62 | `app/calculators/projection_calculator.rb` | `calculate_percentiles_for_value` (line 160) with `exp(-1.28 * sigma)` |
 | `p90` at year 10 | $595,762.05 | $595,762.05 | Same | `exp(1.28 * sigma)` |
 | `years_to_200k` | 6.25 | 6.25 | `app/calculators/projection_calculator.rb` | `years_to_target` (line 44) → `months_to_target` (line 51) binary search |
