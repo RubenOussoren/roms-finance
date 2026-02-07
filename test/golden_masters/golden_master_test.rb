@@ -190,6 +190,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
         jurisdiction: @jurisdiction,
         name: "Golden Master #{strategy_type}",
         strategy_type: strategy_type,
+        province: "ON",
         primary_mortgage: primary,
         rental_mortgage: rental,
         heloc: heloc,
@@ -254,7 +255,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       {
         "scenario" => "A",
         "simulator" => "BaselineSimulator",
-        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal-only tax rates.",
+        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates.",
         "inputs" => {
           "primary_mortgage" => 400_000,
           "primary_rate" => 5.0,
@@ -297,7 +298,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       {
         "scenario" => "A",
         "simulator" => "CanadianSmithManoeuvrSimulator",
-        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal-only tax rates. HELOC interest cash source untracked.",
+        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates. HELOC interest cash source untracked.",
         "inputs" => {
           "primary_mortgage" => 400_000,
           "primary_rate" => 5.0,
@@ -475,10 +476,11 @@ class GoldenMasterTest < ActiveSupport::TestCase
       {
         "scenario" => "C",
         "calculator" => "DebtOptimizationStrategy + CanadianSmithManoeuvrSimulator",
-        "pre_correction_note" => "Federal-only tax rates (missing provincial, understates benefit by 30-45%). HELOC interest cash source untracked.",
+        "pre_correction_note" => "Federal + Ontario provincial rates. HELOC interest cash source untracked.",
         "inputs" => {
           "household_income" => 100_000,
-          "jurisdiction" => "Canada (federal-only brackets from fixture)",
+          "province" => "ON",
+          "jurisdiction" => "Canada (federal + Ontario provincial brackets from fixture)",
           "primary_mortgage" => 400_000,
           "primary_rate" => 5.0,
           "rental_mortgage" => 200_000,

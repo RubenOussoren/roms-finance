@@ -1,7 +1,7 @@
 {
   "scenario": "A",
   "simulator": "CanadianSmithManoeuvrSimulator",
-  "pre_correction_note": "Uses monthly compounding (not Canadian semi-annual). Federal-only tax rates. HELOC interest cash source untracked.",
+  "pre_correction_note": "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates. HELOC interest cash source untracked.",
   "inputs": {
     "primary_mortgage": 400000,
     "primary_rate": 5.0,
@@ -25,7 +25,7 @@
     "months_accelerated": null,
     "total_baseline_entries": 300,
     "total_strategy_entries": 240,
-    "final_cumulative_tax_benefit": 43025.9778,
+    "final_cumulative_tax_benefit": 62230.2557,
     "final_heloc_balance": 100000.0,
     "heloc_trajectory": [
       {
@@ -66,8 +66,8 @@
         "heloc_interest": 0.0,
         "deductible_interest": 906.3363,
         "non_deductible_interest": 1649.5662,
-        "tax_benefit": 185.799,
-        "cumulative_tax_benefit": 185.799,
+        "tax_benefit": 268.7287,
+        "cumulative_tax_benefit": 268.7287,
         "total_debt": 597360.7
       },
       {
@@ -82,8 +82,8 @@
         "heloc_interest": 32.0833,
         "deductible_interest": 914.8379,
         "non_deductible_interest": 1525.6008,
-        "tax_benefit": 187.5418,
-        "cumulative_tax_benefit": 2240.2629,
+        "tax_benefit": 271.2494,
+        "cumulative_tax_benefit": 3240.1852,
         "total_debt": 567449.2851
       },
       {
@@ -98,8 +98,8 @@
         "heloc_interest": 172.0833,
         "deductible_interest": 937.0342,
         "non_deductible_interest": 913.8938,
-        "tax_benefit": 192.092,
-        "cumulative_tax_benefit": 11374.6883,
+        "tax_benefit": 277.8306,
+        "cumulative_tax_benefit": 16451.6833,
         "total_debt": 416392.5782
       },
       {
@@ -114,8 +114,8 @@
         "heloc_interest": 347.0833,
         "deductible_interest": 923.8494,
         "non_deductible_interest": 0.0,
-        "tax_benefit": 189.3891,
-        "cumulative_tax_benefit": 22870.0209,
+        "tax_benefit": 273.9214,
+        "cumulative_tax_benefit": 33077.8595,
         "total_debt": 186482.1681
       }
     ]
