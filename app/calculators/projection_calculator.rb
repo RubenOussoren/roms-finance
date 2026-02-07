@@ -75,6 +75,9 @@ class ProjectionCalculator
         end
       end
 
+      # If even at the 100-year cap the target isn't reached, it's unreachable
+      return nil if future_value_at_month(high) < target
+
       high
     end
   end

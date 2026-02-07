@@ -54,6 +54,17 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     assert_nil calc.months_to_target(target: 10000)
   end
 
+  test "months to target returns nil for unreachable target with positive rate" do
+    # $500 at 1% with $0 contributions can never reach $10M in 100 years
+    calc = ProjectionCalculator.new(principal: 500, rate: 0.01, contribution: 0)
+    assert_nil calc.months_to_target(target: 10_000_000)
+  end
+
+  test "years to target returns nil for unreachable target" do
+    calc = ProjectionCalculator.new(principal: 500, rate: 0.01, contribution: 0)
+    assert_nil calc.years_to_target(target: 10_000_000)
+  end
+
   test "required contribution calculates correctly" do
     calc = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 0)
 

@@ -36,6 +36,24 @@ class MilestoneCalculatorTest < ActiveSupport::TestCase
     assert result[:projected_date].present?
   end
 
+  test "time to target returns not achievable for unreachable target" do
+    low_growth = OpenStruct.new(
+      effective_return: 0.01,
+      monthly_contribution: 0,
+      effective_volatility: 0
+    )
+
+    calc = MilestoneCalculator.new(
+      current_balance: 500,
+      assumption: low_growth
+    )
+
+    result = calc.time_to_target(target: 10_000_000)
+
+    assert_not result[:achieved]
+    assert_not result[:achievable]
+  end
+
   test "required contribution calculates monthly amount" do
     calc = MilestoneCalculator.new(
       current_balance: 10000,
