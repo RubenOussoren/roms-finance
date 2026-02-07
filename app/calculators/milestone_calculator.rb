@@ -1,6 +1,8 @@
 # Universal: Time-to-goal milestone calculator
 # Supports both growth milestones (reach target) and debt milestones (reduce to target)
 class MilestoneCalculator
+  include PercentileZScores
+
   attr_reader :current_balance, :assumption, :currency, :target_type
 
   def initialize(current_balance:, assumption:, currency: "CAD", target_type: "reach")
@@ -239,7 +241,7 @@ class MilestoneCalculator
 
       if p10 > 0 && p50 > 0 && p90 > 0 && target > 0
         mu = Math.log(p50)
-        sigma = (Math.log(p90) - Math.log(p10)) / (2 * 1.28)
+        sigma = (Math.log(p90) - Math.log(p10)) / (2 * Z_P90)
 
         if sigma > 0
           z = (Math.log(target) - mu) / sigma

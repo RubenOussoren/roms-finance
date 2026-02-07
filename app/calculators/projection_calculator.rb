@@ -1,6 +1,8 @@
 # 🌍 Universal: Adaptive growth projection calculator
 # Pure function calculator with no side effects
 class ProjectionCalculator
+  include PercentileZScores
+
   attr_reader :principal, :rate, :contribution, :currency
 
   def initialize(principal:, rate:, contribution: 0, currency: "CAD")
@@ -167,23 +169,23 @@ class ProjectionCalculator
     if value >= 0
       # Standard log-normal percentiles for positive values
       {
-        p10: (value * Math.exp(-1.28 * sigma)).round(2),
-        p25: (value * Math.exp(-0.67 * sigma)).round(2),
+        p10: (value * Math.exp(Z_P10 * sigma)).round(2),
+        p25: (value * Math.exp(Z_P25 * sigma)).round(2),
         p50: (value * drift_correction).round(2),
-        p75: (value * Math.exp(0.67 * sigma)).round(2),
-        p90: (value * Math.exp(1.28 * sigma)).round(2)
+        p75: (value * Math.exp(Z_P75 * sigma)).round(2),
+        p90: (value * Math.exp(Z_P90 * sigma)).round(2)
       }
     else
       # For negative values (debts), invert the multipliers
-      # p10 = pessimistic = more negative (multiply absolute value by exp(+1.28))
-      # p90 = optimistic = less negative (multiply absolute value by exp(-1.28))
+      # p10 = pessimistic = more negative (multiply absolute value by exp(+z))
+      # p90 = optimistic = less negative (multiply absolute value by exp(-z))
       abs_value = value.abs
       {
-        p10: -(abs_value * Math.exp(1.28 * sigma)).round(2),
-        p25: -(abs_value * Math.exp(0.67 * sigma)).round(2),
+        p10: -(abs_value * Math.exp(-Z_P10 * sigma)).round(2),
+        p25: -(abs_value * Math.exp(-Z_P25 * sigma)).round(2),
         p50: -(abs_value * drift_correction).round(2),
-        p75: -(abs_value * Math.exp(-0.67 * sigma)).round(2),
-        p90: -(abs_value * Math.exp(-1.28 * sigma)).round(2)
+        p75: -(abs_value * Math.exp(-Z_P75 * sigma)).round(2),
+        p90: -(abs_value * Math.exp(-Z_P90 * sigma)).round(2)
       }
     end
   end

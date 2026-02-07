@@ -1,6 +1,8 @@
 # Family-level net worth projection calculator
 # Aggregates projections across all accounts for net worth trajectory
 class FamilyProjectionCalculator
+  include PercentileZScores
+
   DEFAULT_SAVINGS_RATE = 0.02
 
   # Default correlation assumptions for portfolio variance calculation
@@ -181,11 +183,11 @@ class FamilyProjectionCalculator
       if net_worth >= 0
         # Standard percentiles for positive net worth
         {
-          p10: (net_worth * Math.exp(-1.28 * sigma)).to_f.round(2),
-          p25: (net_worth * Math.exp(-0.67 * sigma)).to_f.round(2),
+          p10: (net_worth * Math.exp(Z_P10 * sigma)).to_f.round(2),
+          p25: (net_worth * Math.exp(Z_P25 * sigma)).to_f.round(2),
           p50: (net_worth * drift_correction).to_f.round(2),
-          p75: (net_worth * Math.exp(0.67 * sigma)).to_f.round(2),
-          p90: (net_worth * Math.exp(1.28 * sigma)).to_f.round(2)
+          p75: (net_worth * Math.exp(Z_P75 * sigma)).to_f.round(2),
+          p90: (net_worth * Math.exp(Z_P90 * sigma)).to_f.round(2)
         }
       else
         # For negative net worth, invert the multipliers
@@ -193,11 +195,11 @@ class FamilyProjectionCalculator
         # p90 = optimistic = less negative
         abs_value = net_worth.abs
         {
-          p10: -(abs_value * Math.exp(1.28 * sigma)).to_f.round(2),
-          p25: -(abs_value * Math.exp(0.67 * sigma)).to_f.round(2),
+          p10: -(abs_value * Math.exp(-Z_P10 * sigma)).to_f.round(2),
+          p25: -(abs_value * Math.exp(-Z_P25 * sigma)).to_f.round(2),
           p50: -(abs_value * drift_correction).to_f.round(2),
-          p75: -(abs_value * Math.exp(-0.67 * sigma)).to_f.round(2),
-          p90: -(abs_value * Math.exp(-1.28 * sigma)).to_f.round(2)
+          p75: -(abs_value * Math.exp(-Z_P75 * sigma)).to_f.round(2),
+          p90: -(abs_value * Math.exp(-Z_P90 * sigma)).to_f.round(2)
         }
       end
     end
