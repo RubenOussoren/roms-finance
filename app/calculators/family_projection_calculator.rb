@@ -18,15 +18,20 @@ class FamilyProjectionCalculator
     Rails.cache.fetch(cache_key, expires_in: 1.hour) do
       months = years * 12
       historical = historical_net_worth_data
-      projections = project_net_worth(months: months)
+      projection_result = project_net_worth(months: months)
+      projections = projection_result[:projections]
 
-      {
+      result = {
         historical: historical,
         projections: projections,
         currency: family.currency,
         today: Date.current.iso8601,
         summary: build_summary(projections)
       }
+
+      result[:currency_warnings] = projection_result[:currency_warnings] if projection_result[:currency_warnings].any?
+
+      result
     end
   end
 
@@ -65,15 +70,17 @@ class FamilyProjectionCalculator
       # Validate currency consistency
       all_accounts = asset_accounts + liability_accounts
       mismatched = all_accounts.reject { |a| a.currency == family.currency }
+      currency_warnings = []
       if mismatched.any?
         Rails.logger.warn "FamilyProjectionCalculator: #{mismatched.size} accounts have non-family currency, projections may be inaccurate"
+        currency_warnings << "Mixed currencies detected — projections may be inaccurate. #{mismatched.size} account#{'s' if mismatched.size > 1} use#{'s' if mismatched.size == 1} non-#{family.currency} currencies."
       end
 
       # Calculate aggregate volatility from asset accounts for percentile bands
       volatility = aggregate_volatility(asset_accounts)
 
       # Build monthly projections
-      (1..months).map do |month|
+      projections = (1..months).map do |month|
         date = Date.current + month.months
 
         # Calculate projected assets
@@ -103,6 +110,8 @@ class FamilyProjectionCalculator
           liabilities: projected_liabilities.to_f.round(2)
         }
       end
+
+      { projections: projections, currency_warnings: currency_warnings }
     end
 
     # Calculate portfolio-weighted volatility from asset accounts
@@ -124,16 +133,18 @@ class FamilyProjectionCalculator
     # Handles both positive and negative net worth correctly
     # For positive: p10 (pessimistic) < p50 < p90 (optimistic)
     # For negative: p10 (more negative) < p50 < p90 (less negative)
+    # p50 uses drift correction: median = value * exp(-sigma²/2) for log-normal
     def calculate_percentiles(net_worth, month, volatility)
       time_factor = Math.sqrt(month / 12.0)
       sigma = volatility * time_factor
+      drift_correction = Math.exp(-sigma**2 / 2.0)
 
       if net_worth >= 0
         # Standard percentiles for positive net worth
         {
           p10: (net_worth * Math.exp(-1.28 * sigma)).to_f.round(2),
           p25: (net_worth * Math.exp(-0.67 * sigma)).to_f.round(2),
-          p50: net_worth.to_f.round(2),
+          p50: (net_worth * drift_correction).to_f.round(2),
           p75: (net_worth * Math.exp(0.67 * sigma)).to_f.round(2),
           p90: (net_worth * Math.exp(1.28 * sigma)).to_f.round(2)
         }
@@ -145,7 +156,7 @@ class FamilyProjectionCalculator
         {
           p10: -(abs_value * Math.exp(1.28 * sigma)).to_f.round(2),
           p25: -(abs_value * Math.exp(0.67 * sigma)).to_f.round(2),
-          p50: net_worth.to_f.round(2),
+          p50: -(abs_value * drift_correction).to_f.round(2),
           p75: -(abs_value * Math.exp(-0.67 * sigma)).to_f.round(2),
           p90: -(abs_value * Math.exp(-1.28 * sigma)).to_f.round(2)
         }

@@ -64,6 +64,25 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
     assert_equal @family.currency, metrics[:currency]
   end
 
+  test "currency warnings included when accounts have mixed currencies" do
+    # Dylan family has USD currency but Smith accounts use CAD
+    result = @calculator.project(years: 1)
+
+    assert_includes result.keys, :currency_warnings
+    assert result[:currency_warnings].any? { |w| w.include?("Mixed currencies") }
+  end
+
+  test "currency warnings absent when all accounts match family currency" do
+    # Temporarily set all accounts to family currency to test no-warning case
+    family_currency = @family.currency
+    @family.accounts.active.update_all(currency: family_currency)
+
+    calc = FamilyProjectionCalculator.new(@family)
+    result = calc.project(years: 1)
+
+    assert_not_includes result.keys, :currency_warnings
+  end
+
   test "calculate_percentiles uses analytical bands" do
     # Test the internal percentile calculation method
     net_worth = 100_000
@@ -80,7 +99,24 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
 
     assert_in_delta expected_p10, percentiles[:p10], 1.0
     assert_in_delta expected_p90, percentiles[:p90], 1.0
-    assert_equal net_worth.to_f.round(2), percentiles[:p50]
+    # p50 (median) should be less than mean due to drift correction
+    sigma = 0.15 * Math.sqrt(12 / 12.0)
+    expected_p50 = (net_worth * Math.exp(-sigma**2 / 2.0)).round(2)
+    assert_in_delta expected_p50, percentiles[:p50], 1.0
+    assert percentiles[:p50] < net_worth.to_f, "p50 (median) should be less than mean"
+  end
+
+  test "p50 median is lower than mean for non-zero volatility" do
+    net_worth = 100_000
+    month = 60  # 5 years
+    volatility = 0.18
+
+    percentiles = @calculator.send(:calculate_percentiles, net_worth, month, volatility)
+
+    sigma = volatility * Math.sqrt(month / 12.0)
+    expected_p50 = (net_worth * Math.exp(-sigma**2 / 2.0)).round(2)
+    assert_in_delta expected_p50, percentiles[:p50], 1.0
+    assert percentiles[:p50] < net_worth.to_f, "median should be below mean at 18% volatility over 5 years"
   end
 
   test "aggregate_volatility with empty accounts returns default" do
