@@ -15,89 +15,89 @@
   },
   "outputs": {
     "effective_marginal_tax_rate": 0.205,
-    "total_tax_benefit": 43369.9866,
-    "total_deductible_interest": 211560.9083,
-    "total_non_deductible_interest": 105813.1487,
+    "total_tax_benefit": 43025.9785,
+    "total_deductible_interest": 209882.8179,
+    "total_non_deductible_interest": 104713.2876,
     "monthly_tax_samples": [
       {
         "month": 0,
-        "deductible_interest": 916.6667,
-        "non_deductible_interest": 1666.6667,
-        "tax_benefit": 187.9167,
-        "cumulative_tax_benefit": 187.9167,
+        "deductible_interest": 906.3363,
+        "non_deductible_interest": 1649.5662,
+        "tax_benefit": 185.799,
+        "cumulative_tax_benefit": 185.799,
         "heloc_interest": 0.0,
-        "rental_mortgage_interest": 916.6667
+        "rental_mortgage_interest": 906.3363
       },
       {
         "month": 11,
-        "deductible_interest": 925.0655,
-        "non_deductible_interest": 1541.6308,
-        "tax_benefit": 189.6384,
-        "cumulative_tax_benefit": 2265.5526,
+        "deductible_interest": 914.8379,
+        "non_deductible_interest": 1525.6008,
+        "tax_benefit": 187.5418,
+        "cumulative_tax_benefit": 2240.2629,
         "heloc_interest": 32.0833,
-        "rental_mortgage_interest": 892.9822
+        "rental_mortgage_interest": 882.7546
       },
       {
         "month": 59,
-        "deductible_interest": 946.5638,
-        "non_deductible_interest": 923.8463,
-        "tax_benefit": 194.0456,
-        "cumulative_tax_benefit": 11497.4749,
+        "deductible_interest": 937.0342,
+        "non_deductible_interest": 913.8938,
+        "tax_benefit": 192.092,
+        "cumulative_tax_benefit": 11374.6883,
         "heloc_interest": 172.0833,
-        "rental_mortgage_interest": 774.4805
+        "rental_mortgage_interest": 764.9509
       },
       {
         "month": 119,
-        "deductible_interest": 931.733,
+        "deductible_interest": 923.8494,
         "non_deductible_interest": 0.0,
-        "tax_benefit": 191.0053,
-        "cumulative_tax_benefit": 23100.7848,
+        "tax_benefit": 189.3891,
+        "cumulative_tax_benefit": 22870.0209,
         "heloc_interest": 347.0833,
-        "rental_mortgage_interest": 584.6497
+        "rental_mortgage_interest": 576.7661
       },
       {
         "month": 179,
-        "deductible_interest": 856.9719,
+        "deductible_interest": 852.0167,
         "non_deductible_interest": 0.0,
-        "tax_benefit": 175.6792,
-        "cumulative_tax_benefit": 34163.7897,
+        "tax_benefit": 174.6634,
+        "cumulative_tax_benefit": 33852.7679,
         "heloc_interest": 522.0833,
-        "rental_mortgage_interest": 334.8885
+        "rental_mortgage_interest": 329.9333
       },
       {
         "month": 239,
-        "deductible_interest": 589.6102,
+        "deductible_interest": 589.5082,
         "non_deductible_interest": 0.0,
-        "tax_benefit": 120.8701,
-        "cumulative_tax_benefit": 43369.9861,
+        "tax_benefit": 120.8492,
+        "cumulative_tax_benefit": 43025.9778,
         "heloc_interest": 583.3333,
-        "rental_mortgage_interest": 6.2769
+        "rental_mortgage_interest": 6.1749
       }
     ],
     "year_end_cumulative": [
       {
         "year": 1,
-        "cumulative_tax_benefit": 2265.5526,
+        "cumulative_tax_benefit": 2240.2629,
         "heloc_balance": 6000.0
       },
       {
         "year": 5,
-        "cumulative_tax_benefit": 11497.4749,
+        "cumulative_tax_benefit": 11374.6883,
         "heloc_balance": 30000.0
       },
       {
         "year": 10,
-        "cumulative_tax_benefit": 23100.7848,
+        "cumulative_tax_benefit": 22870.0209,
         "heloc_balance": 60000.0
       },
       {
         "year": 15,
-        "cumulative_tax_benefit": 34163.7897,
+        "cumulative_tax_benefit": 33852.7679,
         "heloc_balance": 90000.0
       },
       {
         "year": 20,
-        "cumulative_tax_benefit": 43369.9861,
+        "cumulative_tax_benefit": 43025.9778,
         "heloc_balance": 100000.0
       }
     ]

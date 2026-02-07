@@ -1,7 +1,7 @@
 require "test_helper"
 
 class LoanTest < ActiveSupport::TestCase
-  test "calculates correct monthly payment for fixed rate loan" do
+  test "calculates correct monthly payment for fixed rate loan using Canadian semi-annual compounding" do
     loan_account = Account.create! \
       family: families(:dylan_family),
       name: "Mortgage Loan",
@@ -13,7 +13,9 @@ class LoanTest < ActiveSupport::TestCase
         rate_type: "fixed"
       )
 
-    assert_equal 2245, loan_account.loan.monthly_payment.amount
+    # Canadian semi-annual compounding: (1 + 0.035/2)^(1/6) - 1 yields ~$2,238/month
+    # Previously was $2,245 under US monthly compounding (0.035/12)
+    assert_equal 2238, loan_account.loan.monthly_payment.amount
   end
 
   # 🇨🇦 Canadian mortgage feature tests

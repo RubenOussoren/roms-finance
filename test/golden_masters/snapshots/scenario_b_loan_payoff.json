@@ -9,48 +9,48 @@
     "extra_payment": 0
   },
   "outputs": {
-    "monthly_payment": 2338.0,
+    "monthly_payment": 2326.0,
     "months_to_payoff": 301,
-    "total_interest_remaining": 301615.49,
-    "total_amount_remaining": 703738.0,
+    "total_interest_remaining": 298049.11,
+    "total_amount_remaining": 700126.0,
     "years_remaining": 25.1,
-    "total_interest_calculated": 301615.49,
+    "total_interest_calculated": 298049.11,
     "schedule_length": 301,
     "sample_entries": [
       {
         "month": 1,
-        "payment": 2338.0,
-        "principal": 671.33,
-        "interest": 1666.67,
-        "balance": 399328.67
+        "payment": 2326.0,
+        "principal": 676.43,
+        "interest": 1649.57,
+        "balance": 399323.57
       },
       {
         "month": 12,
-        "payment": 2338.0,
-        "principal": 702.75,
-        "interest": 1635.25,
-        "balance": 391756.8
+        "payment": 2326.0,
+        "principal": 707.76,
+        "interest": 1618.24,
+        "balance": 391696.13
       },
       {
         "month": 60,
-        "payment": 2338.0,
-        "principal": 857.99,
-        "interest": 1480.01,
-        "balance": 354345.25
+        "payment": 2326.0,
+        "principal": 862.34,
+        "interest": 1463.66,
+        "balance": 354058.55
       },
       {
         "month": 120,
-        "payment": 2338.0,
-        "principal": 1101.1,
-        "interest": 1236.9,
-        "balance": 295753.83
+        "payment": 2326.0,
+        "principal": 1103.86,
+        "interest": 1222.14,
+        "balance": 295249.61
       },
       {
         "month": 300,
-        "payment": 2338.0,
-        "principal": 2327.41,
-        "interest": 10.59,
-        "balance": 214.48
+        "payment": 2326.0,
+        "principal": 2315.43,
+        "interest": 10.57,
+        "balance": 248.17
       }
     ]
   }

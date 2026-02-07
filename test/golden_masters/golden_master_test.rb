@@ -8,11 +8,11 @@ require "yaml"
 # documented inputs and compare outputs against recorded snapshots.
 # They exist to detect ANY change in financial calculation behavior.
 #
-# Golden master snapshots reflect PRE-CORRECTION behavior. Known issues
+# Golden master snapshots reflect PARTIALLY-CORRECTED behavior. Remaining issues
 # (documented in BASELINE.md) include:
-#   - Mortgage compounding uses monthly convention instead of Canadian semi-annual
 #   - Tax rates are federal-only (missing provincial)
 #   - p50 shows mean not median for volatile portfolios
+# CORRECTED: Mortgage compounding now uses Canadian semi-annual (Interest Act)
 #
 # To regenerate snapshots after intentional changes:
 #   REGENERATE_GOLDEN_MASTERS=true bin/rails test test/golden_masters/
