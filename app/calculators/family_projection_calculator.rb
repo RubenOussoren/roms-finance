@@ -142,9 +142,13 @@ class FamilyProjectionCalculator
 
       # Portfolio variance = sum_i(sum_j(w_i * w_j * sigma_i * sigma_j * rho_ij))
       variance = 0.0
-      account_data.each do |a|
-        account_data.each do |b|
-          rho = correlation_between(a[:asset_class], b[:asset_class])
+      account_data.each_with_index do |a, i|
+        account_data.each_with_index do |b, j|
+          rho = if i == j
+            1.0  # Self-correlation is always 1
+          else
+            correlation_between(a[:asset_class], b[:asset_class])
+          end
           variance += a[:weight] * b[:weight] * a[:volatility] * b[:volatility] * rho
         end
       end

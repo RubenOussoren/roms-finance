@@ -124,7 +124,7 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
     assert_equal 0.15, volatility
   end
 
-  test "aggregate_volatility calculates weighted average" do
+  test "aggregate_volatility uses portfolio variance formula" do
     asset_accounts = @family.accounts.where(classification: "asset").active
 
     # Should not raise and should return a reasonable value
@@ -132,6 +132,53 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
 
     assert volatility >= 0, "Volatility should be non-negative"
     assert volatility <= 1.0, "Volatility should be <= 100%"
+  end
+
+  test "portfolio volatility is lower than weighted average due to diversification" do
+    # Create two mock accounts with different asset classes (use BigDecimal for balance like AR)
+    equity_account = OpenStruct.new(
+      id: "eq-1", balance: BigDecimal("60000"), accountable_type: "Investment",
+      projection_assumption: nil, currency: "CAD", family: @family
+    )
+    bond_account = OpenStruct.new(
+      id: "bond-1", balance: BigDecimal("40000"), accountable_type: "Depository",
+      projection_assumption: nil, currency: "CAD", family: @family
+    )
+
+    accounts = [ equity_account, bond_account ]
+
+    # Stub ProjectionAssumption.for_account to return controlled volatilities
+    equity_assumption = OpenStruct.new(effective_volatility: 0.18)
+    bond_assumption = OpenStruct.new(effective_volatility: 0.06)
+
+    ProjectionAssumption.stub(:for_account, ->(acct) {
+      acct.id == "eq-1" ? equity_assumption : bond_assumption
+    }) do
+      volatility = @calculator.send(:aggregate_volatility, accounts)
+
+      # Weighted average would be: 0.6 * 0.18 + 0.4 * 0.06 = 0.132
+      weighted_avg = 0.6 * 0.18 + 0.4 * 0.06
+
+      assert volatility < weighted_avg, "Portfolio volatility (#{volatility.round(4)}) should be less than weighted average (#{weighted_avg}) due to diversification"
+      assert volatility > 0, "Portfolio volatility should be positive"
+    end
+  end
+
+  test "single asset portfolio returns that asset volatility" do
+    single_account = OpenStruct.new(
+      id: "eq-only", balance: BigDecimal("100000"), accountable_type: "Investment",
+      projection_assumption: nil, currency: "CAD", family: @family
+    )
+
+    assumption = OpenStruct.new(effective_volatility: 0.18)
+
+    ProjectionAssumption.stub(:for_account, ->(_) { assumption }) do
+      volatility = @calculator.send(:aggregate_volatility, [ single_account ])
+
+      # Single asset: self-correlation = 1.0, so variance = 1² * 0.18² * 1.0 = 0.0324
+      # volatility = sqrt(0.0324) = 0.18
+      assert_in_delta 0.18, volatility, 0.001
+    end
   end
 
   test "loan balance projection decreases over time" do
