@@ -23,6 +23,9 @@ class GoldenMasterTest < ActiveSupport::TestCase
   GOLDEN_MASTER_DIR = Rails.root.join("test", "golden_masters", "snapshots")
   TOLERANCE = 0.01 # $0.01 tolerance for floating point comparisons
 
+  SAMPLE_MONTHS_SHORT = [0, 11, 59, 119, 299]                    # months 1, 12, 60, 120, 300
+  SAMPLE_MONTHS_FULL  = [0, 11, 59, 119, 179, 239, 299]          # adds months 180, 240
+
   setup do
     @family = families(:dylan_family)
     @jurisdiction = jurisdictions(:canada)
@@ -159,7 +162,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
   # ============================================================================
 
   test "scenario B supplement: loan payoff calculator golden master" do
-    primary = create_loan_account_with_valuation(@family, "GoldenMaster LPC Primary", 400_000, 5.0, 300)
+    primary = create_loan_account(@family, "GoldenMaster LPC Primary", 400_000, 5.0, 300, with_valuation: true)
 
     # Clear Rails cache to avoid stale results
     Rails.cache.clear
@@ -180,7 +183,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
     def build_scenario_a_strategy(strategy_type)
       primary = create_loan_account(@family, "GM Primary #{strategy_type}", 400_000, 5.0, 300)
       rental = create_loan_account(@family, "GM Rental #{strategy_type}", 200_000, 5.5, 240)
-      heloc = create_heloc_account(@family, "GM HELOC #{strategy_type}", 0, 7.0, 100_000)
+      heloc = create_loan_account(@family, "GM HELOC #{strategy_type}", 0, 7.0, rate_type: "variable", credit_limit: 100_000)
 
       DebtOptimizationStrategy.create!(
         family: @family,
@@ -199,71 +202,42 @@ class GoldenMasterTest < ActiveSupport::TestCase
       )
     end
 
-    def create_loan_account(family, name, balance, interest_rate, term_months)
+    # Unified account helper for loans and HELOCs.
+    #   term_months:       nil for HELOCs (open-ended)
+    #   rate_type:         "fixed" (default) or "variable"
+    #   credit_limit:      set for HELOCs
+    #   with_valuation:    creates an opening-balance entry (needed by LoanPayoffCalculator)
+    def create_loan_account(family, name, balance, interest_rate, term_months = nil,
+                            rate_type: "fixed", credit_limit: nil, with_valuation: false)
       loan = Loan.create!(
         interest_rate: interest_rate,
         term_months: term_months,
-        rate_type: "fixed"
-      )
-
-      Account.create!(
-        family: family,
-        name: name,
-        balance: -balance,
-        currency: "CAD",
-        accountable: loan,
-        status: "active"
-      )
-    end
-
-    # Creates a loan account with a valuation entry so that Loan#original_balance
-    # returns the correct positive amount (needed by LoanPayoffCalculator).
-    def create_loan_account_with_valuation(family, name, balance, interest_rate, term_months)
-      loan = Loan.create!(
-        interest_rate: interest_rate,
-        term_months: term_months,
-        rate_type: "fixed"
+        rate_type: rate_type,
+        credit_limit: credit_limit
       )
 
       account = Account.create!(
         family: family,
         name: name,
-        balance: -balance, # Loans stored as negative
-        currency: "CAD",
-        accountable: loan,
-        status: "active"
-      )
-
-      # Create a valuation entry with the original positive balance
-      # This is how the app normally tracks the initial loan amount
-      valuation = Valuation.create!(kind: "opening_anchor")
-      Entry.create!(
-        account: account,
-        entryable: valuation,
-        amount: balance, # Positive original balance
-        currency: "CAD",
-        date: 1.year.ago.to_date,
-        name: "Opening balance"
-      )
-
-      account
-    end
-
-    def create_heloc_account(family, name, balance, interest_rate, credit_limit)
-      loan = Loan.create!(
-        interest_rate: interest_rate,
-        rate_type: "variable",
-        credit_limit: credit_limit
-      )
-
-      Account.create!(
-        family: family,
-        name: name,
         balance: -balance,
         currency: "CAD",
         accountable: loan,
         status: "active"
       )
+
+      if with_valuation
+        valuation = Valuation.create!(kind: "opening_anchor")
+        Entry.create!(
+          account: account,
+          entryable: valuation,
+          amount: balance,
+          currency: "CAD",
+          date: 1.year.ago.to_date,
+          name: "Opening balance"
+        )
+      end
+
+      account
     end
 
     # ---- Snapshot Extractors ----
@@ -274,7 +248,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       total_rental_interest = entries.sum(&:rental_mortgage_interest)
       payoff_month = entries.index { |e| e.primary_mortgage_balance <= 0.01 }
 
-      sample_months = [0, 11, 59, 119, 299].map { |i| entries[i] }.compact
+      sample_months = SAMPLE_MONTHS_SHORT.map { |i| entries[i] }.compact
 
       {
         "scenario" => "A",
@@ -313,8 +287,8 @@ class GoldenMasterTest < ActiveSupport::TestCase
       strategy_payoff = strategy_entries.index { |e| e.primary_mortgage_balance <= 0.01 }
       months_accelerated = (baseline_payoff && strategy_payoff) ? baseline_payoff - strategy_payoff : nil
 
-      strategy_sample_months = [0, 11, 59, 119, 299].map { |i| strategy_entries[i] }.compact
-      heloc_trajectory = [0, 11, 59, 119, 179, 239, 299].map { |i|
+      strategy_sample_months = SAMPLE_MONTHS_SHORT.map { |i| strategy_entries[i] }.compact
+      heloc_trajectory = SAMPLE_MONTHS_FULL.map { |i|
         e = strategy_entries[i]
         e ? { "month" => e.month_number, "heloc_balance" => round_val(e.heloc_balance) } : nil
       }.compact
@@ -376,7 +350,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       end
 
       # Key intermediate points
-      sample_months = [0, 11, 59, 119, 179, 239, 299].map { |i|
+      sample_months = SAMPLE_MONTHS_FULL.map { |i|
         next nil if i >= bands.size
         data = bands[i]
         {
@@ -468,7 +442,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
     end
 
     def extract_tax_benefit_snapshot(entries, strategy)
-      monthly_tax_samples = [0, 11, 59, 119, 179, 239, 299].map { |i|
+      monthly_tax_samples = SAMPLE_MONTHS_FULL.map { |i|
         e = entries[i]
         next nil unless e
         {
@@ -524,7 +498,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
     end
 
     def extract_loan_payoff_snapshot(schedule, summary)
-      sample_entries = [0, 11, 59, 119, 299].map { |i|
+      sample_entries = SAMPLE_MONTHS_SHORT.map { |i|
         e = schedule[i]
         next nil unless e
         {
