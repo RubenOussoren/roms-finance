@@ -107,11 +107,18 @@ class DebtOptimizationStrategy < ApplicationRecord
     { triggered: false, rule: nil }
   end
 
-  # Get the marginal tax rate for this strategy's family
+  # Get the combined federal + provincial marginal tax rate for this strategy's family
   def effective_marginal_tax_rate
-    # Use family's income if available, otherwise default to median
     family_income = family&.respond_to?(:annual_income) ? family.annual_income : 100_000
-    effective_jurisdiction&.marginal_tax_rate(income: family_income) || 0.4 # Default 40% if no jurisdiction
+    effective_province = province.presence || "ON"
+
+    if effective_province != province && !effective_jurisdiction&.available_provinces&.include?(effective_province)
+      Rails.logger.warn("Province #{effective_province} has no bracket data, defaulting to ON")
+      effective_province = "ON"
+    end
+
+    rate = effective_jurisdiction&.combined_marginal_rate(income: family_income, province: effective_province)
+    rate.present? && rate > 0 ? rate : BigDecimal("0.4")
   end
 
   # Calculate HELOC available credit

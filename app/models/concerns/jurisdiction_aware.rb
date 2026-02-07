@@ -24,8 +24,8 @@ module JurisdictionAware
   end
 
   # Calculate marginal tax rate based on jurisdiction
-  def marginal_tax_rate(income:)
-    jurisdiction&.marginal_tax_rate(income: income) || 0
+  def marginal_tax_rate(income:, province: nil)
+    jurisdiction&.marginal_tax_rate(income: income, province: province) || 0
   end
 
   # 🇨🇦 Check if interest is tax deductible in this jurisdiction
