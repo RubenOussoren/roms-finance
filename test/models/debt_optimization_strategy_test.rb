@@ -114,6 +114,55 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
     assert_equal 1, @strategy.prepay_only_entries.count
   end
 
+  test "calculate_summary_metrics computes correct financial outputs from ledger entries" do
+    strategy = @strategy
+
+    # Clear any existing entries
+    strategy.ledger_entries.destroy_all
+
+    base_date = Date.new(2026, 1, 1)
+
+    # Create 3 baseline entries: mortgage pays off at month 3
+    # primary_mortgage_interest: 100 + 90 + 80 = 270
+    # rental_mortgage_interest:   50 + 40 + 30 = 120
+    # Total baseline mortgage interest = 390
+    strategy.ledger_entries.create!(scenario_type: "baseline", month_number: 1, calendar_month: base_date,
+      primary_mortgage_interest: 100, rental_mortgage_interest: 50, primary_mortgage_balance: 5000)
+    strategy.ledger_entries.create!(scenario_type: "baseline", month_number: 2, calendar_month: base_date + 1.month,
+      primary_mortgage_interest: 90, rental_mortgage_interest: 40, primary_mortgage_balance: 3000)
+    strategy.ledger_entries.create!(scenario_type: "baseline", month_number: 3, calendar_month: base_date + 2.months,
+      primary_mortgage_interest: 80, rental_mortgage_interest: 30, primary_mortgage_balance: 0)
+
+    # Create 3 strategy entries: mortgage pays off at month 2 (1 month earlier)
+    # primary_mortgage_interest: 95 + 75 + 0 = 170
+    # rental_mortgage_interest:  45 + 35 + 0 = 80
+    # Total strategy mortgage interest = 250
+    # heloc_interest: 10 + 15 + 20 = 45
+    strategy.ledger_entries.create!(scenario_type: "modified_smith", month_number: 1, calendar_month: base_date,
+      primary_mortgage_interest: 95, rental_mortgage_interest: 45, heloc_interest: 10,
+      primary_mortgage_balance: 4000, cumulative_tax_benefit: 5)
+    strategy.ledger_entries.create!(scenario_type: "modified_smith", month_number: 2, calendar_month: base_date + 1.month,
+      primary_mortgage_interest: 75, rental_mortgage_interest: 35, heloc_interest: 15,
+      primary_mortgage_balance: 0, cumulative_tax_benefit: 12)
+    strategy.ledger_entries.create!(scenario_type: "modified_smith", month_number: 3, calendar_month: base_date + 2.months,
+      primary_mortgage_interest: 0, rental_mortgage_interest: 0, heloc_interest: 20,
+      primary_mortgage_balance: 0, cumulative_tax_benefit: 20)
+
+    strategy.send(:calculate_summary_metrics!)
+
+    # total_interest_saved = 390 - 250 = 140
+    assert_equal 140, strategy.total_interest_saved.to_i
+
+    # total_tax_benefit = last strategy entry's cumulative_tax_benefit = 20
+    assert_equal 20, strategy.total_tax_benefit.to_i
+
+    # net_benefit = interest_saved + tax_benefit - heloc_interest = 140 + 20 - 45 = 115
+    assert_equal 115, strategy.net_benefit.to_i
+
+    # months_accelerated = baseline_payoff(3) - strategy_payoff(2) = 1
+    assert_equal 1, strategy.months_accelerated
+  end
+
   test "for_family scope returns strategies for specific family" do
     strategies = DebtOptimizationStrategy.for_family(@family)
     assert strategies.all? { |s| s.family_id == @family.id }
