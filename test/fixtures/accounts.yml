@@ -60,6 +60,7 @@ loan:
   name: Mortgage Loan
   balance: 500000
   currency: USD
+  subtype: mortgage
   accountable_type: Loan
   accountable: one
   status: active

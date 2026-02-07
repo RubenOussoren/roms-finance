@@ -1,12 +1,13 @@
 require "test_helper"
 
 class LoanTest < ActiveSupport::TestCase
-  test "calculates correct monthly payment for fixed rate loan using Canadian semi-annual compounding" do
+  test "calculates correct monthly payment for fixed rate mortgage using Canadian semi-annual compounding" do
     loan_account = Account.create! \
       family: families(:dylan_family),
       name: "Mortgage Loan",
       balance: 500000,
       currency: "USD",
+      subtype: "mortgage",
       accountable: Loan.create!(
         interest_rate: 3.5,
         term_months: 360,
@@ -16,6 +17,55 @@ class LoanTest < ActiveSupport::TestCase
     # Canadian semi-annual compounding: (1 + 0.035/2)^(1/6) - 1 yields ~$2,238/month
     # Previously was $2,245 under US monthly compounding (0.035/12)
     assert_equal 2238, loan_account.loan.monthly_payment.amount
+  end
+
+  test "calculates correct monthly payment for non-mortgage loan using standard monthly compounding" do
+    loan_account = Account.create! \
+      family: families(:dylan_family),
+      name: "Student Loan",
+      balance: 50000,
+      currency: "USD",
+      subtype: "student",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 120,
+        rate_type: "fixed"
+      )
+
+    # Standard monthly compounding: r = 0.05/12 = 0.0041667
+    # PMT = 50000 * 0.0041667 * (1.0041667^120) / (1.0041667^120 - 1) = ~$530.33
+    assert_equal 530, loan_account.loan.monthly_payment.amount
+  end
+
+  test "non-mortgage loan does not use Canadian semi-annual compounding" do
+    mortgage_account = Account.create! \
+      family: families(:dylan_family),
+      name: "Mortgage",
+      balance: 400000,
+      currency: "USD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 300,
+        rate_type: "fixed"
+      )
+
+    auto_account = Account.create! \
+      family: families(:dylan_family),
+      name: "Auto Loan",
+      balance: 400000,
+      currency: "USD",
+      subtype: "auto",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 300,
+        rate_type: "fixed"
+      )
+
+    # Semi-annual compounding yields a lower payment than monthly compounding
+    # so the mortgage payment should be less than the auto loan payment
+    assert mortgage_account.loan.monthly_payment.amount < auto_account.loan.monthly_payment.amount,
+      "Mortgage (semi-annual compounding) should have lower payment than auto loan (monthly compounding)"
   end
 
   # 🇨🇦 Canadian mortgage feature tests

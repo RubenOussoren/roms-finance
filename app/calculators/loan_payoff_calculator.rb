@@ -160,7 +160,12 @@ class LoanPayoffCalculator
     end
 
     def monthly_rate
-      CanadianMortgage.monthly_rate(interest_rate / 100.0)
+      annual_rate = interest_rate / 100.0
+      if account.subtype == "mortgage"
+        CanadianMortgage.monthly_rate(annual_rate)
+      else
+        CanadianMortgage.monthly_rate_simple(annual_rate)
+      end
     end
 
     def monthly_payment

@@ -89,6 +89,40 @@ class LoanPayoffCalculatorTest < ActiveSupport::TestCase
     assert summary[:total_interest_remaining] > 0
   end
 
+  test "uses standard monthly compounding for non-mortgage loans" do
+    student_account = Account.create! \
+      family: families(:dylan_family),
+      name: "Student Loan",
+      balance: 50000,
+      currency: "USD",
+      subtype: "student",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 120,
+        rate_type: "fixed"
+      )
+
+    calc = LoanPayoffCalculator.new(student_account)
+    schedule = calc.amortization_schedule
+
+    # First month interest with monthly compounding: 50000 * (0.05/12) = $208.33
+    assert_in_delta 208.33, schedule.first[:interest], 0.01
+
+    # Verify it's NOT using Canadian semi-annual rate
+    # Semi-annual would give: 50000 * ((1+0.05/2)^(1/6)-1) = $206.20
+    assert schedule.first[:interest] > 207, "Should use monthly rate (208.33), not semi-annual rate (206.20)"
+  end
+
+  test "uses Canadian semi-annual compounding for mortgage loans" do
+    # The fixture loan account has subtype: mortgage
+    calc = LoanPayoffCalculator.new(@account)
+    schedule = calc.amortization_schedule
+
+    # First month interest with semi-annual compounding: 500000 * ((1+0.035/2)^(1/6)-1) = $1,443.41
+    # Monthly compounding would give: 500000 * (0.035/12) = $1,458.33
+    assert schedule.first[:interest] < 1450, "Should use semi-annual rate, not monthly rate"
+  end
+
   test "chart_data returns array of points" do
     calc = LoanPayoffCalculator.new(@account)
 

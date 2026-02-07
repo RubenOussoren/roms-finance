@@ -162,7 +162,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
   # ============================================================================
 
   test "scenario B supplement: loan payoff calculator golden master" do
-    primary = create_loan_account(@family, "GoldenMaster LPC Primary", 400_000, 5.0, 300, with_valuation: true)
+    primary = create_loan_account(@family, "GoldenMaster LPC Primary", 400_000, 5.0, 300, subtype: "mortgage", with_valuation: true)
 
     # Clear Rails cache to avoid stale results
     Rails.cache.clear
@@ -181,8 +181,8 @@ class GoldenMasterTest < ActiveSupport::TestCase
     # ---- Scenario Builders ----
 
     def build_scenario_a_strategy(strategy_type)
-      primary = create_loan_account(@family, "GM Primary #{strategy_type}", 400_000, 5.0, 300)
-      rental = create_loan_account(@family, "GM Rental #{strategy_type}", 200_000, 5.5, 240)
+      primary = create_loan_account(@family, "GM Primary #{strategy_type}", 400_000, 5.0, 300, subtype: "mortgage")
+      rental = create_loan_account(@family, "GM Rental #{strategy_type}", 200_000, 5.5, 240, subtype: "mortgage")
       heloc = create_loan_account(@family, "GM HELOC #{strategy_type}", 0, 7.0, rate_type: "variable", credit_limit: 100_000)
 
       DebtOptimizationStrategy.create!(
@@ -208,7 +208,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
     #   credit_limit:      set for HELOCs
     #   with_valuation:    creates an opening-balance entry (needed by LoanPayoffCalculator)
     def create_loan_account(family, name, balance, interest_rate, term_months = nil,
-                            rate_type: "fixed", credit_limit: nil, with_valuation: false)
+                            rate_type: "fixed", credit_limit: nil, subtype: nil, with_valuation: false)
       loan = Loan.create!(
         interest_rate: interest_rate,
         term_months: term_months,
@@ -221,6 +221,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
         name: name,
         balance: -balance,
         currency: "CAD",
+        subtype: subtype,
         accountable: loan,
         status: "active"
       )
