@@ -160,13 +160,16 @@ class ProjectionCalculator
   # Calculate percentiles handling both positive and negative values
   # For positive values: p10 (pessimistic) < p50 < p90 (optimistic)
   # For negative values (debts): p10 (more debt) < p50 < p90 (less debt)
+  # p50 uses drift correction: median = value * exp(-sigma²/2) for log-normal
   def calculate_percentiles_for_value(value, sigma)
+    drift_correction = Math.exp(-sigma**2 / 2.0)
+
     if value >= 0
       # Standard log-normal percentiles for positive values
       {
         p10: (value * Math.exp(-1.28 * sigma)).round(2),
         p25: (value * Math.exp(-0.67 * sigma)).round(2),
-        p50: value.round(2),
+        p50: (value * drift_correction).round(2),
         p75: (value * Math.exp(0.67 * sigma)).round(2),
         p90: (value * Math.exp(1.28 * sigma)).round(2)
       }
@@ -178,7 +181,7 @@ class ProjectionCalculator
       {
         p10: -(abs_value * Math.exp(1.28 * sigma)).round(2),
         p25: -(abs_value * Math.exp(0.67 * sigma)).round(2),
-        p50: value.round(2),
+        p50: -(abs_value * drift_correction).round(2),
         p75: -(abs_value * Math.exp(-0.67 * sigma)).round(2),
         p90: -(abs_value * Math.exp(-1.28 * sigma)).round(2)
       }

@@ -132,8 +132,8 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     assert final[:p50] < final[:p75]
     assert final[:p75] < final[:p90]
 
-    # p50 should equal mean (deterministic expected value)
-    assert_equal final[:p50], final[:mean]
+    # p50 (median) should be less than mean for log-normal with non-zero volatility
+    assert final[:p50] < final[:mean], "p50 (median) should be less than mean for volatile portfolio"
   end
 
   test "analytical bands widen over time with sqrt scaling" do
@@ -221,6 +221,23 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     assert_in_delta 5.0, high_vol_width / low_vol_width, 1.0
   end
 
+  test "p50 drift correction matches log-normal median formula" do
+    calc = ProjectionCalculator.new(principal: 100_000, rate: 0.07, contribution: 500)
+    volatility = 0.18
+
+    results = calc.project_with_analytical_bands(months: 120, volatility: volatility)
+    final = results.last
+    monthly_vol = volatility / Math.sqrt(12)
+    cumulative_vol = monthly_vol * Math.sqrt(120)
+
+    # median = mean * exp(-sigma²/2)
+    expected_correction = Math.exp(-cumulative_vol**2 / 2.0)
+    expected_p50 = (final[:mean] * expected_correction).round(2)
+
+    assert_in_delta expected_p50, final[:p50], 1.0
+    assert final[:p50] < final[:mean], "p50 must be less than mean for 18% volatility portfolio"
+  end
+
   test "zero principal with contributions produces positive growth" do
     calc = ProjectionCalculator.new(principal: 0, rate: 0.06, contribution: 500)
 
@@ -252,12 +269,16 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     # Test positive value
     positive_percentiles = calc.calculate_percentiles_for_value(1000, 0.15)
     assert positive_percentiles[:p10] < positive_percentiles[:p90]
-    assert_equal 1000.0, positive_percentiles[:p50]
+    # p50 should be less than the mean (drift correction for log-normal median)
+    expected_p50 = (1000 * Math.exp(-0.15**2 / 2.0)).round(2)
+    assert_in_delta expected_p50, positive_percentiles[:p50], 0.01
+    assert positive_percentiles[:p50] < 1000.0, "median should be less than mean"
 
     # Test negative value (debt)
     negative_percentiles = calc.calculate_percentiles_for_value(-1000, 0.15)
     assert negative_percentiles[:p10] < negative_percentiles[:p90]
-    assert_equal(-1000.0, negative_percentiles[:p50])
+    expected_neg_p50 = -(1000 * Math.exp(-0.15**2 / 2.0)).round(2)
+    assert_in_delta expected_neg_p50, negative_percentiles[:p50], 0.01
 
     # Test zero value
     zero_percentiles = calc.calculate_percentiles_for_value(0, 0.15)
