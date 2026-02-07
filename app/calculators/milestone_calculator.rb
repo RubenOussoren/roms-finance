@@ -233,15 +233,32 @@ class MilestoneCalculator
     end
 
     def estimate_probability(target:, values:, percentiles:)
-      return 100.0 if target <= values.first
-      return 0.0 if target >= values.last
+      # Fit log-normal parameters from p10/p50/p90 for smooth extrapolation
+      # beyond the known percentile range (instead of hard-clamping to 0% or 100%)
+      p10, p50, p90 = values[0], values[2], values[4]
 
-      # Linear interpolation between percentiles
+      if p10 > 0 && p50 > 0 && p90 > 0 && target > 0
+        mu = Math.log(p50)
+        sigma = (Math.log(p90) - Math.log(p10)) / (2 * 1.28)
+
+        if sigma > 0
+          z = (Math.log(target) - mu) / sigma
+          probability = (1 - normal_cdf(z)) * 100
+          return probability.clamp(0.5, 99.5).round(1)
+        end
+      end
+
+      # Fallback: linear interpolation between known percentiles
+      if target <= values.first
+        return 99.5 if values.first <= 0
+        return 90.0
+      end
+      return 10.0 if target >= values.last
+
       percentiles.each_with_index do |p, i|
         next if i == percentiles.length - 1
 
         if target >= values[i] && target < values[i + 1]
-          # Interpolate
           range = values[i + 1] - values[i]
           position = target - values[i]
           fraction = range.zero? ? 0 : position / range
@@ -252,5 +269,9 @@ class MilestoneCalculator
       end
 
       50.0 # Default if interpolation fails
+    end
+
+    def normal_cdf(z)
+      0.5 * (1 + Math.erf(z / Math.sqrt(2)))
     end
 end

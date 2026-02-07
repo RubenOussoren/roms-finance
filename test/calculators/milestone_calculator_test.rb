@@ -254,6 +254,71 @@ class MilestoneCalculatorTest < ActiveSupport::TestCase
     assert_not calc.reduction_milestone?
   end
 
+  # ============================================
+  # Smooth Probability Extrapolation Tests
+  # ============================================
+
+  test "probability for target below p10 is high but less than 100" do
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: @assumption
+    )
+
+    values = [ 80_000, 90_000, 100_000, 110_000, 120_000 ]
+    percentiles = [ 10, 25, 50, 75, 90 ]
+
+    # Target well below p10 — should be high probability but not 100%
+    prob = calc.send(:estimate_probability, target: 50_000, values: values, percentiles: percentiles)
+    assert prob > 90, "Target below p10 should have probability > 90%, got #{prob}"
+    assert prob < 100, "Target below p10 should have probability < 100%, got #{prob}"
+  end
+
+  test "probability for target above p90 is low but greater than 0" do
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: @assumption
+    )
+
+    values = [ 80_000, 90_000, 100_000, 110_000, 120_000 ]
+    percentiles = [ 10, 25, 50, 75, 90 ]
+
+    # Target well above p90 — should be low probability but not 0%
+    prob = calc.send(:estimate_probability, target: 150_000, values: values, percentiles: percentiles)
+    assert prob < 10, "Target above p90 should have probability < 10%, got #{prob}"
+    assert prob > 0, "Target above p90 should have probability > 0%, got #{prob}"
+  end
+
+  test "probability at p50 is approximately 50 percent" do
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: @assumption
+    )
+
+    values = [ 80_000, 90_000, 100_000, 110_000, 120_000 ]
+    percentiles = [ 10, 25, 50, 75, 90 ]
+
+    prob = calc.send(:estimate_probability, target: 100_000, values: values, percentiles: percentiles)
+    assert_in_delta 50.0, prob, 5.0, "Target at p50 should be ~50%, got #{prob}"
+  end
+
+  test "probability is clamped to 0.5-99.5 to avoid false certainty" do
+    calc = MilestoneCalculator.new(
+      current_balance: 10000,
+      assumption: @assumption
+    )
+
+    values = [ 80_000, 90_000, 100_000, 110_000, 120_000 ]
+    percentiles = [ 10, 25, 50, 75, 90 ]
+
+    # Very low target — should still be capped at 99.5%
+    prob_low = calc.send(:estimate_probability, target: 1_000, values: values, percentiles: percentiles)
+    assert prob_low <= 99.5, "Probability should be clamped to 99.5% max, got #{prob_low}"
+
+    # Very high target — should still be at least 0.5%
+    prob_high = calc.send(:estimate_probability, target: 1_000_000, values: values, percentiles: percentiles)
+    assert prob_high >= 0.5, "Probability should be clamped to 0.5% min, got #{prob_high}"
+  end
+
   test "analyzes debt milestones for reduction calculator" do
     debt_assumption = OpenStruct.new(
       effective_return: 0.05,
