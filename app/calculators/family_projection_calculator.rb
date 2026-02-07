@@ -1,6 +1,13 @@
 # Family-level net worth projection calculator
 # Aggregates projections across all accounts for net worth trajectory
 class FamilyProjectionCalculator
+  DEFAULT_SAVINGS_RATE = 0.02
+
+  # Default correlation assumptions for portfolio variance calculation
+  # Used when per-asset-pair correlation data is unavailable
+  SAME_CLASS_CORRELATION = 0.8   # e.g., equity-equity
+  CROSS_CLASS_CORRELATION = 0.3  # e.g., equity-bonds
+
   attr_reader :family
 
   def initialize(family)
@@ -114,19 +121,47 @@ class FamilyProjectionCalculator
       { projections: projections, currency_warnings: currency_warnings }
     end
 
-    # Calculate portfolio-weighted volatility from asset accounts
+    # Calculate portfolio volatility using the correct variance formula:
+    # Var(portfolio) = sum_i(sum_j(w_i * w_j * sigma_i * sigma_j * rho_ij))
+    # This captures diversification benefits between asset classes.
     def aggregate_volatility(asset_accounts)
       return 0.15 if asset_accounts.empty? # Default 15%
 
       total_balance = asset_accounts.sum(&:balance)
       return 0.15 if total_balance.zero?
 
-      asset_accounts.sum do |account|
+      # Build arrays of weights, volatilities, and asset classes
+      account_data = asset_accounts.map do |account|
         assumption = ProjectionAssumption.for_account(account)
-        weight = account.balance / total_balance
-        volatility = assumption&.effective_volatility || 0.15
-        weight * volatility
+        {
+          weight: (account.balance / total_balance).to_f,
+          volatility: (assumption&.effective_volatility || 0.15).to_f,
+          asset_class: asset_class_for(account)
+        }
       end
+
+      # Portfolio variance = sum_i(sum_j(w_i * w_j * sigma_i * sigma_j * rho_ij))
+      variance = 0.0
+      account_data.each do |a|
+        account_data.each do |b|
+          rho = correlation_between(a[:asset_class], b[:asset_class])
+          variance += a[:weight] * b[:weight] * a[:volatility] * b[:volatility] * rho
+        end
+      end
+
+      Math.sqrt([ variance, 0.0 ].max)
+    end
+
+    def asset_class_for(account)
+      case account.accountable_type
+      when "Investment", "Crypto" then :equity
+      when "Depository" then :fixed_income
+      else :equity
+      end
+    end
+
+    def correlation_between(class_a, class_b)
+      class_a == class_b ? SAME_CLASS_CORRELATION : CROSS_CLASS_CORRELATION
     end
 
     # Calculate percentile bands using log-normal distribution
@@ -170,8 +205,8 @@ class FamilyProjectionCalculator
       when "Loan"
         project_loan_balance(account, month)
       when "Depository"
-        # Savings accounts grow slowly
-        account.balance * (1 + 0.02 / 12) ** month
+        savings_rate = account.projection_assumption&.effective_return || DEFAULT_SAVINGS_RATE
+        account.balance * (1 + savings_rate / 12) ** month
       else
         # Other accounts stay relatively flat
         account.balance

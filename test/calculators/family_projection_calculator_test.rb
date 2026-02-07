@@ -145,6 +145,30 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
     assert month_60 < month_12, "Balance should continue decreasing"
   end
 
+  test "depository uses default savings rate when no assumption exists" do
+    depository = accounts(:depository)
+    depository.projection_assumption&.destroy
+    depository.reload
+
+    calc = FamilyProjectionCalculator.new(@family)
+    balance_12 = calc.send(:project_account_balance, depository, 12)
+
+    expected = depository.balance * (1 + 0.02 / 12) ** 12
+    assert_in_delta expected, balance_12, 0.01, "Should use DEFAULT_SAVINGS_RATE of 2%"
+  end
+
+  test "depository uses custom savings rate from projection assumption" do
+    depository = accounts(:depository)
+    ProjectionAssumption.create_for_account(depository, expected_return: 0.05, use_pag_defaults: false)
+    depository.reload
+
+    calc = FamilyProjectionCalculator.new(@family)
+    balance_12 = calc.send(:project_account_balance, depository, 12)
+
+    expected = depository.balance * (1 + 0.05 / 12) ** 12
+    assert_in_delta expected, balance_12, 0.01, "Should use custom 5% rate from assumption"
+  end
+
   test "investment balance projection increases over time" do
     investment_account = accounts(:investment)
 
