@@ -1,0 +1,74 @@
+{
+  "scenario": "B",
+  "calculator": "MilestoneCalculator",
+  "pre_correction_note": "Uses deterministic time-to-target. Probability estimates use Monte Carlo (non-deterministic, excluded from snapshot).",
+  "inputs": {
+    "current_balance": 100000,
+    "expected_return": 0.07,
+    "monthly_contribution": 500,
+    "volatility": 0.18,
+    "target_type": "reach"
+  },
+  "outputs": {
+    "time_to_targets": [
+      {
+        "target": 200000,
+        "achieved": false,
+        "achievable": true,
+        "months": 75,
+        "years": 6.3
+      },
+      {
+        "target": 500000,
+        "achieved": false,
+        "achievable": true,
+        "months": 198,
+        "years": 16.5
+      },
+      {
+        "target": 1000000,
+        "achieved": false,
+        "achievable": true,
+        "months": 304,
+        "years": 25.3
+      }
+    ],
+    "contribution_sensitivity_for_500k": [
+      {
+        "multiplier": 0,
+        "contribution": 0.0,
+        "achievable": true,
+        "months": 277,
+        "years": 23.1
+      },
+      {
+        "multiplier": 0.5,
+        "contribution": 250.0,
+        "achievable": true,
+        "months": 230,
+        "years": 19.2
+      },
+      {
+        "multiplier": 1.0,
+        "contribution": 500.0,
+        "achievable": true,
+        "months": 198,
+        "years": 16.5
+      },
+      {
+        "multiplier": 1.5,
+        "contribution": 750.0,
+        "achievable": true,
+        "months": 174,
+        "years": 14.5
+      },
+      {
+        "multiplier": 2.0,
+        "contribution": 1000.0,
+        "achievable": true,
+        "months": 156,
+        "years": 13.0
+      }
+    ]
+  }
+}

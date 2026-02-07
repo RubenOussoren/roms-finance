@@ -1,0 +1,105 @@
+{
+  "scenario": "C",
+  "calculator": "DebtOptimizationStrategy + CanadianSmithManoeuvrSimulator",
+  "pre_correction_note": "Federal-only tax rates (missing provincial, understates benefit by 30-45%). HELOC interest cash source untracked.",
+  "inputs": {
+    "household_income": 100000,
+    "jurisdiction": "Canada (federal-only brackets from fixture)",
+    "primary_mortgage": 400000,
+    "primary_rate": 5.0,
+    "rental_mortgage": 200000,
+    "rental_rate": 5.5,
+    "heloc_rate": 7.0,
+    "rental_income": 2000,
+    "rental_expenses": 500
+  },
+  "outputs": {
+    "effective_marginal_tax_rate": 0.205,
+    "total_tax_benefit": 43369.9866,
+    "total_deductible_interest": 211560.9083,
+    "total_non_deductible_interest": 105813.1487,
+    "monthly_tax_samples": [
+      {
+        "month": 0,
+        "deductible_interest": 916.6667,
+        "non_deductible_interest": 1666.6667,
+        "tax_benefit": 187.9167,
+        "cumulative_tax_benefit": 187.9167,
+        "heloc_interest": 0.0,
+        "rental_mortgage_interest": 916.6667
+      },
+      {
+        "month": 11,
+        "deductible_interest": 925.0655,
+        "non_deductible_interest": 1541.6308,
+        "tax_benefit": 189.6384,
+        "cumulative_tax_benefit": 2265.5526,
+        "heloc_interest": 32.0833,
+        "rental_mortgage_interest": 892.9822
+      },
+      {
+        "month": 59,
+        "deductible_interest": 946.5638,
+        "non_deductible_interest": 923.8463,
+        "tax_benefit": 194.0456,
+        "cumulative_tax_benefit": 11497.4749,
+        "heloc_interest": 172.0833,
+        "rental_mortgage_interest": 774.4805
+      },
+      {
+        "month": 119,
+        "deductible_interest": 931.733,
+        "non_deductible_interest": 0.0,
+        "tax_benefit": 191.0053,
+        "cumulative_tax_benefit": 23100.7848,
+        "heloc_interest": 347.0833,
+        "rental_mortgage_interest": 584.6497
+      },
+      {
+        "month": 179,
+        "deductible_interest": 856.9719,
+        "non_deductible_interest": 0.0,
+        "tax_benefit": 175.6792,
+        "cumulative_tax_benefit": 34163.7897,
+        "heloc_interest": 522.0833,
+        "rental_mortgage_interest": 334.8885
+      },
+      {
+        "month": 239,
+        "deductible_interest": 589.6102,
+        "non_deductible_interest": 0.0,
+        "tax_benefit": 120.8701,
+        "cumulative_tax_benefit": 43369.9861,
+        "heloc_interest": 583.3333,
+        "rental_mortgage_interest": 6.2769
+      }
+    ],
+    "year_end_cumulative": [
+      {
+        "year": 1,
+        "cumulative_tax_benefit": 2265.5526,
+        "heloc_balance": 6000.0
+      },
+      {
+        "year": 5,
+        "cumulative_tax_benefit": 11497.4749,
+        "heloc_balance": 30000.0
+      },
+      {
+        "year": 10,
+        "cumulative_tax_benefit": 23100.7848,
+        "heloc_balance": 60000.0
+      },
+      {
+        "year": 15,
+        "cumulative_tax_benefit": 34163.7897,
+        "heloc_balance": 90000.0
+      },
+      {
+        "year": 20,
+        "cumulative_tax_benefit": 43369.9861,
+        "heloc_balance": 100000.0
+      }
+    ]
+  }
+}

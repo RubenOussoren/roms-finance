@@ -1,0 +1,87 @@
+{
+  "scenario": "B",
+  "calculator": "ProjectionCalculator",
+  "label": "25_year",
+  "pre_correction_note": "p50 shows mean (deterministic), not true median. PAG safety margin not applied.",
+  "inputs": {
+    "principal": 100000,
+    "annual_return": 0.07,
+    "volatility": 0.18,
+    "monthly_contribution": 500,
+    "projection_months": 300
+  },
+  "outputs": {
+    "year_samples": {
+      "year_5": {
+        "month": 60,
+        "p10": 106071.43,
+        "p25": 135589.65,
+        "p50": 177558.98,
+        "p75": 232519.16,
+        "p90": 297226.03,
+        "mean": 177558.98
+      },
+      "year_10": {
+        "month": 120,
+        "p10": 138748.62,
+        "p25": 196346.68,
+        "p50": 287508.54,
+        "p75": 420995.97,
+        "p90": 595762.05,
+        "mean": 287508.54
+      },
+      "year_25": {
+        "month": 300,
+        "p10": 308918.58,
+        "p25": 534898.89,
+        "p50": 977577.67,
+        "p75": 1786614.46,
+        "p90": 3093559.79,
+        "mean": 977577.67
+      }
+    },
+    "monthly_samples": [
+      {
+        "month": 1,
+        "p50": 101083.33,
+        "mean": 101083.33
+      },
+      {
+        "month": 12,
+        "p50": 113425.3,
+        "mean": 113425.3
+      },
+      {
+        "month": 60,
+        "p50": 177558.98,
+        "mean": 177558.98
+      },
+      {
+        "month": 120,
+        "p50": 287508.54,
+        "mean": 287508.54
+      },
+      {
+        "month": 180,
+        "p50": 443375.82,
+        "mean": 443375.82
+      },
+      {
+        "month": 240,
+        "p50": 664337.21,
+        "mean": 664337.21
+      },
+      {
+        "month": 300,
+        "p50": 977577.67,
+        "mean": 977577.67
+      }
+    ],
+    "years_to_200k": 6.25,
+    "years_to_500k": 16.5,
+    "years_to_1m": 25.33,
+    "required_contribution_for_1m_in_25yr": 527.68,
+    "real_value_10yr": 233092.6712,
+    "real_value_25yr": 578556.7172
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "scenario": "B_supplement",
+  "calculator": "LoanPayoffCalculator",
+  "pre_correction_note": "Uses monthly compounding (not Canadian semi-annual).",
+  "inputs": {
+    "balance": 400000,
+    "interest_rate": 5.0,
+    "term_months": 300,
+    "extra_payment": 0
+  },
+  "outputs": {
+    "monthly_payment": 2338.0,
+    "months_to_payoff": 301,
+    "total_interest_remaining": 301615.49,
+    "total_amount_remaining": 703738.0,
+    "years_remaining": 25.1,
+    "total_interest_calculated": 301615.49,
+    "schedule_length": 301,
+    "sample_entries": [
+      {
+        "month": 1,
+        "payment": 2338.0,
+        "principal": 671.33,
+        "interest": 1666.67,
+        "balance": 399328.67
+      },
+      {
+        "month": 12,
+        "payment": 2338.0,
+        "principal": 702.75,
+        "interest": 1635.25,
+        "balance": 391756.8
+      },
+      {
+        "month": 60,
+        "payment": 2338.0,
+        "principal": 857.99,
+        "interest": 1480.01,
+        "balance": 354345.25
+      },
+      {
+        "month": 120,
+        "payment": 2338.0,
+        "principal": 1101.1,
+        "interest": 1236.9,
+        "balance": 295753.83
+      },
+      {
+        "month": 300,
+        "payment": 2338.0,
+        "principal": 2327.41,
+        "interest": 10.59,
+        "balance": 214.48
+      }
+    ]
+  }
+}
