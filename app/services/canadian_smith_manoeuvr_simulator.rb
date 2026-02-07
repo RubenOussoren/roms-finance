@@ -19,6 +19,7 @@
 # - Interest deductibility depends on use of borrowed funds
 class CanadianSmithManoeuvrSimulator
   include MortgageRenewalSupport
+  include LoanTermDefaults
 
   attr_reader :strategy
 
@@ -67,11 +68,11 @@ class CanadianSmithManoeuvrSimulator
       stop_reason = nil
       cumulative_principal_paid = 0
 
-      # Task 6: Annual prepayment tracking
+      # Annual prepayment privilege tracking
       annual_prepayment_total = 0
       current_year = nil
 
-      # Task 7: Pre-load baseline entries for cumulative comparison
+      # Pre-load baseline entries for cumulative net-benefit comparison
       baseline_entries_hash = strategy.ledger_entries
         .where(scenario_type: "baseline")
         .index_by(&:month_number)
@@ -81,7 +82,7 @@ class CanadianSmithManoeuvrSimulator
 
         calendar_month = start_date + month.months
 
-        # Task 6: Reset annual prepayment tracking at year boundary
+        # Reset annual prepayment tracking at year boundary
         if current_year != calendar_month.year
           annual_prepayment_total = 0
           current_year = calendar_month.year
@@ -119,7 +120,7 @@ class CanadianSmithManoeuvrSimulator
         if strategy.readvanceable_heloc?
           cumulative_principal_paid += primary_principal + annual_lump_sum
           base_heloc_limit = initial_heloc_credit_limit
-          max_limit = strategy.heloc_max_limit || (original_primary_balance * 0.8)
+          max_limit = strategy.heloc_max_limit || (original_primary_balance * READVANCEABLE_MAX_RATIO)
           heloc_credit_limit = [ base_heloc_limit + cumulative_principal_paid, max_limit ].min
         end
 
@@ -133,7 +134,7 @@ class CanadianSmithManoeuvrSimulator
         heloc_interest = CanadianMortgage.monthly_interest_simple(heloc_balance, heloc_interest_rate)
         heloc_payment = heloc_interest
 
-        # Task 1: Cash flow waterfall — rental income → HELOC interest → prepayment
+        # Cash flow waterfall: rental income → HELOC interest → prepayment
         rental_surplus = rental_income - expenses_covered_by_rental
         heloc_interest_from_rental = [ heloc_interest, [ rental_surplus, 0 ].max ].min
         heloc_interest_from_pocket = heloc_interest - heloc_interest_from_rental
@@ -141,7 +142,7 @@ class CanadianSmithManoeuvrSimulator
         # Prepayment from remaining rental surplus (reduced by HELOC interest)
         available_for_prepayment = [ rental_surplus - heloc_interest_from_rental, 0 ].max
 
-        # Task 6: Apply prepayment privilege limit
+        # Apply annual prepayment privilege limit
         privilege_limit = calculate_privilege_limit
         remaining_privilege = [ privilege_limit - annual_prepayment_total, 0 ].max
         raw_prepayment = available_for_prepayment + annual_lump_sum
@@ -157,7 +158,7 @@ class CanadianSmithManoeuvrSimulator
         tax_benefit = deductible_interest * strategy.effective_marginal_tax_rate
         cumulative_tax_benefit += tax_benefit
 
-        # Task 7: Cumulative tracking for auto-stop
+        # Cumulative net-benefit tracking for auto-stop evaluation
         cumulative_heloc_interest += heloc_interest
         cumulative_strategy_mortgage_interest += primary_interest
         baseline_entry = baseline_entries_hash[month]
@@ -170,7 +171,7 @@ class CanadianSmithManoeuvrSimulator
         new_primary_balance = [ primary_balance - primary_principal - prepayment, 0 ].max
         new_rental_balance = [ rental_balance - rental_principal, 0 ].max
 
-        # Task 1: Net rental cash flow accounts for HELOC interest from rental
+        # Net rental cash flow reduced by HELOC interest paid from rental surplus
         net_rental_cash_flow = rental_income - rental_payment - heloc_interest_from_rental
         net_rental_cash_flow = rental_income if rental_balance <= 0
 
@@ -276,8 +277,8 @@ class CanadianSmithManoeuvrSimulator
         return strategy.effective_heloc_limit
       end
 
-      return 100_000 unless strategy.heloc&.accountable.present?
-      strategy.heloc.accountable.credit_limit || 100_000
+      return DEFAULT_HELOC_LIMIT unless strategy.heloc&.accountable.present?
+      strategy.heloc.accountable.credit_limit || DEFAULT_HELOC_LIMIT
     end
 
     # 🇨🇦 Canadian annual lump-sum prepayment support
@@ -298,42 +299,10 @@ class CanadianSmithManoeuvrSimulator
       [ loan.annual_lump_sum_amount, current_balance ].min
     end
 
-    # Task 6: Calculate annual prepayment privilege limit
-    def calculate_privilege_limit
-      loan = strategy.primary_mortgage&.accountable
-      return Float::INFINITY unless loan&.prepayment_privilege_percent.present?
-
-      original_balance = initial_primary_mortgage_balance
-      original_balance * loan.prepayment_privilege_percent / 100.0
-    end
-
-    def primary_mortgage_rate
-      return 0.05 unless strategy.primary_mortgage&.accountable.present?
-      (strategy.primary_mortgage.accountable.interest_rate || 5) / 100.0
-    end
-
-    def rental_mortgage_rate
-      return 0.05 unless strategy.rental_mortgage&.accountable.present?
-      (strategy.rental_mortgage.accountable.interest_rate || 5) / 100.0
-    end
-
     def heloc_interest_rate
       return (strategy.heloc_interest_rate || 7) / 100.0 if strategy.heloc_interest_rate.present?
-      return 0.07 unless strategy.heloc&.accountable.present?
+      return DEFAULT_HELOC_RATE unless strategy.heloc&.accountable.present?
       (strategy.heloc.accountable.interest_rate || 7) / 100.0
     end
 
-    def primary_mortgage_term
-      return 300 unless strategy.primary_mortgage&.accountable.present?
-      strategy.primary_mortgage.accountable.term_months || 300
-    end
-
-    def rental_mortgage_term
-      return 300 unless strategy.rental_mortgage&.accountable.present?
-      strategy.rental_mortgage.accountable.term_months || 300
-    end
-
-    def calculate_mortgage_payment(principal, annual_rate, term_months)
-      CanadianMortgage.monthly_payment(principal, annual_rate, term_months)
-    end
 end

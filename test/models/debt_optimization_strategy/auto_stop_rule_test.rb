@@ -134,4 +134,40 @@ class DebtOptimizationStrategy::AutoStopRuleTest < ActiveSupport::TestCase
     @entry.tax_benefit = 200
     assert rule.triggered?(@entry)
   end
+
+  test "cumulative_cost_exceeds_benefit triggers when cumulative_net_benefit is negative" do
+    rule = DebtOptimizationStrategy::AutoStopRule.new(
+      debt_optimization_strategy: @strategy,
+      rule_type: "cumulative_cost_exceeds_benefit",
+      enabled: true
+    )
+
+    @entry.metadata = { "cumulative_net_benefit" => -500.0 }
+    assert rule.triggered?(@entry), "Should trigger when cumulative_net_benefit < 0"
+  end
+
+  test "cumulative_cost_exceeds_benefit does not trigger when benefit is positive" do
+    rule = DebtOptimizationStrategy::AutoStopRule.new(
+      debt_optimization_strategy: @strategy,
+      rule_type: "cumulative_cost_exceeds_benefit",
+      enabled: true
+    )
+
+    @entry.metadata = { "cumulative_net_benefit" => 1200.50 }
+    assert_not rule.triggered?(@entry), "Should not trigger when cumulative_net_benefit > 0"
+  end
+
+  test "cumulative_cost_exceeds_benefit does not trigger when metadata is nil or missing key" do
+    rule = DebtOptimizationStrategy::AutoStopRule.new(
+      debt_optimization_strategy: @strategy,
+      rule_type: "cumulative_cost_exceeds_benefit",
+      enabled: true
+    )
+
+    @entry.metadata = nil
+    assert_not rule.triggered?(@entry), "Should not trigger with nil metadata"
+
+    @entry.metadata = {}
+    assert_not rule.triggered?(@entry), "Should not trigger with missing cumulative_net_benefit key"
+  end
 end

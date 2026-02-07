@@ -37,7 +37,7 @@ We are building a **comprehensive personal finance platform** that goes beyond s
 | **2** | DataQualityCheckable Concern | ✅ **Complete** | Non-failing validation with quality scores |
 | **2** | Seed Data | ✅ **Complete** | Canada + PAG 2025 + comprehensive test family with projections |
 | **2** | Tests | ✅ **Complete** | 73 new tests, all passing |
-| **3** | Smith Manoeuvre Simulator | ✅ **Complete** | `CanadianSmithManoeuvrSimulator`, `BaselineSimulator` services |
+| **3** | Smith Manoeuvre Simulator | ✅ **Complete** | `AbstractDebtSimulator` (base), `BaselineSimulator`, `PrepayOnlySimulator`, `CanadianSmithManoeuvrSimulator` |
 | **3** | CRA Audit Trail | ✅ **Complete** | `DebtOptimizationStrategy::AuditTrail` for tax reporting |
 | **3** | Debt Optimization Models | ✅ **Complete** | `DebtOptimizationStrategy`, `DebtOptimizationLedgerEntry`, `AutoStopRule` |
 | **3** | Debt Optimization Controller | ✅ **Complete** | Full CRUD + simulate action, chart builders |
@@ -56,9 +56,14 @@ We are building a **comprehensive personal finance platform** that goes beyond s
   - `DebtOptimizationStrategy` - Main strategy configuration with jurisdiction awareness
   - `DebtOptimizationLedgerEntry` - Month-by-month simulation results
   - `DebtOptimizationStrategy::AutoStopRule` - 7 rule types for strategy termination
-- Simulators created:
-  - `BaselineSimulator` - Universal baseline with no optimization
-  - `CanadianSmithManoeuvrSimulator` - 🇨🇦 CRA-compliant Modified Smith Manoeuvre
+- Simulators created (3-way comparison architecture):
+  - `AbstractDebtSimulator` - Template method base class for simple simulators
+  - `BaselineSimulator` - No optimization (inherits AbstractDebtSimulator)
+  - `PrepayOnlySimulator` - Prepays primary mortgage from rental surplus, no HELOC (inherits AbstractDebtSimulator)
+  - `CanadianSmithManoeuvrSimulator` - 🇨🇦 CRA-compliant Modified Smith Manoeuvre (runs all three scenarios)
+- Shared concerns:
+  - `LoanTermDefaults` - Common loan helpers and default constants (rates, terms, privilege limits)
+  - `MortgageRenewalSupport` - Periodic mortgage renewal logic
 - Supporting classes:
   - `DebtOptimizationStrategy::ChartSeriesBuilder` - Chart data for comparisons
   - `DebtOptimizationStrategy::AuditTrail` - CRA-compliant annual reports

@@ -6,6 +6,7 @@
 # different) but reuses MortgageRenewalSupport.
 class AbstractDebtSimulator
   include MortgageRenewalSupport
+  include LoanTermDefaults
 
   attr_reader :strategy
 
@@ -31,7 +32,7 @@ class AbstractDebtSimulator
 
     cumulative_interest = 0
 
-    # Task 6: Annual prepayment tracking
+    # Annual prepayment privilege tracking
     annual_prepayment_total = 0
     current_year = nil
 
@@ -152,13 +153,6 @@ class AbstractDebtSimulator
       0
     end
 
-    def calculate_privilege_limit
-      loan = strategy.primary_mortgage&.accountable
-      return Float::INFINITY unless loan&.prepayment_privilege_percent.present?
-
-      initial_primary_mortgage_balance * loan.prepayment_privilege_percent / 100.0
-    end
-
     def initial_primary_mortgage_balance
       return 0 unless strategy.primary_mortgage.present?
       strategy.primary_mortgage.balance.abs
@@ -169,27 +163,4 @@ class AbstractDebtSimulator
       strategy.rental_mortgage.balance.abs
     end
 
-    def primary_mortgage_rate
-      return 0.05 unless strategy.primary_mortgage&.accountable.present?
-      (strategy.primary_mortgage.accountable.interest_rate || 5) / 100.0
-    end
-
-    def rental_mortgage_rate
-      return 0.05 unless strategy.rental_mortgage&.accountable.present?
-      (strategy.rental_mortgage.accountable.interest_rate || 5) / 100.0
-    end
-
-    def primary_mortgage_term
-      return 300 unless strategy.primary_mortgage&.accountable.present?
-      strategy.primary_mortgage.accountable.term_months || 300
-    end
-
-    def rental_mortgage_term
-      return 300 unless strategy.rental_mortgage&.accountable.present?
-      strategy.rental_mortgage.accountable.term_months || 300
-    end
-
-    def calculate_mortgage_payment(principal, annual_rate, term_months)
-      CanadianMortgage.monthly_payment(principal, annual_rate, term_months)
-    end
 end
