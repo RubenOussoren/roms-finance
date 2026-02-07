@@ -122,6 +122,76 @@ class PrepayOnlySimulatorTest < ActiveSupport::TestCase
     end
   end
 
+  # P1: Prepayment reduces total interest (quantified)
+  test "P1: prepayment quantifiably reduces total interest versus baseline" do
+    @strategy.update!(simulation_months: 120)
+
+    BaselineSimulator.new(@strategy).simulate!
+    PrepayOnlySimulator.new(@strategy).simulate!
+
+    baseline_interest = @strategy.baseline_entries.sum(&:primary_mortgage_interest)
+    prepay_interest = @strategy.ledger_entries.where(scenario_type: "prepay_only").sum(&:primary_mortgage_interest)
+
+    assert baseline_interest > prepay_interest,
+      "Baseline interest ($#{baseline_interest.round}) should exceed prepay interest ($#{prepay_interest.round})"
+
+    savings = baseline_interest - prepay_interest
+    assert savings > 5000,
+      "Interest savings ($#{savings.round}) should exceed $5,000 over 120 months with $2K surplus"
+  end
+
+  # P2: Controlled $500/month prepayment
+  test "P2: controlled surplus produces exact first-month prepayment" do
+    strategy = DebtOptimizationStrategy.create!(
+      family: @family,
+      name: "P2 Controlled Surplus",
+      strategy_type: "modified_smith",
+      primary_mortgage: @primary_mortgage,
+      heloc: @heloc,
+      rental_mortgage: @rental_mortgage,
+      rental_income: 1000,
+      rental_expenses: 500,
+      simulation_months: 12
+    )
+
+    PrepayOnlySimulator.new(strategy).simulate!
+
+    first_entry = strategy.ledger_entries.where(scenario_type: "prepay_only").order(:month_number).first
+    assert_in_delta 500, first_entry.primary_mortgage_prepayment, 0.01,
+      "First-month prepayment should equal exact rental surplus of $500"
+  end
+
+  # P3: Prepayment caps at remaining balance (small mortgage)
+  test "P3: prepayment caps at remaining balance for small mortgage" do
+    tiny_mortgage = create_loan_account(@family, "Tiny P3", 3000, 5.0, 300)
+    strategy = DebtOptimizationStrategy.create!(
+      family: @family,
+      name: "P3 Cap at Balance",
+      strategy_type: "modified_smith",
+      primary_mortgage: tiny_mortgage,
+      heloc: @heloc,
+      rental_mortgage: @rental_mortgage,
+      rental_income: 2500,
+      rental_expenses: 500,
+      simulation_months: 12
+    )
+
+    PrepayOnlySimulator.new(strategy).simulate!
+
+    entries = strategy.ledger_entries.where(scenario_type: "prepay_only").order(:month_number).to_a
+
+    # Balance should never go negative
+    entries.each do |entry|
+      assert entry.primary_mortgage_balance >= 0,
+        "Month #{entry.month_number}: balance should never be negative"
+    end
+
+    # Mortgage should be paid off within a few months
+    paid_off = entries.index { |e| e.primary_mortgage_balance == 0 }
+    assert paid_off.present?, "Small mortgage should be paid off"
+    assert paid_off <= 3, "Should pay off $3K mortgage within 3 months with $2K surplus"
+  end
+
   test "primary mortgage balance decreases monotonically" do
     simulator = PrepayOnlySimulator.new(@strategy)
     simulator.simulate!
