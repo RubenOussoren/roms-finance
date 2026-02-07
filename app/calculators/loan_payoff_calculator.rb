@@ -160,7 +160,7 @@ class LoanPayoffCalculator
     end
 
     def monthly_rate
-      interest_rate / 100.0 / 12
+      CanadianMortgage.monthly_rate(interest_rate / 100.0)
     end
 
     def monthly_payment

@@ -26,13 +26,13 @@ class BaselineSimulator
       calendar_month = start_date + month.months
 
       # Calculate interest and principal for primary mortgage
-      primary_interest = primary_balance * (primary_mortgage_rate / 12)
+      primary_interest = CanadianMortgage.monthly_interest(primary_balance, primary_mortgage_rate)
       primary_principal = [ primary_payment - primary_interest, primary_balance ].min
       primary_principal = 0 if primary_balance <= 0
       primary_interest = 0 if primary_balance <= 0
 
       # Calculate interest and principal for rental mortgage
-      rental_interest = rental_balance * (rental_mortgage_rate / 12)
+      rental_interest = CanadianMortgage.monthly_interest(rental_balance, rental_mortgage_rate)
       rental_principal = [ rental_payment - rental_interest, rental_balance ].min
       rental_principal = 0 if rental_balance <= 0
       rental_interest = 0 if rental_balance <= 0
@@ -151,14 +151,7 @@ class BaselineSimulator
       strategy.rental_mortgage.accountable.term_months || 300
     end
 
-    # Standard mortgage payment calculation
     def calculate_mortgage_payment(principal, annual_rate, term_months)
-      return 0 if principal <= 0 || term_months <= 0
-
-      monthly_rate = annual_rate / 12.0
-      return principal / term_months if monthly_rate.zero?
-
-      (principal * monthly_rate * (1 + monthly_rate)**term_months) /
-        ((1 + monthly_rate)**term_months - 1)
+      CanadianMortgage.monthly_payment(principal, annual_rate, term_months)
     end
 end

@@ -45,13 +45,7 @@ class Loan < ApplicationRecord
       return Money.new(0, account.currency) if original_balance.amount.zero? || term_months.zero?
 
       annual_rate = interest_rate / 100.0
-      monthly_rate = annual_rate / 12.0
-
-      if monthly_rate.zero?
-        payment = original_balance.amount / term_months
-      else
-        payment = (original_balance.amount * monthly_rate * (1 + monthly_rate)**term_months) / ((1 + monthly_rate)**term_months - 1)
-      end
+      payment = CanadianMortgage.monthly_payment(original_balance.amount, annual_rate, term_months)
 
       Money.new(payment.round, account.currency)
     end

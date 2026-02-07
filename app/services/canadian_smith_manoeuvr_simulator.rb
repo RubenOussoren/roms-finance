@@ -84,11 +84,11 @@ class CanadianSmithManoeuvrSimulator
         rental_expenses = strategy.rental_expenses
 
         # === STEP 2: Calculate rental mortgage payment ===
-        rental_interest = rental_balance > 0 ? rental_balance * (current_rental_rate / 12) : 0
+        rental_interest = CanadianMortgage.monthly_interest(rental_balance, current_rental_rate)
         rental_principal = rental_balance > 0 ? [ rental_payment - rental_interest, rental_balance ].min : 0
 
         # === STEP 3: Calculate primary mortgage payment ===
-        primary_interest = primary_balance > 0 ? primary_balance * (current_primary_rate / 12) : 0
+        primary_interest = CanadianMortgage.monthly_interest(primary_balance, current_primary_rate)
         primary_principal = primary_balance > 0 ? [ primary_payment - primary_interest, primary_balance ].min : 0
 
         # === STEP 4: Modified Smith Manoeuvre Logic ===
@@ -128,7 +128,7 @@ class CanadianSmithManoeuvrSimulator
         prepayment = 0 if primary_balance <= 0
 
         # === STEP 5: HELOC interest calculation ===
-        heloc_interest = heloc_balance > 0 ? heloc_balance * (heloc_interest_rate / 12) : 0
+        heloc_interest = CanadianMortgage.monthly_interest_simple(heloc_balance, heloc_interest_rate)
         # For simplicity, we'll capitalize HELOC interest (add to balance)
         # In practice, borrower would pay this from other income
         heloc_payment = heloc_interest # Interest-only payment on HELOC
@@ -315,13 +315,7 @@ class CanadianSmithManoeuvrSimulator
     end
 
     def calculate_mortgage_payment(principal, annual_rate, term_months)
-      return 0 if principal <= 0 || term_months <= 0
-
-      monthly_rate = annual_rate / 12.0
-      return principal / term_months if monthly_rate.zero?
-
-      (principal * monthly_rate * (1 + monthly_rate)**term_months) /
-        ((1 + monthly_rate)**term_months - 1)
+      CanadianMortgage.monthly_payment(principal, annual_rate, term_months)
     end
 
     def calculate_net_worth_impact(entries, cumulative_tax_benefit)
