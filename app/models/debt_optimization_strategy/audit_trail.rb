@@ -38,7 +38,7 @@ class DebtOptimizationStrategy::AuditTrail
 
       # Tax benefit calculation
       tax_benefit: {
-        province: strategy.province.presence || "ON",
+        province: strategy.effective_province,
         marginal_tax_rate: strategy.effective_marginal_tax_rate,
         estimated_tax_savings: entries.sum(&:tax_benefit)
       },

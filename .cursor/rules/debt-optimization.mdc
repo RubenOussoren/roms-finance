@@ -68,7 +68,7 @@ class DebtOptimizationStrategy < ApplicationRecord
   # Tax settings
   decimal :marginal_tax_rate
   string :tax_owner  # 'monika', 'ruben', 'combined'
-  string :province_or_state  # 'ON', 'BC', 'CA', etc.
+  string :province  # 'ON', 'BC', 'AB', etc.
 
   # Auto-stop rules
   decimal :auto_stop_heloc_percentage, default: 0.90   # Stop at 90% of limit
@@ -179,6 +179,14 @@ class CanadianSmithManoeuvrSimulator
 
   private
 
+  # 🇨🇦 Canadian mortgage compounding: semi-annual, not monthly
+  # Canadian fixed-rate mortgages compound semi-annually per federal law.
+  # Effective monthly rate = (1 + annual_rate/2)^(1/6) - 1
+  # This differs from investment growth which uses simple monthly compounding (rate/12).
+  def canadian_monthly_mortgage_rate(annual_rate)
+    ((1 + annual_rate / 2.0) ** (1.0 / 6)) - 1
+  end
+
   def simulate_baseline(months)
     # Traditional flow:
     # Rental income → rental mortgage + expenses
@@ -192,14 +200,16 @@ class CanadianSmithManoeuvrSimulator
     months_to_payoff = 0
 
     months.times do |month|
-      # Primary mortgage: regular payment only
-      primary_interest = primary_balance * (@primary.interest_rate / 12)
+      # Primary mortgage: regular payment only (🇨🇦 semi-annual compounding)
+      primary_monthly_rate = canadian_monthly_mortgage_rate(@primary.interest_rate)
+      primary_interest = primary_balance * primary_monthly_rate
       primary_principal = @primary.monthly_payment - primary_interest
       primary_balance -= primary_principal
       total_interest += primary_interest
 
-      # Rental mortgage: paid from rental income
-      rental_interest = rental_balance * (@rental.interest_rate / 12)
+      # Rental mortgage: paid from rental income (🇨🇦 semi-annual compounding)
+      rental_monthly_rate = canadian_monthly_mortgage_rate(@rental.interest_rate)
+      rental_interest = rental_balance * rental_monthly_rate
       rental_principal = @strategy.rental_income_monthly - rental_interest - @strategy.rental_expenses_monthly
       rental_balance -= rental_principal if rental_principal > 0
       total_interest += rental_interest
@@ -244,8 +254,9 @@ class CanadianSmithManoeuvrSimulator
         primary_balance -= entry[:primary_prepayment]
       end
 
-      # Primary mortgage: regular payment
-      primary_interest = primary_balance * (@primary.interest_rate / 12)
+      # Primary mortgage: regular payment (🇨🇦 semi-annual compounding)
+      primary_monthly_rate = canadian_monthly_mortgage_rate(@primary.interest_rate)
+      primary_interest = primary_balance * primary_monthly_rate
       primary_principal = @primary.monthly_payment - primary_interest
       primary_balance -= primary_principal
       total_interest += primary_interest
@@ -258,13 +269,28 @@ class CanadianSmithManoeuvrSimulator
         heloc_balance += heloc_draw
 
         # HELOC interest (tax deductible per CRA rules)
+        # Note: HELOC uses simple monthly compounding (variable rate product)
         heloc_interest = heloc_balance * (@heloc.interest_rate / 12)
         entry[:heloc_interest] = heloc_interest
         entry[:tax_refund_monthly] = heloc_interest * @strategy.marginal_tax_rate
         tax_benefit += entry[:tax_refund_monthly]
         total_interest += heloc_interest
 
-        heloc_balance += heloc_interest  # Interest capitalizes
+        # 🇨🇦 HELOC interest payment cash source tracking
+        # Best practice: pay HELOC interest from cash (not capitalize) to keep
+        # HELOC balance = rental expenses only (cleaner for CRA audit).
+        # Track the cash source explicitly for audit trail.
+        entry[:heloc_interest_cash_source] = :joint_account  # BMO Joint Account
+        entry[:heloc_interest_paid_from_cash] = heloc_interest
+        # If cash insufficient, interest capitalizes (increases HELOC balance)
+        if @strategy.heloc_interest_paid_from_cash?
+          # Interest paid from cash — HELOC balance unchanged
+          entry[:heloc_interest_capitalized] = 0
+        else
+          # Interest capitalizes — increases HELOC balance
+          heloc_balance += heloc_interest
+          entry[:heloc_interest_capitalized] = heloc_interest
+        end
       end
 
       # Balances
@@ -391,6 +417,9 @@ class DebtOptimizationLedgerEntry < ApplicationRecord
   # HELOC activity
   decimal :heloc_draw
   decimal :heloc_interest_paid
+  decimal :heloc_interest_capitalized    # Portion of interest added to HELOC balance
+  decimal :heloc_interest_paid_from_cash # Portion paid from cash (not capitalized)
+  string  :heloc_interest_cash_source    # e.g., "joint_account", "rental_income"
   decimal :heloc_balance_end
 
   # Balances
@@ -559,9 +588,11 @@ HELOC Flow:
   HELOC → Rental operating expenses
   (All HELOC draws are for rental expenses → deductible per CRA)
 
-HELOC Interest Payment:
-  BMO Joint Account → HELOC interest (paid monthly, not capitalized)
+HELOC Interest Payment (tracked cash outflow):
+  BMO Joint Account → HELOC interest (paid monthly from cash, not capitalized)
+  Source: heloc_interest_cash_source = "joint_account"
   (Keeps clean separation: HELOC balance = rental expenses only)
+  (If cash unavailable: interest capitalizes into HELOC balance — flagged in ledger)
 ```
 
 ### Audit Trail Generator
@@ -609,7 +640,7 @@ class DebtOptimizationStrategy::AuditTrail
         total_deductible_interest: ledger_entries.sum(:deductible_interest),
         marginal_tax_rate: @strategy.marginal_tax_rate,
         estimated_tax_benefit: ledger_entries.sum(:tax_refund_monthly),
-        province: @strategy.province_or_state
+        province: @strategy.province
       },
 
       cra_compliance_notes: [

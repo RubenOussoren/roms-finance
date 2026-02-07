@@ -57,7 +57,7 @@
       <div class="flex gap-3">
         <%= icon "info", class: "w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" %>
         <p class="text-sm text-yellow-800">
-          Tax estimates use combined federal and <%= DebtOptimizationStrategy::CANADIAN_PROVINCES[@strategy.province.presence || "ON"] || "Ontario" %> marginal rates.
+          Tax estimates use combined federal and <%= DebtOptimizationStrategy::CANADIAN_PROVINCES[@strategy.effective_province] || "Ontario" %> marginal rates.
           They do not account for surtaxes, credits, or clawbacks.
           Consult a qualified tax professional for advice specific to your situation.
         </p>
@@ -146,7 +146,7 @@
       </div>
       <div>
         <p class="text-xs text-secondary uppercase tracking-wide">Province</p>
-        <p class="text-primary font-medium"><%= DebtOptimizationStrategy::CANADIAN_PROVINCES[@strategy.province.presence || "ON"] || "Ontario" %></p>
+        <p class="text-primary font-medium"><%= DebtOptimizationStrategy::CANADIAN_PROVINCES[@strategy.effective_province] || "Ontario" %></p>
       </div>
     </div>
   </div>

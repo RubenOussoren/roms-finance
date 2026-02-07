@@ -10,7 +10,7 @@ require "yaml"
 #
 # Golden master snapshots reflect PARTIALLY-CORRECTED behavior. Remaining issues
 # (documented in BASELINE.md) include:
-#   - Tax rates are federal-only (missing provincial)
+#   - CORRECTED: Tax rates now include federal + provincial (phase 2)
 #   - p50 shows mean not median for volatile portfolios
 # CORRECTED: Mortgage compounding now uses Canadian semi-annual (Interest Act)
 #

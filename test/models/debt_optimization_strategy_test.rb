@@ -193,4 +193,32 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
     rate_on = @strategy.effective_marginal_tax_rate
     assert_in_delta rate.to_f, rate_on.to_f, 0.0001
   end
+
+  test "effective_marginal_tax_rate falls back to Ontario for province without bracket data" do
+    @strategy.province = "MB"
+    @strategy.jurisdiction = jurisdictions(:canada)
+    rate = @strategy.effective_marginal_tax_rate
+    # MB has no bracket data in fixture, should fall back to ON combined rate
+    @strategy.province = "ON"
+    rate_on = @strategy.effective_marginal_tax_rate
+    assert_in_delta rate.to_f, rate_on.to_f, 0.0001,
+      "Province without bracket data should fall back to Ontario combined rate"
+    assert rate > 0.205, "Expected combined rate > 0.205, got #{rate}"
+  end
+
+  test "effective_province falls back to DEFAULT_PROVINCE for province without bracket data" do
+    @strategy.province = "MB"
+    @strategy.jurisdiction = jurisdictions(:canada)
+    assert_equal DebtOptimizationStrategy::DEFAULT_PROVINCE, @strategy.effective_province
+  end
+
+  test "effective_province returns selected province when bracket data exists" do
+    @strategy.province = "ON"
+    @strategy.jurisdiction = jurisdictions(:canada)
+    assert_equal "ON", @strategy.effective_province
+  end
+
+  test "DEFAULT_PROVINCE constant is ON" do
+    assert_equal "ON", DebtOptimizationStrategy::DEFAULT_PROVINCE
+  end
 end

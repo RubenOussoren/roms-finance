@@ -10,6 +10,8 @@ class DebtOptimizationStrategy < ApplicationRecord
   has_many :ledger_entries, class_name: "DebtOptimizationLedgerEntry", dependent: :destroy
   has_many :auto_stop_rules, class_name: "DebtOptimizationStrategy::AutoStopRule", dependent: :destroy
 
+  DEFAULT_PROVINCE = "ON".freeze
+
   CANADIAN_PROVINCES = {
     "AB" => "Alberta",
     "BC" => "British Columbia",
@@ -110,15 +112,23 @@ class DebtOptimizationStrategy < ApplicationRecord
   # Get the combined federal + provincial marginal tax rate for this strategy's family
   def effective_marginal_tax_rate
     family_income = family&.respond_to?(:annual_income) ? family.annual_income : 100_000
-    effective_province = province.presence || "ON"
+    province_code = effective_province
 
-    if effective_province != province && !effective_jurisdiction&.available_provinces&.include?(effective_province)
-      Rails.logger.warn("Province #{effective_province} has no bracket data, defaulting to ON")
-      effective_province = "ON"
+    rate = effective_jurisdiction&.combined_marginal_rate(income: family_income, province: province_code)
+    rate.present? && rate > 0 ? rate : BigDecimal("0.4")
+  end
+
+  # Resolve the effective province, falling back to DEFAULT_PROVINCE when the
+  # selected province has no bracket data in the jurisdiction.
+  def effective_province
+    resolved = province.presence || DEFAULT_PROVINCE
+
+    if !effective_jurisdiction&.available_provinces&.include?(resolved)
+      Rails.logger.warn("Province #{resolved} has no bracket data, defaulting to #{DEFAULT_PROVINCE}")
+      resolved = DEFAULT_PROVINCE
     end
 
-    rate = effective_jurisdiction&.combined_marginal_rate(income: family_income, province: effective_province)
-    rate.present? && rate > 0 ? rate : BigDecimal("0.4")
+    resolved
   end
 
   # Calculate HELOC available credit
