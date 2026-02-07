@@ -6,9 +6,13 @@ class ProjectionAssumptionTest < ActiveSupport::TestCase
     @custom = projection_assumptions(:custom_assumption)
   end
 
-  test "returns effective return from PAG standard when using defaults" do
-    expected = @assumption.projection_standard.blended_return
+  test "returns effective return from PAG standard with safety margin when using defaults" do
+    expected = @assumption.projection_standard.conservative_blended_return
     assert_in_delta expected, @assumption.effective_return, 0.0001
+  end
+
+  test "PAG effective return is lower than raw blended return" do
+    assert @assumption.effective_return < @assumption.projection_standard.blended_return
   end
 
   test "returns expected return when not using PAG defaults" do
@@ -30,7 +34,7 @@ class ProjectionAssumptionTest < ActiveSupport::TestCase
   end
 
   test "returns compliance badge" do
-    assert_equal "Prepared using FP Canada PAG 2025", @assumption.compliance_badge
+    assert_equal "PAG 2025 Compliant (conservative)", @assumption.compliance_badge
     assert_equal "Custom assumptions", @custom.compliance_badge
   end
 

@@ -30,7 +30,16 @@ class ProjectionStandardTest < ActiveSupport::TestCase
   end
 
   test "returns compliance badge" do
-    assert_equal "Prepared using FP Canada PAG 2025", @pag_2025.compliance_badge
+    assert_equal "PAG 2025 Compliant (conservative)", @pag_2025.compliance_badge
+  end
+
+  test "conservative blended return subtracts safety margin" do
+    expected = @pag_2025.blended_return + ProjectionStandard::PAG_2025_DEFAULTS[:safety_margin]
+    assert_in_delta expected, @pag_2025.conservative_blended_return, 0.0001
+  end
+
+  test "conservative blended return is lower than blended return" do
+    assert @pag_2025.conservative_blended_return < @pag_2025.blended_return
   end
 
   test "validates presence of required fields" do

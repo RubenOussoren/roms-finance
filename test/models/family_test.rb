@@ -58,7 +58,7 @@ class FamilyTest < ActiveSupport::TestCase
 
   test "family compliance badge returns PAG badge when compliant" do
     # dylan_family has PAG-compliant default assumption in fixtures
-    assert_equal "Prepared using FP Canada PAG 2025", @family.compliance_badge
+    assert_equal "PAG 2025 Compliant (conservative)", @family.compliance_badge
   end
 
   test "family compliance badge returns custom when not PAG compliant" do

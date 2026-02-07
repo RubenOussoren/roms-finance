@@ -23,7 +23,8 @@ class ProjectionStandard < ApplicationRecord
     cash_return: 0.0295,         # 2.95% nominal
     inflation_rate: 0.021,       # 2.10%
     volatility_equity: 0.18,     # 18% standard deviation
-    volatility_fixed_income: 0.05 # 5% standard deviation
+    volatility_fixed_income: 0.05, # 5% standard deviation
+    safety_margin: -0.005        # -0.50% conservative adjustment
   }.freeze
 
   def blended_return(equity_weight: 0.6, fixed_income_weight: 0.3, cash_weight: 0.1)
@@ -41,8 +42,12 @@ class ProjectionStandard < ApplicationRecord
     code == "PAG_2025"
   end
 
+  def conservative_blended_return(equity_weight: 0.6, fixed_income_weight: 0.3, cash_weight: 0.1)
+    blended_return(equity_weight: equity_weight, fixed_income_weight: fixed_income_weight, cash_weight: cash_weight) + PAG_2025_DEFAULTS[:safety_margin]
+  end
+
   def compliance_badge
-    return "Prepared using FP Canada PAG 2025" if pag_compliant?
+    return "PAG 2025 Compliant (conservative)" if pag_compliant?
     "Custom assumptions"
   end
 

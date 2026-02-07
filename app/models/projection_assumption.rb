@@ -36,7 +36,7 @@ class ProjectionAssumption < ApplicationRecord
 
   def effective_return
     if use_pag_defaults && projection_standard.present?
-      projection_standard.blended_return
+      projection_standard.conservative_blended_return
     else
       expected_return.to_d
     end

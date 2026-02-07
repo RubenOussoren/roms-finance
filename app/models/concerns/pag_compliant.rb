@@ -11,7 +11,8 @@ module PagCompliant
     inflation_rate: 0.021,        # 2.10%
     short_term_return: 0.0295,    # Same as cash
     volatility_equity: 0.18,      # 18% standard deviation
-    volatility_fixed_income: 0.05 # 5% standard deviation
+    volatility_fixed_income: 0.05, # 5% standard deviation
+    safety_margin: -0.005         # -0.50% conservative adjustment
   }.freeze
 
   included do
@@ -38,7 +39,7 @@ module PagCompliant
 
   # Get compliance badge text
   def compliance_badge
-    return "Prepared using FP Canada PAG 2025" if pag_compliant?
+    return "PAG 2025 Compliant (conservative)" if pag_compliant?
     "Custom assumptions"
   end
 
