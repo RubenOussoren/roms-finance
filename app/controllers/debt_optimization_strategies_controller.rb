@@ -75,6 +75,7 @@ class DebtOptimizationStrategiesController < ApplicationController
       params.require(:debt_optimization_strategy).permit(
         :name,
         :strategy_type,
+        :province,
         :primary_mortgage_id,
         :heloc_id,
         :rental_mortgage_id,

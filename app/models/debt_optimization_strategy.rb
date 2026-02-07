@@ -10,6 +10,22 @@ class DebtOptimizationStrategy < ApplicationRecord
   has_many :ledger_entries, class_name: "DebtOptimizationLedgerEntry", dependent: :destroy
   has_many :auto_stop_rules, class_name: "DebtOptimizationStrategy::AutoStopRule", dependent: :destroy
 
+  CANADIAN_PROVINCES = {
+    "AB" => "Alberta",
+    "BC" => "British Columbia",
+    "MB" => "Manitoba",
+    "NB" => "New Brunswick",
+    "NL" => "Newfoundland and Labrador",
+    "NS" => "Nova Scotia",
+    "NT" => "Northwest Territories",
+    "NU" => "Nunavut",
+    "ON" => "Ontario",
+    "PE" => "Prince Edward Island",
+    "QC" => "Quebec",
+    "SK" => "Saskatchewan",
+    "YT" => "Yukon"
+  }.freeze
+
   # 🇨🇦 Strategy types - Canadian-first with extensibility hooks
   # 🔧 Future: us_heloc_arbitrage, uk_offset_mortgage
   enum :strategy_type, {
@@ -28,6 +44,7 @@ class DebtOptimizationStrategy < ApplicationRecord
   validates :family, presence: true
   validates :strategy_type, presence: true
   validates :simulation_months, numericality: { greater_than: 0, less_than_or_equal_to: 600 }
+  validates :province, inclusion: { in: CANADIAN_PROVINCES.keys, allow_blank: true }
 
   validate :validate_accounts_for_strategy
   validate :validate_jurisdiction_supports_strategy

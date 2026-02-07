@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_27_033328) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_07_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -301,6 +301,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_27_033328) do
     t.datetime "last_simulated_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "heloc_max_limit", precision: 19, scale: 4
+    t.boolean "heloc_readvanceable", default: false
+    t.string "province", limit: 2
     t.index ["family_id"], name: "index_debt_optimization_strategies_on_family_id"
     t.index ["heloc_id"], name: "index_debt_optimization_strategies_on_heloc_id"
     t.index ["jurisdiction_id"], name: "index_debt_optimization_strategies_on_jurisdiction_id"
@@ -531,6 +534,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_27_033328) do
     t.decimal "initial_balance", precision: 19, scale: 4
     t.jsonb "locked_attributes", default: {}
     t.decimal "credit_limit", precision: 19, scale: 4
+    t.date "renewal_date"
+    t.decimal "renewal_rate", precision: 10, scale: 3
+    t.decimal "annual_lump_sum_amount", precision: 19, scale: 4
+    t.integer "annual_lump_sum_month"
   end
 
   create_table "merchants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
