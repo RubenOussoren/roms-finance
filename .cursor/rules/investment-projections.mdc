@@ -140,6 +140,10 @@ class ProjectionCalculator
 
   # Calculate future value at a specific month
   # Uses compound interest formula: FV = P(1 + r)^n + PMT * ((1 + r)^n - 1) / r
+  #
+  # NOTE: rate/12 is correct for investment growth projections.
+  # Canadian mortgages use different compounding — see debt-optimization.mdc
+  # for the semi-annual formula: (1 + rate/2)^(1/6) - 1
   def future_value_at_month(month)
     return principal if month <= 0
     monthly_rate = rate / 12
@@ -175,6 +179,8 @@ class ProjectionCalculator
   end
 
   # Generate projection with confidence intervals (Monte Carlo in pure Ruby)
+  # NOTE: rate/12 is correct for investment growth. Mortgage interest uses
+  # semi-annual compounding — see debt-optimization.mdc.
   def project_with_percentiles(months:, volatility:, simulations: 1000)
     monthly_rate = rate / 12
     monthly_vol = volatility.to_d / Math.sqrt(12)
@@ -379,7 +385,7 @@ FP Canada Projection Assumption Guidelines 2025 - the professional standard for 
 
 **Why it matters**:
 - Based on 50 years of actuarial data
-- Includes built-in conservatism (-0.5% safety margin)
+- Safety margin: -0.5% applied to `blended_return` via `safety_margin` field in `PAG_2025_ASSUMPTIONS`
 - Industry standard for defensible projections
 - Allows financial planners to cite projections as professionally prepared
 
@@ -438,13 +444,15 @@ class ProjectionStandard < ApplicationRecord
     equity_return: 0.0628,        # 6.28% (blended Canadian/US/Intl)
     fixed_income_return: 0.0409,  # 4.09%
     equity_volatility: 0.157,     # 15.7%
-    fixed_income_volatility: 0.078 # 7.8%
+    fixed_income_volatility: 0.078, # 7.8%
+    safety_margin: -0.005         # -0.5% conservatism applied to blended return
   }.freeze
 
   def blended_return(equity_weight: 0.6)
     equity = asset_assumptions.dig("equity_return") || PAG_2025_ASSUMPTIONS[:equity_return]
     fixed = asset_assumptions.dig("fixed_income_return") || PAG_2025_ASSUMPTIONS[:fixed_income_return]
-    (equity * equity_weight) + (fixed * (1 - equity_weight))
+    margin = PAG_2025_ASSUMPTIONS[:safety_margin]
+    (equity * equity_weight) + (fixed * (1 - equity_weight)) + margin
   end
 
   def real_return(equity_weight: 0.6)
@@ -506,17 +514,17 @@ end
   <label class="toggle">
     <%= check_box_tag :use_pag_2025, "1", pag_toggle_checked?,
         data: { action: "change->projection-settings#togglePag" } %>
-    <span>Use PAG 2025 Professional Standards</span>
-    <span class="badge">🇨🇦 Canadian</span>
+    <span>Use Canadian professional assumptions</span>
+    <span class="badge text-xs text-secondary">FP Canada PAG 2025</span>
   </label>
 
   <% if @account.pag_compliant? %>
     <div class="compliance-badge">
-      ✓ Prepared using FP Canada PAG 2025
+      Uses conservative, professionally-vetted return estimates
     </div>
   <% else %>
     <div class="warning">
-      ⚠️ Custom assumptions in use - not PAG compliant
+      Custom assumptions in use — projections may differ from professional standards
     </div>
   <% end %>
 </div>

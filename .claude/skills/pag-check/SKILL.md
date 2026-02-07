@@ -45,12 +45,35 @@ return_rate = projection_standard.equity_return
 tax_rate = jurisdiction.marginal_tax_rate(income: income)
 ```
 
-### 2. Jurisdiction Configuration
+### 2. Safety Margin Applied (-0.5%)
+Verify that `PAG_2025_ASSUMPTIONS[:safety_margin]` (-0.005) is applied in `blended_return`:
+```ruby
+# ❌ BAD - No safety margin
+blended = (equity * weight) + (fixed * (1 - weight))
+
+# ✅ GOOD - Safety margin applied
+margin = PAG_2025_ASSUMPTIONS[:safety_margin]
+blended = (equity * weight) + (fixed * (1 - weight)) + margin
+```
+
+### 3. Provincial Tax Rates
+Verify that `marginal_tax_rate` uses **combined** federal + provincial rates, not federal-only:
+```ruby
+# ❌ BAD - Federal only
+tax_rate = federal_brackets.marginal_rate(income)
+
+# ✅ GOOD - Combined federal + provincial
+tax_rate = jurisdiction.marginal_tax_rate(income: income)
+# Jurisdiction model combines federal_brackets + provincial_state_brackets
+```
+Check that `provincial_state_brackets` JSONB is populated in seed data for Canadian provinces.
+
+### 4. Jurisdiction Configuration
 Verify code uses:
 - `Jurisdiction` model for country settings (includes `tax_config` JSONB for tax brackets)
 - `ProjectionStandard` for PAG 2025 assumptions
 
-### 3. PagCompliant Concern
+### 5. PagCompliant Concern
 Check that financial models include:
 ```ruby
 include PagCompliant
@@ -61,7 +84,7 @@ include PagCompliant
 # - compliance_badge
 ```
 
-### 4. JurisdictionAware Concern
+### 6. JurisdictionAware Concern
 Check that calculators include:
 ```ruby
 include JurisdictionAware
@@ -74,6 +97,17 @@ include JurisdictionAware
 # - supports_smith_manoeuvre?
 ```
 
+### 7. Canadian Mortgage Compounding
+Verify mortgage calculations use semi-annual compounding (not rate/12):
+```ruby
+# ❌ BAD - US-style monthly compounding for Canadian mortgages
+monthly_rate = annual_rate / 12
+
+# ✅ GOOD - Canadian semi-annual compounding
+monthly_rate = ((1 + annual_rate / 2.0) ** (1.0 / 6)) - 1
+```
+Note: `rate/12` IS correct for investment growth and HELOC (variable rate) calculations.
+
 ## Instructions
 
 1. Scan specified files/directories for financial calculations
@@ -83,8 +117,11 @@ include JurisdictionAware
    - Inflation rates
    - Interest rates
 3. Verify proper concern inclusion
-4. Check for compliance badge usage in outputs
-5. Report compliance status
+4. Verify safety margin (-0.5%) is applied to `blended_return`
+5. Verify provincial tax brackets are populated (not just federal)
+6. Verify Canadian mortgage calculations use semi-annual compounding
+7. Check for compliance badge usage in outputs
+8. Report compliance status
 
 ## Compliance Report Format
 

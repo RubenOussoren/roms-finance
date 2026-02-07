@@ -64,6 +64,9 @@ class ProjectionCalculator
 
   def compound_with_contributions
     # FV = P(1+r)^n + PMT * ((1+r)^n - 1) / r
+    # NOTE: rate/12 is correct for investment growth projections.
+    # Canadian mortgages use semi-annual compounding: (1 + rate/2)^(1/6) - 1
+    # See the simulator skill for mortgage-specific formulas.
     monthly_rate = @rate / 12.0
     months = @years * 12
 

@@ -34,6 +34,10 @@ class ProjectionCalculator
   end
 
   # Calculate future value at a specific month
+  # NOTE: rate/12 is correct for investment growth projections.
+  # Canadian fixed-rate mortgages use semi-annual compounding:
+  #   monthly_rate = (1 + annual_rate/2)^(1/6) - 1
+  # See debt-optimization.mdc for mortgage-specific formulas.
   def future_value_at_month(month)
     return principal if month <= 0
     monthly_rate = rate / 12
@@ -212,6 +216,9 @@ end
 ```
 
 ### `PagCompliant` - For PAG 2025 assumptions (Canadian) (Actual Implementation)
+
+**Key:** `PAG_2025_ASSUMPTIONS` includes `safety_margin: -0.005` (-0.5%) applied to `blended_return`.
+See `investment-projections.mdc` for the full `ProjectionStandard` model with safety margin application.
 
 ```ruby
 # app/models/concerns/pag_compliant.rb

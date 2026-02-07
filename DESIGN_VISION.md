@@ -320,7 +320,7 @@ FP Canada Projection Assumption Guidelines 2025 - the professional standard for 
 
 **Why it matters**:
 - Based on 50 years of actuarial data
-- Includes built-in conservatism (-0.5% safety margin)
+- Safety margin: -0.5% applied to `blended_return` via `safety_margin` field in `PAG_2025_ASSUMPTIONS`
 - Allows financial planners to cite projections as professionally prepared
 - Industry standard for defensible long-term projections
 
@@ -877,6 +877,13 @@ class CanadianSmithManoeuvrSimulator
     # HELOC not used
   end
 
+  # 🇨🇦 Canadian mortgage compounding: semi-annual, not monthly
+  # Effective monthly rate = (1 + annual_rate/2)^(1/6) - 1
+  # HELOC uses simple monthly compounding (variable rate product): rate/12
+  def canadian_monthly_mortgage_rate(annual_rate)
+    ((1 + annual_rate / 2.0) ** (1.0 / 6)) - 1
+  end
+
   def simulate_modified(months)
     ledger = []
 
@@ -893,9 +900,15 @@ class CanadianSmithManoeuvrSimulator
       entry[:heloc_balance] += heloc_draw
 
       # HELOC interest (tax deductible per CRA rules)
+      # HELOC uses simple monthly compounding (variable rate product)
       heloc_interest = entry[:heloc_balance] * (@strategy.heloc.interest_rate / 12)
       entry[:heloc_interest] = heloc_interest
       entry[:tax_refund] = heloc_interest * @strategy.marginal_tax_rate
+
+      # 🇨🇦 HELOC interest cash source tracking
+      # Best practice: pay from cash (not capitalize) for cleaner CRA audit trail
+      entry[:heloc_interest_cash_source] = :joint_account
+      entry[:heloc_interest_paid_from_cash] = heloc_interest
 
       # Primary mortgage reduction
       entry[:primary_balance] -= entry[:primary_prepayment]

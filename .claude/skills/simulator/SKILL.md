@@ -100,12 +100,25 @@ class CanadianSmithManoeuvrSimulator
   def simulate_smith_manoeuvre
     # Implementation for Smith Manoeuvre strategy
     # Convert non-deductible mortgage debt to deductible investment debt
+    # Track HELOC interest cash source for CRA audit trail:
+    #   entry[:heloc_interest_cash_source] = :joint_account
+    #   entry[:heloc_interest_paid_from_cash] = heloc_interest
     []
   end
 
+  # 🇨🇦 Canadian mortgage compounding: semi-annual, not monthly
+  # Fixed-rate mortgages compound semi-annually per Canadian federal law.
+  # HELOC (variable rate) uses simple monthly compounding: rate/12
+  def canadian_monthly_mortgage_rate(annual_rate)
+    ((1 + annual_rate / 2.0) ** (1.0 / 6)) - 1
+  end
+
   def apply_mortgage_payment(balance)
-    # Monthly payment calculation
-    balance
+    # 🇨🇦 Use semi-annual compounding for Canadian fixed-rate mortgages
+    monthly_rate = canadian_monthly_mortgage_rate(@mortgage[:rate])
+    interest = balance * monthly_rate
+    principal = @mortgage[:payment] - interest
+    balance - principal
   end
 
   def calculate_tax_savings(path)
@@ -148,6 +161,9 @@ end
 - CRA-compliant debt optimization
 - Interest deductibility rules
 - HELOC readvancement tracking
+- HELOC interest cash source tracking (for CRA audit trail)
+- Mortgage: semi-annual compounding `(1 + r/2)^(1/6) - 1`
+- HELOC: simple monthly compounding `rate / 12`
 
 ### Never Hardcode
 - ❌ `tax_benefit = interest * 0.45`
