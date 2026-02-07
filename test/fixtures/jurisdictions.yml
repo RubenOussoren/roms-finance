@@ -6,7 +6,7 @@ canada:
   interest_deductible: true
   has_smith_manoeuvre: true
   tax_config:
-    brackets:
+    federal_brackets:
       - min: 0
         max: 55867
         rate: 0.15
@@ -16,6 +16,17 @@ canada:
       - min: 111733
         max: null
         rate: 0.26
+    provincial_brackets:
+      "ON":
+        - min: 0
+          max: 51446
+          rate: 0.0505
+        - min: 51446
+          max: 102894
+          rate: 0.0915
+        - min: 102894
+          max: null
+          rate: 0.1116
   metadata: {}
 
 # 🇺🇸 US jurisdiction for testing extensibility

@@ -147,4 +147,50 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
     @strategy.update!(heloc_readvanceable: false)
     assert_not @strategy.readvanceable_heloc?
   end
+
+  # 🇨🇦 Province and combined tax rate tests
+
+  test "CANADIAN_PROVINCES contains all expected keys" do
+    assert_includes DebtOptimizationStrategy::CANADIAN_PROVINCES.keys, "ON"
+    assert_includes DebtOptimizationStrategy::CANADIAN_PROVINCES.keys, "BC"
+    assert_includes DebtOptimizationStrategy::CANADIAN_PROVINCES.keys, "AB"
+    assert_includes DebtOptimizationStrategy::CANADIAN_PROVINCES.keys, "QC"
+    assert_equal 13, DebtOptimizationStrategy::CANADIAN_PROVINCES.size
+  end
+
+  test "province validation rejects invalid codes" do
+    @strategy.province = "ZZ"
+    assert_not @strategy.valid?
+    assert @strategy.errors[:province].present?
+  end
+
+  test "province validation allows blank" do
+    @strategy.province = nil
+    assert @strategy.valid? || !@strategy.errors[:province].present?
+  end
+
+  test "province validation allows valid codes" do
+    @strategy.province = "ON"
+    @strategy.valid?
+    assert_not @strategy.errors[:province].present?
+  end
+
+  test "effective_marginal_tax_rate with province ON returns combined rate" do
+    @strategy.province = "ON"
+    @strategy.jurisdiction = jurisdictions(:canada)
+    rate = @strategy.effective_marginal_tax_rate
+    # Should be higher than federal-only 20.5%
+    assert rate > 0.205, "Expected combined rate > 0.205, got #{rate}"
+    assert rate < 1.0
+  end
+
+  test "effective_marginal_tax_rate with nil province defaults to Ontario" do
+    @strategy.province = nil
+    @strategy.jurisdiction = jurisdictions(:canada)
+    rate = @strategy.effective_marginal_tax_rate
+    # Defaults to ON, so should be same as explicit ON
+    @strategy.province = "ON"
+    rate_on = @strategy.effective_marginal_tax_rate
+    assert_in_delta rate.to_f, rate_on.to_f, 0.0001
+  end
 end

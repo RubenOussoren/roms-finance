@@ -4,6 +4,7 @@ smith_manoeuvre:
   name: "Test Smith Manoeuvre Strategy"
   strategy_type: "modified_smith"
   status: "draft"
+  province: "ON"
   rental_income: 2500
   rental_expenses: 500
   simulation_months: 120
