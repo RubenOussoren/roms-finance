@@ -7,6 +7,8 @@ class ProjectionAssumption < ApplicationRecord
 
   validates :name, presence: true
   validate :account_belongs_to_family
+  after_save :touch_associated_account
+
   validates :expected_return, numericality: {
     greater_than_or_equal_to: -0.5,
     less_than_or_equal_to: 0.5,
@@ -143,5 +145,15 @@ class ProjectionAssumption < ApplicationRecord
     def account_belongs_to_family
       return unless account.present? && family.present?
       errors.add(:account, "must belong to the same family") unless account.family_id == family_id
+    end
+
+    def touch_associated_account
+      if account.present?
+        account.touch
+      else
+        # Family default assumption: touch first family account to change
+        # accounts.maximum(:updated_at) for callers using the old cache key pattern
+        family.accounts.first&.touch
+      end
     end
 end

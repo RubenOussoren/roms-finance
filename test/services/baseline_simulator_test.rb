@@ -1,6 +1,8 @@
 require "test_helper"
 
 class BaselineSimulatorTest < ActiveSupport::TestCase
+  include DebtSimulatorTestHelper
+
   setup do
     @family = families(:dylan_family)
 
@@ -271,23 +273,4 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
     entries = @strategy.baseline_entries.order(:month_number).to_a
     assert entries.size > 12, "Should run beyond first renewal"
   end
-
-  private
-
-    def create_loan_account(family, name, balance, interest_rate, term_months)
-      loan = Loan.create!(
-        interest_rate: interest_rate,
-        term_months: term_months,
-        rate_type: "fixed"
-      )
-
-      Account.create!(
-        family: family,
-        name: name,
-        balance: -balance,
-        currency: "CAD",
-        accountable: loan,
-        status: "active"
-      )
-    end
 end

@@ -70,7 +70,9 @@ class Account::Projection < ApplicationRecord
         currency: account.currency
       )
 
-      transaction do
+      # Pessimistic lock on account row prevents concurrent generation races
+      # Pattern follows syncable.rb:16 (existing codebase convention)
+      account.with_lock do
         where(account: account, projection_date: Date.current..).delete_all
 
         months.times.map do |month|

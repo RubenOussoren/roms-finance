@@ -10,39 +10,24 @@ class LoanPayoffCalculator
   end
 
   # Get summary of loan payoff
-  # Results are cached based on account balance, interest rate, and extra payment
+  # Caching is handled at the controller level
   def summary
     return empty_summary unless valid_loan?
 
-    Rails.cache.fetch(cache_key("summary"), expires_in: 1.hour) do
-      schedule = amortization_schedule
+    schedule = amortization_schedule
 
-      {
-        account: account,
-        current_balance: account.balance.abs,
-        monthly_payment: monthly_payment,
-        interest_rate: interest_rate,
-        months_to_payoff: schedule.length,
-        payoff_date: payoff_date(schedule.length),
-        total_interest_remaining: total_interest_remaining(schedule),
-        total_amount_remaining: total_amount_remaining(schedule),
-        years_remaining: (schedule.length / 12.0).round(1),
-        currency: account.currency
-      }
-    end
-  end
-
-  # Cache key for memoization across requests
-  def cache_key(suffix = nil)
-    key_parts = [
-      "loan_payoff",
-      account.id,
-      account.balance.to_i,
-      loan&.interest_rate.to_s,
-      @extra_payment.to_i
-    ]
-    key_parts << suffix if suffix
-    key_parts.join("_")
+    {
+      account: account,
+      current_balance: account.balance.abs,
+      monthly_payment: monthly_payment,
+      interest_rate: interest_rate,
+      months_to_payoff: schedule.length,
+      payoff_date: payoff_date(schedule.length),
+      total_interest_remaining: total_interest_remaining(schedule),
+      total_amount_remaining: total_amount_remaining(schedule),
+      years_remaining: (schedule.length / 12.0).round(1),
+      currency: account.currency
+    }
   end
 
   # Generate full amortization schedule (memoized to avoid O(n²) recalculations)

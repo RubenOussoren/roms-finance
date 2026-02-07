@@ -165,12 +165,12 @@ class DebtOptimizationStrategy < ApplicationRecord
 
       return unless baseline_final && strategy_final
 
-      # Mortgage-only interest comparison (excludes HELOC — always positive if strategy works)
-      baseline_mortgage_interest = baseline_entries.sum(&:primary_mortgage_interest) +
-                                   baseline_entries.sum(&:rental_mortgage_interest)
-      strategy_mortgage_interest = strategy_entries.sum(&:primary_mortgage_interest) +
-                                   strategy_entries.sum(&:rental_mortgage_interest)
-      strategy_heloc_interest = strategy_entries.sum(&:heloc_interest)
+      # SQL SUM instead of loading all rows into Ruby
+      baseline_mortgage_interest = baseline_entries.sum(:primary_mortgage_interest) +
+                                   baseline_entries.sum(:rental_mortgage_interest)
+      strategy_mortgage_interest = strategy_entries.sum(:primary_mortgage_interest) +
+                                   strategy_entries.sum(:rental_mortgage_interest)
+      strategy_heloc_interest = strategy_entries.sum(:heloc_interest)
 
       self.total_interest_saved = baseline_mortgage_interest - strategy_mortgage_interest
 
@@ -180,9 +180,11 @@ class DebtOptimizationStrategy < ApplicationRecord
       # Net economic benefit = mortgage savings + tax benefit - HELOC cost
       self.net_benefit = total_interest_saved + total_tax_benefit - strategy_heloc_interest
 
-      # Months accelerated = how many months earlier primary mortgage is paid off
-      baseline_payoff_month = baseline_entries.find { |e| e.primary_mortgage_balance <= 0 }&.month_number
-      strategy_payoff_month = strategy_entries.find { |e| e.primary_mortgage_balance <= 0 }&.month_number
+      # SQL WHERE instead of Ruby .find { }
+      baseline_payoff_month = baseline_entries
+        .where("primary_mortgage_balance <= 0").order(:month_number).first&.month_number
+      strategy_payoff_month = strategy_entries
+        .where("primary_mortgage_balance <= 0").order(:month_number).first&.month_number
 
       if baseline_payoff_month && strategy_payoff_month
         self.months_accelerated = baseline_payoff_month - strategy_payoff_month

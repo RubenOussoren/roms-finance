@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_07_130000) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_07_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -592,6 +592,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_130000) do
     t.datetime "updated_at", null: false
     t.string "target_type", default: "reach", null: false
     t.decimal "starting_balance", precision: 19, scale: 4
+    t.index ["account_id", "status"], name: "index_milestones_on_account_id_and_status"
     t.index ["account_id", "target_amount"], name: "index_milestones_on_account_id_and_target_amount", unique: true, where: "(is_custom = false)"
     t.index ["account_id"], name: "index_milestones_on_account_id"
     t.index ["status"], name: "index_milestones_on_status"
@@ -732,6 +733,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_130000) do
     t.date "target_payoff_date"
     t.index ["account_id"], name: "index_projection_assumptions_on_account_id"
     t.index ["account_id"], name: "index_projection_assumptions_unique_account", unique: true, where: "(account_id IS NOT NULL)"
+    t.index ["family_id", "account_id"], name: "index_projection_assumptions_on_family_and_account"
     t.index ["family_id", "is_active"], name: "index_projection_assumptions_on_family_id_and_is_active", where: "(is_active = true)"
     t.index ["family_id"], name: "index_projection_assumptions_on_family_id"
     t.index ["projection_standard_id"], name: "index_projection_assumptions_on_projection_standard_id"

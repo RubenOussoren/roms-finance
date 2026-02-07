@@ -17,31 +17,24 @@ class FamilyProjectionCalculator
   end
 
   # Generate family-wide net worth projection
-  # Results are cached for 1 hour and invalidated when account data changes
+  # Caching is handled at the controller level (ProjectionsController#projection_cache_key)
   def project(years:)
-    cache_key = family.build_cache_key(
-      "family_projection_#{years}",
-      invalidate_on_data_updates: true
-    )
+    months = years * 12
+    historical = historical_net_worth_data
+    projection_result = project_net_worth(months: months)
+    projections = projection_result[:projections]
 
-    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      months = years * 12
-      historical = historical_net_worth_data
-      projection_result = project_net_worth(months: months)
-      projections = projection_result[:projections]
+    result = {
+      historical: historical,
+      projections: projections,
+      currency: family.currency,
+      today: Date.current.iso8601,
+      summary: build_summary(projections)
+    }
 
-      result = {
-        historical: historical,
-        projections: projections,
-        currency: family.currency,
-        today: Date.current.iso8601,
-        summary: build_summary(projections)
-      }
+    result[:currency_warnings] = projection_result[:currency_warnings] if projection_result[:currency_warnings].any?
 
-      result[:currency_warnings] = projection_result[:currency_warnings] if projection_result[:currency_warnings].any?
-
-      result
-    end
+    result
   end
 
   # Quick summary metrics for the overview
@@ -134,7 +127,7 @@ class FamilyProjectionCalculator
 
       # Build arrays of weights, volatilities, and asset classes
       account_data = asset_accounts.map do |account|
-        assumption = ProjectionAssumption.for_account(account)
+        assumption = assumption_for(account)
         {
           weight: (account.balance / total_balance).to_f,
           volatility: (assumption&.effective_volatility || 0.15).to_f,

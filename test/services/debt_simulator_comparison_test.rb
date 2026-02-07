@@ -3,6 +3,8 @@ require "test_helper"
 # Cross-simulator comparison tests — validates the economic ordering
 # invariants that must hold across baseline, prepay-only, and Smith strategies.
 class DebtSimulatorComparisonTest < ActiveSupport::TestCase
+  include DebtSimulatorTestHelper
+
   setup do
     @family = families(:dylan_family)
 
@@ -95,40 +97,4 @@ class DebtSimulatorComparisonTest < ActiveSupport::TestCase
       "Smith deductible interest ($#{smith_deductible.round}) should exceed " \
       "baseline ($#{baseline_deductible.round}) due to HELOC interest"
   end
-
-  private
-
-    def create_loan_account(family, name, balance, interest_rate, term_months)
-      loan = Loan.create!(
-        interest_rate: interest_rate,
-        term_months: term_months,
-        rate_type: "fixed"
-      )
-
-      Account.create!(
-        family: family,
-        name: name,
-        balance: -balance,
-        currency: "CAD",
-        accountable: loan,
-        status: "active"
-      )
-    end
-
-    def create_heloc_account(family, name, balance, interest_rate, credit_limit)
-      loan = Loan.create!(
-        interest_rate: interest_rate,
-        rate_type: "variable",
-        credit_limit: credit_limit
-      )
-
-      Account.create!(
-        family: family,
-        name: name,
-        balance: -balance,
-        currency: "CAD",
-        accountable: loan,
-        status: "active"
-      )
-    end
 end
