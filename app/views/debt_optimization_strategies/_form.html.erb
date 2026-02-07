@@ -19,7 +19,7 @@
   <div class="bg-container border border-primary rounded-lg p-4">
     <h3 class="font-medium text-primary mb-4">Basic Information</h3>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
         <%= f.label :name, "Strategy Name", class: "block text-sm font-medium text-primary mb-1" %>
         <%= f.text_field :name,
@@ -33,6 +33,15 @@
               [["Modified Smith Manoeuvre", "modified_smith"], ["Baseline (No Optimization)", "baseline"]],
               {},
               class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+      </div>
+
+      <div>
+        <%= f.label :province, "Province", class: "block text-sm font-medium text-primary mb-1" %>
+        <%= f.select :province,
+              DebtOptimizationStrategy::CANADIAN_PROVINCES.map { |code, name| ["#{name} (#{code})", code] },
+              { include_blank: "Ontario (default)" },
+              class: "w-full rounded-md border border-primary bg-container px-3 py-2 text-primary focus:border-blue-500 focus:ring-1 focus:ring-blue-500" %>
+        <p class="text-xs text-secondary mt-1">Your province affects your combined tax rate</p>
       </div>
     </div>
   </div>
