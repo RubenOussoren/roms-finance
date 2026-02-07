@@ -31,6 +31,10 @@ class MilestoneCalculator
       return { achieved: true, required: 0 } if current_balance >= target
     end
 
+    # Months approximated as 30 days. Maximum error: ~3% on timing estimates
+    # (a 30-month estimate could be off by ~1 month vs calendar months).
+    # Using 30.44 (365.25/12) would be more precise but adds negligible value
+    # for a planning tool.
     months = ((target_date - Date.current) / 30).to_i
     return { achievable: false, reason: "Target date is in the past" } if months <= 0
 
