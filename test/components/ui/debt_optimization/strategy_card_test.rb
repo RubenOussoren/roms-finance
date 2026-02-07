@@ -66,17 +66,17 @@ class UI::DebtOptimization::StrategyCardTest < ActiveSupport::TestCase
   end
 
   test "primary_mortgage_name returns Not set when nil" do
-    component = UI::DebtOptimization::StrategyCard.new(strategy: @strategy)
+    component = UI::DebtOptimization::StrategyCard.new(strategy: @baseline_strategy)
     assert_equal "Not set", component.primary_mortgage_name
   end
 
   test "heloc_name returns Not set when nil" do
-    component = UI::DebtOptimization::StrategyCard.new(strategy: @strategy)
+    component = UI::DebtOptimization::StrategyCard.new(strategy: @baseline_strategy)
     assert_equal "Not set", component.heloc_name
   end
 
   test "rental_mortgage_name returns Not set when nil" do
-    component = UI::DebtOptimization::StrategyCard.new(strategy: @strategy)
+    component = UI::DebtOptimization::StrategyCard.new(strategy: @baseline_strategy)
     assert_equal "Not set", component.rental_mortgage_name
   end
 end

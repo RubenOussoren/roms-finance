@@ -255,7 +255,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       {
         "scenario" => "A",
         "simulator" => "BaselineSimulator",
-        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates.",
+        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates. Post-payment balances.",
         "inputs" => {
           "primary_mortgage" => 400_000,
           "primary_rate" => 5.0,
@@ -298,7 +298,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       {
         "scenario" => "A",
         "simulator" => "CanadianSmithManoeuvrSimulator",
-        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates. HELOC interest cash source untracked.",
+        "pre_correction_note" => "Uses monthly compounding (not Canadian semi-annual). Federal + Ontario provincial rates. HELOC interest cash source tracked. Post-payment balances.",
         "inputs" => {
           "primary_mortgage" => 400_000,
           "primary_rate" => 5.0,
@@ -476,7 +476,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       {
         "scenario" => "C",
         "calculator" => "DebtOptimizationStrategy + CanadianSmithManoeuvrSimulator",
-        "pre_correction_note" => "Federal + Ontario provincial rates. HELOC interest cash source untracked.",
+        "pre_correction_note" => "Federal + Ontario provincial rates. HELOC interest cash source tracked.",
         "inputs" => {
           "household_income" => 100_000,
           "province" => "ON",

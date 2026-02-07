@@ -2,3 +2,18 @@ one:
   interest_rate: 3.5
   term_months: 360
   rate_type: fixed
+
+smith_primary_mortgage:
+  interest_rate: 5.0
+  term_months: 300
+  rate_type: fixed
+
+smith_heloc:
+  interest_rate: 7.0
+  rate_type: variable
+  credit_limit: 100000
+
+smith_rental_mortgage:
+  interest_rate: 5.5
+  term_months: 240
+  rate_type: fixed

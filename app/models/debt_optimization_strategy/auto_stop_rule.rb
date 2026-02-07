@@ -15,6 +15,7 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
     max_months: "max_months",                                   # Stop after X months
     negative_cash_flow: "negative_cash_flow",                   # Stop if net cash flow becomes negative
     heloc_interest_exceeds_benefit: "heloc_interest_exceeds_benefit", # Stop if HELOC interest > tax benefit
+    cumulative_cost_exceeds_benefit: "cumulative_cost_exceeds_benefit", # Stop if cumulative HELOC cost > cumulative savings
     heloc_interest_ceiling: "heloc_interest_ceiling",           # Stop if monthly HELOC interest exceeds X
     tax_refund_coverage_ratio: "tax_refund_coverage_ratio",     # Stop if tax benefit < X% of HELOC interest
     manual_stop_date: "manual_stop_date"                        # Stop on a specific date
@@ -47,6 +48,8 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
       check_negative_cash_flow(ledger_entry)
     when "heloc_interest_exceeds_benefit"
       check_heloc_interest_exceeds_benefit(ledger_entry)
+    when "cumulative_cost_exceeds_benefit"
+      check_cumulative_cost_exceeds_benefit(ledger_entry)
     when "heloc_interest_ceiling"
       check_heloc_interest_ceiling(ledger_entry)
     when "tax_refund_coverage_ratio"
@@ -75,6 +78,8 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
       "Stop if net cash flow becomes negative"
     when "heloc_interest_exceeds_benefit"
       "Stop if HELOC interest exceeds tax benefit"
+    when "cumulative_cost_exceeds_benefit"
+      "Stop if cumulative HELOC cost exceeds cumulative savings"
     when "heloc_interest_ceiling"
       "Stop if monthly HELOC interest exceeds $#{threshold_value.to_i.to_fs(:delimited)}"
     when "tax_refund_coverage_ratio"
@@ -123,6 +128,13 @@ class DebtOptimizationStrategy::AutoStopRule < ApplicationRecord
 
     def check_heloc_interest_exceeds_benefit(ledger_entry)
       ledger_entry.heloc_interest > ledger_entry.tax_benefit
+    end
+
+    def check_cumulative_cost_exceeds_benefit(ledger_entry)
+      cumulative_net = ledger_entry.metadata&.dig("cumulative_net_benefit")
+      return false unless cumulative_net.present?
+
+      cumulative_net.to_f < 0
     end
 
     # Stop if monthly HELOC interest exceeds a ceiling amount

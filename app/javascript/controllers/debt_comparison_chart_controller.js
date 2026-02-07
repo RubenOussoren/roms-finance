@@ -1,11 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 import * as d3 from "d3"
 
-// 🇨🇦 Debt comparison chart for Smith Manoeuvre visualization
+// Debt comparison chart for Smith Manoeuvre visualization
+// Supports baseline (gray dashed), prepay-only (green dashed), and strategy (blue solid)
 export default class extends Controller {
   static values = {
     series: Object,
-    hasBaseline: Boolean
+    hasBaseline: Boolean,
+    hasPrepayOnly: Boolean
   }
 
   _resizeTimeout = null
@@ -22,7 +24,6 @@ export default class extends Controller {
   }
 
   handleResize() {
-    // Debounce resize to prevent freeze during sidebar toggle
     clearTimeout(this._resizeTimeout)
     this._resizeTimeout = setTimeout(() => this.drawChart(), 150)
   }
@@ -51,6 +52,7 @@ export default class extends Controller {
     // Combine all data points to get x/y domains
     let allData = []
     if (series.baseline) allData = allData.concat(series.baseline)
+    if (series.prepay_only) allData = allData.concat(series.prepay_only)
     if (series.strategy) allData = allData.concat(series.strategy)
 
     if (allData.length === 0) {
@@ -92,6 +94,22 @@ export default class extends Controller {
         .attr("stroke", "#9CA3AF")
         .attr("stroke-width", 2)
         .attr("stroke-dasharray", "5,5")
+        .attr("d", line)
+    }
+
+    // Draw prepay-only (green dashed line)
+    if (this.hasPrepayOnlyValue && series.prepay_only) {
+      const prepayData = series.prepay_only.map(d => ({
+        ...d,
+        parsedDate: parseDate(d.date)
+      }))
+
+      svg.append("path")
+        .datum(prepayData)
+        .attr("fill", "none")
+        .attr("stroke", "#10B981")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "8,4")
         .attr("d", line)
     }
 

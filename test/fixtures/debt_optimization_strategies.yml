@@ -9,6 +9,9 @@ smith_manoeuvre:
   rental_expenses: 500
   simulation_months: 120
   currency: "CAD"
+  primary_mortgage: smith_primary_mortgage
+  heloc: smith_heloc
+  rental_mortgage: smith_rental_mortgage
   metadata: {}
 
 baseline:

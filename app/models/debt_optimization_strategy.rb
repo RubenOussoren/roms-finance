@@ -84,11 +84,15 @@ class DebtOptimizationStrategy < ApplicationRecord
   end
 
   def baseline_entries
-    ledger_entries.where(baseline: true).order(:month_number)
+    ledger_entries.where(scenario_type: "baseline").order(:month_number)
   end
 
   def strategy_entries
-    ledger_entries.where(baseline: false).order(:month_number)
+    ledger_entries.where(scenario_type: "modified_smith").order(:month_number)
+  end
+
+  def prepay_only_entries
+    ledger_entries.where(scenario_type: "prepay_only").order(:month_number)
   end
 
   def chart_series_builder
@@ -161,13 +165,20 @@ class DebtOptimizationStrategy < ApplicationRecord
 
       return unless baseline_final && strategy_final
 
-      # Total interest saved = baseline interest - strategy interest
-      baseline_total_interest = baseline_entries.sum { |e| e.primary_mortgage_interest + e.heloc_interest }
-      strategy_total_interest = strategy_entries.sum { |e| e.primary_mortgage_interest + e.heloc_interest }
-      self.total_interest_saved = baseline_total_interest - strategy_total_interest
+      # Mortgage-only interest comparison (excludes HELOC — always positive if strategy works)
+      baseline_mortgage_interest = baseline_entries.sum(&:primary_mortgage_interest) +
+                                   baseline_entries.sum(&:rental_mortgage_interest)
+      strategy_mortgage_interest = strategy_entries.sum(&:primary_mortgage_interest) +
+                                   strategy_entries.sum(&:rental_mortgage_interest)
+      strategy_heloc_interest = strategy_entries.sum(&:heloc_interest)
+
+      self.total_interest_saved = baseline_mortgage_interest - strategy_mortgage_interest
 
       # Total tax benefit from deductible interest
       self.total_tax_benefit = strategy_final.cumulative_tax_benefit
+
+      # Net economic benefit = mortgage savings + tax benefit - HELOC cost
+      self.net_benefit = total_interest_saved + total_tax_benefit - strategy_heloc_interest
 
       # Months accelerated = how many months earlier primary mortgage is paid off
       baseline_payoff_month = baseline_entries.find { |e| e.primary_mortgage_balance <= 0 }&.month_number

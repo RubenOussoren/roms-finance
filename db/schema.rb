@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_07_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_07_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -270,13 +270,15 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_120000) do
     t.decimal "cumulative_tax_benefit", precision: 19, scale: 4, default: "0.0"
     t.decimal "total_debt", precision: 19, scale: 4, default: "0.0"
     t.decimal "net_worth_impact", precision: 19, scale: 4, default: "0.0"
-    t.boolean "baseline", default: false, null: false
     t.boolean "strategy_stopped", default: false, null: false
     t.string "stop_reason"
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["debt_optimization_strategy_id", "month_number", "baseline"], name: "idx_debt_ledger_strategy_month_baseline", unique: true
+    t.string "scenario_type", null: false
+    t.decimal "heloc_interest_from_rental", precision: 19, scale: 4, default: "0.0"
+    t.decimal "heloc_interest_from_pocket", precision: 19, scale: 4, default: "0.0"
+    t.index ["debt_optimization_strategy_id", "month_number", "scenario_type"], name: "idx_debt_ledger_strategy_month_scenario", unique: true
     t.index ["debt_optimization_strategy_id"], name: "idx_on_debt_optimization_strategy_id_6b2b092cea"
   end
 
@@ -304,6 +306,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_120000) do
     t.decimal "heloc_max_limit", precision: 19, scale: 4
     t.boolean "heloc_readvanceable", default: false
     t.string "province", limit: 2
+    t.decimal "net_benefit", precision: 19, scale: 4
     t.index ["family_id"], name: "index_debt_optimization_strategies_on_family_id"
     t.index ["heloc_id"], name: "index_debt_optimization_strategies_on_heloc_id"
     t.index ["jurisdiction_id"], name: "index_debt_optimization_strategies_on_jurisdiction_id"
@@ -538,6 +541,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_120000) do
     t.decimal "renewal_rate", precision: 10, scale: 3
     t.decimal "annual_lump_sum_amount", precision: 19, scale: 4
     t.integer "annual_lump_sum_month"
+    t.integer "renewal_term_months"
+    t.decimal "prepayment_privilege_percent", precision: 5, scale: 2
   end
 
   create_table "merchants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

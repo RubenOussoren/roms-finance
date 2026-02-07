@@ -18,6 +18,9 @@ class Account < ApplicationRecord
   has_many :holdings, dependent: :destroy
   has_many :balances, dependent: :destroy
   has_one :projection_assumption, dependent: :destroy
+  has_many :strategies_as_primary, class_name: "DebtOptimizationStrategy", foreign_key: :primary_mortgage_id, dependent: :nullify
+  has_many :strategies_as_heloc, class_name: "DebtOptimizationStrategy", foreign_key: :heloc_id, dependent: :nullify
+  has_many :strategies_as_rental, class_name: "DebtOptimizationStrategy", foreign_key: :rental_mortgage_id, dependent: :nullify
 
   monetize :balance, :cash_balance
 

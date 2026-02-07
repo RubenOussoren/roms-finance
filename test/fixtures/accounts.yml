@@ -91,3 +91,30 @@ crypto:
   accountable_type: Crypto
   accountable: one
   status: active
+
+smith_primary_mortgage:
+  family: dylan_family
+  name: Smith Primary Mortgage
+  balance: -400000
+  currency: CAD
+  accountable_type: Loan
+  accountable: smith_primary_mortgage
+  status: active
+
+smith_heloc:
+  family: dylan_family
+  name: Smith HELOC
+  balance: 0
+  currency: CAD
+  accountable_type: Loan
+  accountable: smith_heloc
+  status: active
+
+smith_rental_mortgage:
+  family: dylan_family
+  name: Smith Rental Mortgage
+  balance: -200000
+  currency: CAD
+  accountable_type: Loan
+  accountable: smith_rental_mortgage
+  status: active

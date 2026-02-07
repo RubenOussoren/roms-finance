@@ -16,7 +16,7 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
       rental_mortgage: @rental_mortgage,
       rental_income: 2500,
       rental_expenses: 500,
-      simulation_months: 24 # Short simulation for tests
+      simulation_months: 24
     )
   end
 
@@ -24,16 +24,15 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
     simulator = BaselineSimulator.new(@strategy)
     simulator.simulate!
 
-    # Should have entries for each month (or until debt paid off)
     assert @strategy.ledger_entries.count > 0
     assert @strategy.ledger_entries.count <= 24
   end
 
-  test "all entries are marked as baseline" do
+  test "all entries have scenario_type baseline" do
     simulator = BaselineSimulator.new(@strategy)
     simulator.simulate!
 
-    assert @strategy.ledger_entries.all?(&:baseline?)
+    assert @strategy.ledger_entries.all? { |e| e.scenario_type == "baseline" }
   end
 
   test "primary mortgage balance decreases over time" do
@@ -47,6 +46,25 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
     assert last_balance < first_balance, "Balance should decrease over time"
   end
 
+  test "entries use post-payment balances" do
+    simulator = BaselineSimulator.new(@strategy)
+    simulator.simulate!
+
+    entries = @strategy.baseline_entries.order(:month_number).to_a
+    return if entries.size < 2
+
+    # For consecutive entries, current balance should equal
+    # previous balance minus current principal payment
+    (1...entries.size).each do |i|
+      prev = entries[i - 1]
+      curr = entries[i]
+
+      expected = prev.primary_mortgage_balance - curr.primary_mortgage_principal
+      assert_in_delta expected, curr.primary_mortgage_balance, 0.01,
+        "Month #{curr.month_number}: balance should be prev - principal"
+    end
+  end
+
   test "no heloc usage in baseline" do
     simulator = BaselineSimulator.new(@strategy)
     simulator.simulate!
@@ -54,6 +72,15 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
     @strategy.baseline_entries.each do |entry|
       assert_equal 0, entry.heloc_draw
       assert_equal 0, entry.heloc_balance
+    end
+  end
+
+  test "no prepayment in baseline" do
+    simulator = BaselineSimulator.new(@strategy)
+    simulator.simulate!
+
+    @strategy.baseline_entries.each do |entry|
+      assert_equal 0, entry.primary_mortgage_prepayment
     end
   end
 
@@ -88,8 +115,20 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
     simulator = BaselineSimulator.new(strategy)
     simulator.simulate!
 
-    # Should still create entries (with zero balances)
     assert strategy.ledger_entries.count > 0
+  end
+
+  test "supports mortgage renewal at periodic intervals" do
+    loan = @primary_mortgage.accountable
+    loan.update!(renewal_date: Date.current + 1.day, renewal_term_months: 12, renewal_rate: 6.0)
+
+    @strategy.update!(simulation_months: 24)
+
+    simulator = BaselineSimulator.new(@strategy)
+    simulator.simulate!
+
+    entries = @strategy.baseline_entries.order(:month_number).to_a
+    assert entries.size > 12, "Should run beyond first renewal"
   end
 
   private
@@ -104,7 +143,7 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
       Account.create!(
         family: family,
         name: name,
-        balance: -balance, # Loans are negative balance
+        balance: -balance,
         currency: "CAD",
         accountable: loan,
         status: "active"

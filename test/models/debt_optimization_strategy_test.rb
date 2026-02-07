@@ -73,36 +73,45 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
   end
 
   test "baseline_entries returns only baseline ledger entries" do
-    # Create some baseline entries
     @strategy.ledger_entries.create!(
       month_number: 0,
       calendar_month: Date.current,
-      baseline: true
+      scenario_type: "baseline"
     )
     @strategy.ledger_entries.create!(
       month_number: 0,
       calendar_month: Date.current,
-      baseline: false
+      scenario_type: "modified_smith"
     )
 
     assert_equal 1, @strategy.baseline_entries.count
-    assert @strategy.baseline_entries.all?(&:baseline?)
+    assert @strategy.baseline_entries.all? { |e| e.scenario_type == "baseline" }
   end
 
-  test "strategy_entries returns only non-baseline ledger entries" do
+  test "strategy_entries returns only modified_smith ledger entries" do
     @strategy.ledger_entries.create!(
       month_number: 0,
       calendar_month: Date.current,
-      baseline: true
+      scenario_type: "baseline"
     )
     @strategy.ledger_entries.create!(
       month_number: 0,
       calendar_month: Date.current,
-      baseline: false
+      scenario_type: "modified_smith"
     )
 
     assert_equal 1, @strategy.strategy_entries.count
-    assert @strategy.strategy_entries.none?(&:baseline?)
+    assert @strategy.strategy_entries.all? { |e| e.scenario_type == "modified_smith" }
+  end
+
+  test "prepay_only_entries returns only prepay_only ledger entries" do
+    @strategy.ledger_entries.create!(
+      month_number: 0,
+      calendar_month: Date.current,
+      scenario_type: "prepay_only"
+    )
+
+    assert_equal 1, @strategy.prepay_only_entries.count
   end
 
   test "for_family scope returns strategies for specific family" do

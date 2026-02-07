@@ -6,20 +6,26 @@ class DebtOptimizationStrategy::ChartSeriesBuilder
     @strategy = strategy
   end
 
-  # Primary mortgage balance comparison: baseline vs modified strategy
+  # Primary mortgage balance comparison: baseline vs prepay-only vs modified strategy
   def debt_comparison_series
-    {
+    series = {
       baseline: build_series(strategy.baseline_entries, :primary_mortgage_balance),
       strategy: build_series(strategy.strategy_entries, :primary_mortgage_balance)
     }
+    prepay_only = strategy.prepay_only_entries
+    series[:prepay_only] = build_series(prepay_only, :primary_mortgage_balance) if prepay_only.any?
+    series
   end
 
   # Total debt comparison (all debts combined)
   def total_debt_series
-    {
+    series = {
       baseline: build_series(strategy.baseline_entries, :total_debt),
       strategy: build_series(strategy.strategy_entries, :total_debt)
     }
+    prepay_only = strategy.prepay_only_entries
+    series[:prepay_only] = build_series(prepay_only, :total_debt) if prepay_only.any?
+    series
   end
 
   # Cumulative tax benefit over time
@@ -65,10 +71,22 @@ class DebtOptimizationStrategy::ChartSeriesBuilder
       }
     end
 
-    {
+    series = {
       baseline: baseline_series,
       strategy: strategy_series
     }
+
+    prepay_only = strategy.prepay_only_entries
+    if prepay_only.any?
+      series[:prepay_only] = prepay_only.map do |entry|
+        {
+          date: entry.calendar_month.iso8601,
+          value: entry.primary_mortgage_interest + entry.rental_mortgage_interest
+        }
+      end
+    end
+
+    series
   end
 
   # Cash flow series
@@ -102,14 +120,17 @@ class DebtOptimizationStrategy::ChartSeriesBuilder
     baseline_payoff = strategy.baseline_entries.find { |e| e.primary_mortgage_balance <= 0 }
     strategy_payoff = strategy.strategy_entries.find { |e| e.primary_mortgage_balance <= 0 }
 
+    total_heloc_interest = strategy.strategy_entries.sum(&:heloc_interest)
+
     {
+      net_benefit: strategy.net_benefit || 0,
       total_tax_benefit: strategy_final.cumulative_tax_benefit,
       total_interest_saved: strategy.total_interest_saved || 0,
+      total_heloc_interest_paid: total_heloc_interest,
       months_accelerated: strategy.months_accelerated || 0,
       baseline_payoff_month: baseline_payoff&.month_number,
       strategy_payoff_month: strategy_payoff&.month_number,
       final_heloc_balance: strategy_final.heloc_balance,
-      total_heloc_interest_paid: strategy.strategy_entries.sum(&:heloc_interest),
       strategy_stopped: strategy_final.strategy_stopped,
       stop_reason: strategy_final.stop_reason
     }

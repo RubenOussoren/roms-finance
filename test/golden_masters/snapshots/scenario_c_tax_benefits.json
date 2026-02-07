@@ -1,7 +1,7 @@
 {
   "scenario": "C",
   "calculator": "DebtOptimizationStrategy + CanadianSmithManoeuvrSimulator",
-  "pre_correction_note": "Federal + Ontario provincial rates. HELOC interest cash source untracked.",
+  "pre_correction_note": "Federal + Ontario provincial rates. HELOC interest cash source tracked.",
   "inputs": {
     "household_income": 100000,
     "province": "ON",
@@ -18,7 +18,7 @@
     "effective_marginal_tax_rate": 0.2965,
     "total_tax_benefit": 62230.2555,
     "total_deductible_interest": 209882.8179,
-    "total_non_deductible_interest": 104713.2876,
+    "total_non_deductible_interest": 108545.5619,
     "monthly_tax_samples": [
       {
         "month": 0,
@@ -32,7 +32,7 @@
       {
         "month": 11,
         "deductible_interest": 914.8379,
-        "non_deductible_interest": 1525.6008,
+        "non_deductible_interest": 1526.2706,
         "tax_benefit": 271.2494,
         "cumulative_tax_benefit": 3240.1852,
         "heloc_interest": 32.0833,
@@ -41,7 +41,7 @@
       {
         "month": 59,
         "deductible_interest": 937.0342,
-        "non_deductible_interest": 913.8938,
+        "non_deductible_interest": 936.1839,
         "tax_benefit": 277.8306,
         "cumulative_tax_benefit": 16451.6833,
         "heloc_interest": 172.0833,
@@ -50,7 +50,7 @@
       {
         "month": 119,
         "deductible_interest": 923.8494,
-        "non_deductible_interest": 0.0,
+        "non_deductible_interest": 57.9207,
         "tax_benefit": 273.9214,
         "cumulative_tax_benefit": 33077.8595,
         "heloc_interest": 347.0833,

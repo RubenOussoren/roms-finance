@@ -12,6 +12,7 @@ class DebtOptimizationStrategiesController < ApplicationController
     @summary_metrics = @strategy.chart_series_builder.summary_metrics if @chart_series.present?
     @baseline_entries = @strategy.baseline_entries.limit(24)
     @strategy_entries = @strategy.strategy_entries.limit(24)
+    @prepay_only_entries = @strategy.prepay_only_entries.limit(24)
   end
 
   def new

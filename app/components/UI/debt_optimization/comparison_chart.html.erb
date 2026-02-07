@@ -8,7 +8,8 @@
        class="h-64"
        data-controller="debt-comparison-chart"
        data-debt-comparison-chart-series-value="<%= series_json %>"
-       data-debt-comparison-chart-has-baseline-value="<%= has_baseline? %>">
+       data-debt-comparison-chart-has-baseline-value="<%= has_baseline? %>"
+       data-debt-comparison-chart-has-prepay-only-value="<%= has_prepay_only? %>">
     <div class="flex items-center justify-center h-full text-secondary">
       Loading chart...
     </div>
@@ -20,6 +21,12 @@
         <span class="w-3 h-3 bg-gray-400 rounded-full"></span>
         <span class="text-secondary">Baseline (No Strategy)</span>
       </div>
+      <% if has_prepay_only? %>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 bg-emerald-500 rounded-full"></span>
+          <span class="text-secondary">Prepay Only</span>
+        </div>
+      <% end %>
       <div class="flex items-center gap-2">
         <span class="w-3 h-3 bg-blue-500 rounded-full"></span>
         <span class="text-secondary">Modified Smith Manoeuvre</span>

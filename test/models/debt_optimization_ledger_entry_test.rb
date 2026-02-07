@@ -7,7 +7,7 @@ class DebtOptimizationLedgerEntryTest < ActiveSupport::TestCase
       debt_optimization_strategy: @strategy,
       month_number: 1,
       calendar_month: Date.current,
-      baseline: false,
+      scenario_type: "modified_smith",
       primary_mortgage_balance: 400000,
       primary_mortgage_payment: 2500,
       primary_mortgage_principal: 800,
@@ -91,9 +91,9 @@ class DebtOptimizationLedgerEntryTest < ActiveSupport::TestCase
     @entry.save!
     baseline_entry = DebtOptimizationLedgerEntry.create!(
       debt_optimization_strategy: @strategy,
-      month_number: 1,
-      calendar_month: Date.current,
-      baseline: true
+      month_number: 2,
+      calendar_month: Date.current + 1.month,
+      scenario_type: "baseline"
     )
 
     baseline_results = DebtOptimizationLedgerEntry.baseline_entries
@@ -101,17 +101,29 @@ class DebtOptimizationLedgerEntryTest < ActiveSupport::TestCase
     assert_not baseline_results.include?(@entry)
   end
 
-  test "strategy_entries scope returns only non-baseline entries" do
+  test "strategy_entries scope returns only modified_smith entries" do
     @entry.save!
     baseline_entry = DebtOptimizationLedgerEntry.create!(
       debt_optimization_strategy: @strategy,
       month_number: 2,
       calendar_month: Date.current + 1.month,
-      baseline: true
+      scenario_type: "baseline"
     )
 
     strategy_results = DebtOptimizationLedgerEntry.strategy_entries
     assert strategy_results.include?(@entry)
     assert_not strategy_results.include?(baseline_entry)
+  end
+
+  test "prepay_only_entries scope returns only prepay_only entries" do
+    prepay_entry = DebtOptimizationLedgerEntry.create!(
+      debt_optimization_strategy: @strategy,
+      month_number: 3,
+      calendar_month: Date.current + 2.months,
+      scenario_type: "prepay_only"
+    )
+
+    prepay_results = DebtOptimizationLedgerEntry.prepay_only_entries
+    assert prepay_results.include?(prepay_entry)
   end
 end

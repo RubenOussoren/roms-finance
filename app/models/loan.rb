@@ -11,6 +11,8 @@ class Loan < ApplicationRecord
   # 🇨🇦 Canadian mortgage renewal validation
   validates :renewal_rate, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }, allow_nil: true
   validates :annual_lump_sum_month, inclusion: { in: 1..12 }, allow_nil: true
+  validates :renewal_term_months, numericality: { greater_than: 0 }, allow_nil: true
+  validates :prepayment_privilege_percent, numericality: { greater_than: 0, less_than_or_equal_to: 100 }, allow_nil: true
 
   # Check if this is a Canadian-style mortgage with renewal
   def canadian_mortgage?

@@ -49,6 +49,8 @@ class DebtOptimizationStrategy::AuditTrail
         total_draws: entries.sum(&:heloc_draw),
         year_end_balance: entries.last&.heloc_balance || 0,
         interest_paid: entries.sum(&:heloc_interest),
+        interest_from_rental: entries.sum(&:heloc_interest_from_rental),
+        interest_from_pocket: entries.sum(&:heloc_interest_from_pocket),
         compliance_note: "All HELOC funds used exclusively for investment/rental property purposes as required by CRA"
       },
 

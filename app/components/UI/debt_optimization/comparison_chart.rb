@@ -1,4 +1,4 @@
-# D3.js chart for comparing baseline vs modified strategy scenarios
+# D3.js chart for comparing baseline vs prepay-only vs modified strategy scenarios
 class UI::DebtOptimization::ComparisonChart < ApplicationComponent
   attr_reader :chart_series, :chart_type
 
@@ -58,5 +58,9 @@ class UI::DebtOptimization::ComparisonChart < ApplicationComponent
 
   def has_baseline?
     chart_type != "cumulative_tax_benefit"
+  end
+
+  def has_prepay_only?
+    has_baseline? && series_data.is_a?(Hash) && series_data[:prepay_only].present?
   end
 end

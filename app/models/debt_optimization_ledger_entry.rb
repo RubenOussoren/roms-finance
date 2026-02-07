@@ -5,8 +5,9 @@ class DebtOptimizationLedgerEntry < ApplicationRecord
   validates :month_number, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :calendar_month, presence: true
 
-  scope :baseline_entries, -> { where(baseline: true).order(:month_number) }
-  scope :strategy_entries, -> { where(baseline: false).order(:month_number) }
+  scope :baseline_entries, -> { where(scenario_type: "baseline").order(:month_number) }
+  scope :strategy_entries, -> { where(scenario_type: "modified_smith").order(:month_number) }
+  scope :prepay_only_entries, -> { where(scenario_type: "prepay_only").order(:month_number) }
   scope :active_months, -> { where(strategy_stopped: false) }
 
   # Calculate total monthly payment across all debts

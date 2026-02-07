@@ -14,7 +14,7 @@ class UI::DebtOptimization::LedgerTableTest < ActiveSupport::TestCase
       total_debt: 410000,
       tax_benefit: 200,
       cumulative_tax_benefit: 200,
-      baseline: false,
+      scenario_type: "modified_smith",
       strategy_stopped: false
     )
 
@@ -27,7 +27,7 @@ class UI::DebtOptimization::LedgerTableTest < ActiveSupport::TestCase
       total_debt: 410000,
       tax_benefit: 210,
       cumulative_tax_benefit: 410,
-      baseline: false,
+      scenario_type: "modified_smith",
       strategy_stopped: false
     )
   end
