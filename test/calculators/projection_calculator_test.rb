@@ -256,7 +256,7 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
       results = calc.project_with_percentiles(months: 3, volatility: 0.18, simulations: 10)
 
       results.each do |month_data|
-        [:p10, :p25, :p50, :p75, :p90, :mean].each do |key|
+        [ :p10, :p25, :p50, :p75, :p90, :mean ].each do |key|
           assert month_data[key].finite?, "#{key} at month #{month_data[:month]} should be finite, got #{month_data[key]}"
         end
       end

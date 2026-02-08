@@ -162,5 +162,4 @@ class AbstractDebtSimulator
       return 0 unless strategy.rental_mortgage.present?
       strategy.rental_mortgage.balance.abs
     end
-
 end

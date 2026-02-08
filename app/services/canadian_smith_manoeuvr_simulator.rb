@@ -331,5 +331,4 @@ class CanadianSmithManoeuvrSimulator
       return DEFAULT_HELOC_RATE unless strategy.heloc&.accountable.present?
       (strategy.heloc.accountable.interest_rate || 7) / 100.0
     end
-
 end

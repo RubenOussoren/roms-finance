@@ -11,7 +11,7 @@ class SmithManoeuvreFairnessAudit < ActiveRecord::Migration[7.2]
       name: "idx_debt_ledger_strategy_month_baseline"
     remove_column :debt_optimization_ledger_entries, :baseline
     add_index :debt_optimization_ledger_entries,
-      [:debt_optimization_strategy_id, :month_number, :scenario_type],
+      [ :debt_optimization_strategy_id, :month_number, :scenario_type ],
       unique: true, name: "idx_debt_ledger_strategy_month_scenario"
 
     # Task 1: HELOC interest source tracking
@@ -42,7 +42,7 @@ class SmithManoeuvreFairnessAudit < ActiveRecord::Migration[7.2]
       name: "idx_debt_ledger_strategy_month_scenario"
     remove_column :debt_optimization_ledger_entries, :scenario_type
     add_index :debt_optimization_ledger_entries,
-      [:debt_optimization_strategy_id, :month_number, :baseline],
+      [ :debt_optimization_strategy_id, :month_number, :baseline ],
       unique: true, name: "idx_debt_ledger_strategy_month_baseline"
 
     remove_column :debt_optimization_ledger_entries, :heloc_interest_from_rental

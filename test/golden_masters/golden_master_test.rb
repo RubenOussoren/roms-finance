@@ -24,8 +24,8 @@ class GoldenMasterTest < ActiveSupport::TestCase
   GOLDEN_MASTER_DIR = Rails.root.join("test", "golden_masters", "snapshots")
   TOLERANCE = 0.01 # $0.01 tolerance for floating point comparisons
 
-  SAMPLE_MONTHS_SHORT = [0, 11, 59, 119, 299]                    # months 1, 12, 60, 120, 300
-  SAMPLE_MONTHS_FULL  = [0, 11, 59, 119, 179, 239, 299]          # adds months 180, 240
+  SAMPLE_MONTHS_SHORT = [ 0, 11, 59, 119, 299 ]                    # months 1, 12, 60, 120, 300
+  SAMPLE_MONTHS_FULL  = [ 0, 11, 59, 119, 179, 239, 299 ]          # adds months 180, 240
 
   setup do
     @family = families(:dylan_family)
@@ -337,7 +337,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
 
       # Sample at key year boundaries
       year_samples = {}
-      [5, 10, 25].each do |year|
+      [ 5, 10, 25 ].each do |year|
         month_idx = (year * 12) - 1
         next if month_idx >= bands.size
         data = bands[month_idx]
@@ -401,7 +401,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
     end
 
     def extract_milestone_snapshot(calc)
-      targets = [200_000, 500_000, 1_000_000]
+      targets = [ 200_000, 500_000, 1_000_000 ]
 
       time_results = targets.map do |target|
         result = calc.time_to_target(target: target)
@@ -464,7 +464,7 @@ class GoldenMasterTest < ActiveSupport::TestCase
       total_non_deductible = entries.sum(&:non_deductible_interest)
 
       # Year-end cumulative snapshots
-      year_end_cumulative = [12, 60, 120, 180, 240, 300].map { |month|
+      year_end_cumulative = [ 12, 60, 120, 180, 240, 300 ].map { |month|
         e = entries.find { |en| en.month_number == month - 1 }
         next nil unless e
         {

@@ -79,13 +79,13 @@ class Jurisdiction < ApplicationRecord
       applicable_rate.to_d
     end
 
-  class << self
-    def default
-      find_by(country_code: "CA") || first
-    end
+    class << self
+      def default
+        find_by(country_code: "CA") || first
+      end
 
-    def for_country(code)
-      find_by(country_code: code.to_s.upcase)
+      def for_country(code)
+        find_by(country_code: code.to_s.upcase)
+      end
     end
-  end
 end

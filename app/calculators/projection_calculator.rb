@@ -175,7 +175,7 @@ class ProjectionCalculator
     def gaussian_random
       # Box-Muller transform for normal distribution
       # Guard: clamp u1 to avoid log(0) = -Infinity
-      u1 = [rand, Float::EPSILON].max
+      u1 = [ rand, Float::EPSILON ].max
       u2 = rand
       Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math::PI * u2)
     end

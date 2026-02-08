@@ -2,9 +2,9 @@
   <details class="group">
     <summary class="p-4 hover:bg-surface-hover transition-colors cursor-pointer list-none">
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3 min-w-0">
+      <div class="flex items-center gap-3 min-w-0 shrink">
         <%= render "accounts/logo", account: account, size: "md" %>
-        <div class="min-w-0">
+        <div class="min-w-[100px]">
           <%= link_to account.name, account_path(account), class: "font-medium text-primary hover:text-blue-600 truncate block" %>
           <p class="text-sm <%= account_type_color %>"><%= account_type_label %></p>
         </div>
