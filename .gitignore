@@ -108,6 +108,11 @@ scripts/
 .cursor/rules/taskmaster.mdc
 .claude/settings.local.json
 
+# Claude Code plan artifacts
+.claude/plans/
+.plan/
+PLAN.md
+
 # Playwright
 .playwright-mcp
 

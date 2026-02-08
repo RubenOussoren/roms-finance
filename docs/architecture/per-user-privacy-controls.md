@@ -1,6 +1,10 @@
 # Per-User Account Privacy Controls
 
-## Status: Phase 1 — In Progress
+**Purpose**: This document captures the original **design spec** for per-user account privacy controls. It served as the planning and implementation tracking artifact during development.
+
+> **WARNING — Planning document**: This file reflects the *original design spec*, not necessarily the current implementation in all details. Some patterns may have been adjusted during implementation (e.g., migration details, controller naming, scope semantics). For current architecture, see the Cursor rules in `.cursor/rules/` and the actual source code.
+
+## Status: Complete
 
 ## Context
 
@@ -246,50 +250,50 @@ Updated to include viewer context:
 
 ## Implementation Phases (Incremental — ship after each phase)
 
-### Phase 1: Foundation (database + core model) — `[ ] NOT STARTED`
-- [ ] Migration 1: Add `created_by_user_id` and `is_joint` to accounts
-- [ ] Migration 2: Create `account_permissions` table
-- [ ] Migration 3: Backfill existing accounts with `created_by_user_id`
-- [ ] Migration 4: Make `created_by_user_id` NOT NULL
-- [ ] `AccountPermission` model with validations and tests
-- [ ] `AccountAccessible` concern with scopes and tests
-- [ ] Include concern in Account, update `create_and_sync`
-- [ ] Update User model (associations, deactivation handling)
-- [ ] Update `AccountsController#set_account` and `AccountableResource#set_account`
-- [ ] Tests: Hidden account returns 404, owned account still accessible
+### Phase 1: Foundation (database + core model) — `[x] COMPLETE`
+- [x] Migration 1: Add `created_by_user_id` and `is_joint` to accounts
+- [x] Migration 2: Create `account_permissions` table
+- [x] Migration 3: Backfill existing accounts with `created_by_user_id`
+- [x] Migration 4: Make `created_by_user_id` NOT NULL
+- [x] `AccountPermission` model with validations and tests
+- [x] `AccountAccessible` concern with scopes and tests
+- [x] Include concern in Account, update `create_and_sync`
+- [x] Update User model (associations, deactivation handling)
+- [x] Update `AccountsController#set_account` and `AccountableResource#set_account`
+- [x] Tests: Hidden account returns 404, owned account still accessible
 
-### Phase 2: Balance sheet + net worth — `[ ] NOT STARTED`
-- [ ] Update `BalanceSheet`, `AccountTotals`, `NetWorthSeriesBuilder` with viewer/scope
-- [ ] Add `Family#balance_sheet_for` and `Family#multi_user?`
-- [ ] Update `PagesController#dashboard` with scope toggle
-- [ ] Update sidebar to use scoped balance sheet
-- [ ] Balance-only account visual treatment in sidebar
-- [ ] Update cache keys
-- [ ] Tests: Personal vs household net worth calculation, cache isolation
+### Phase 2: Balance sheet + net worth — `[x] COMPLETE`
+- [x] Update `BalanceSheet`, `AccountTotals`, `NetWorthSeriesBuilder` with viewer/scope
+- [x] Add `Family#balance_sheet_for` and `Family#multi_user?`
+- [x] Update `PagesController#dashboard` with scope toggle
+- [x] Update sidebar to use scoped balance sheet
+- [x] Balance-only account visual treatment in sidebar
+- [x] Update cache keys
+- [x] Tests: Personal vs household net worth calculation, cache isolation
 
-### Phase 3: Transaction + entry filtering — `[ ] NOT STARTED`
-- [ ] Update `Transaction::Search` with viewer filtering
-- [ ] Update `TransactionsController`, `IncomeStatement`
-- [ ] Account detail page: hide entries for balance_only accounts
-- [ ] Update `HoldingsController`, `TradesController`, `ValuationsController`
-- [ ] Update transaction filter dropdown to only show full-access accounts
-- [ ] Tests: Transactions from balance-only accounts not visible, search respects visibility
+### Phase 3: Transaction + entry filtering — `[x] COMPLETE`
+- [x] Update `Transaction::Search` with viewer filtering
+- [x] Update `TransactionsController`, `IncomeStatement`
+- [x] Account detail page: hide entries for balance_only accounts
+- [x] Update `HoldingsController`, `TradesController`, `ValuationsController`
+- [x] Update transaction filter dropdown to only show full-access accounts
+- [x] Tests: Transactions from balance-only accounts not visible, search respects visibility
 
-### Phase 4: Privacy settings UI — `[ ] NOT STARTED`
-- [ ] `AccountPermissionsController` (edit/update)
-- [ ] Privacy settings form (per-member visibility dropdown)
-- [ ] Joint account checkbox in account creation/edit
-- [ ] Joint account badge in sidebar
-- [ ] Only show privacy UI for multi-user families
-- [ ] Tests: System test for setting visibility, joint account enforcement
+### Phase 4: Privacy settings UI — `[x] COMPLETE`
+- [x] `AccountPermissionsController` (edit/update)
+- [x] Privacy settings form (per-member visibility dropdown)
+- [x] Joint account checkbox in account creation/edit
+- [x] Joint account badge in sidebar
+- [x] Only show privacy UI for multi-user families
+- [x] Tests: System test for setting visibility, joint account enforcement
 
-### Phase 5: Remaining controllers + API + AI — `[ ] NOT STARTED`
-- [ ] Update ~13 remaining controllers
-- [ ] Update API endpoints
-- [ ] Update AI assistant functions
-- [ ] Update PlaidItem/Import to track `created_by_user_id`
-- [ ] Update family exports to respect viewer
-- [ ] Tests: Full regression test suite, API visibility tests
+### Phase 5: Remaining controllers + API + AI — `[x] COMPLETE`
+- [x] Update ~13 remaining controllers
+- [x] Update API endpoints
+- [x] Update AI assistant functions
+- [x] Update PlaidItem/Import to track `created_by_user_id`
+- [x] Update family exports to respect viewer
+- [x] Tests: Full regression test suite, API visibility tests
 
 ---
 
