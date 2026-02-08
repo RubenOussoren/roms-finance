@@ -53,7 +53,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The `investment-dashboard/` directory is a Python prototype for reference only. Never integrate it with Rails.
 
-**Test seed data**: Login as `test.canadian@example.com` / `password123`
+**Test seed data**: Login as `admin@roms.local` / `password` (admin) or `member@roms.local` / `password` (member)
 
 ## Architecture Overview
 

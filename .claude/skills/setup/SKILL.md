@@ -50,24 +50,7 @@ bin/rails db:prepare
 bin/rails db:seed
 ```
 
-#### 4. Create Test User
-```bash
-bin/rails runner "
-family = Family.create!(name: 'Test Family')
-user = User.create!(
-  email: 'user@maybe.local',
-  password: 'password',
-  password_confirmation: 'password',
-  family: family,
-  role: 'admin',
-  first_name: 'Test',
-  last_name: 'User'
-)
-puts \"Created user: #{user.email}\"
-"
-```
-
-#### 5. Compile Assets
+#### 4. Compile Assets
 ```bash
 bin/rails tailwindcss:build
 ```
@@ -75,8 +58,8 @@ bin/rails tailwindcss:build
 ### Test Credentials
 
 After setup, access the application at http://localhost:3000:
-- **Email:** user@maybe.local
-- **Password:** password
+- **Admin:** `admin@roms.local` / `password`
+- **Member:** `member@roms.local` / `password`
 
 ### Common Issues
 

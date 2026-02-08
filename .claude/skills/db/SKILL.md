@@ -37,24 +37,7 @@ bin/rails db:prepare
 bin/rails db:seed
 ```
 
-#### 3. Create Test User
-```bash
-bin/rails runner "
-family = Family.create!(name: 'Test Family')
-user = User.create!(
-  email: 'user@maybe.local',
-  password: 'password',
-  password_confirmation: 'password',
-  family: family,
-  role: 'admin',
-  first_name: 'Test',
-  last_name: 'User'
-)
-puts \"Created user: #{user.email}\"
-"
-```
-
-#### 4. Build Tailwind CSS
+#### 3. Build Tailwind CSS
 ```bash
 bin/rails tailwindcss:build
 ```
@@ -62,22 +45,20 @@ bin/rails tailwindcss:build
 ### Instructions
 
 1. Run `bin/rails db:prepare` to create database and run migrations
-2. Run `bin/rails db:seed` to load seed data
-3. Create test user with the runner command
-4. Build Tailwind CSS for styling
-5. Report success and test user credentials
+2. Run `bin/rails db:seed` to load seed data (creates users, accounts, transactions)
+3. Build Tailwind CSS for styling
+4. Report success and test user credentials
 
 ### Prerequisites
 
 Ensure these services are running:
-- PostgreSQL (`brew services start postgresql@14`)
+- PostgreSQL (`brew services start postgresql@16`)
 - Redis (`brew services start redis`)
 
 ### Important Notes
 
 - Do NOT run `rails server` after setup
-- The seed data creates OAuth applications, not users
-- Test user must be created separately
+- Seeds create both users and financial data — no separate user creation needed
 - Use `/db reset` if you need a clean slate
 
 ---
@@ -107,24 +88,7 @@ bin/rails db:reset
 bin/rails db:seed
 ```
 
-#### 3. Re-create Test User
-```bash
-bin/rails runner "
-family = Family.create!(name: 'Test Family')
-user = User.create!(
-  email: 'user@maybe.local',
-  password: 'password',
-  password_confirmation: 'password',
-  family: family,
-  role: 'admin',
-  first_name: 'Test',
-  last_name: 'User'
-)
-puts \"Created user: #{user.email}\"
-"
-```
-
-#### 4. Rebuild Tailwind CSS
+#### 3. Rebuild Tailwind CSS
 ```bash
 bin/rails tailwindcss:build
 ```
@@ -133,9 +97,8 @@ bin/rails tailwindcss:build
 
 1. Warn the user that this will DELETE ALL DATA
 2. Run `bin/rails db:reset` (drops, creates, migrates, seeds)
-3. Re-create the test user
-4. Rebuild Tailwind CSS
-5. Report success and test user credentials
+3. Rebuild Tailwind CSS
+4. Report success and test user credentials
 
 ### When to Use
 
@@ -205,10 +168,7 @@ From CLAUDE.md:
 
 ## Test Credentials
 
-**Upstream seed account:**
-- **Email:** `user@maybe.local` / **Password:** `password`
-
-**Canadian test data** (for financial features like Smith Manoeuvre):
-- **Email:** `test.canadian@example.com` / **Password:** `password123`
+**Admin:** `admin@roms.local` / `password`
+**Member:** `member@roms.local` / `password`
 
 > For first-time project setup, prefer `/setup` which includes environment verification.
