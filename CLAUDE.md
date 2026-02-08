@@ -117,10 +117,23 @@ Reference `app/assets/tailwind/maybe-design-system.css` for tokens:
 ## Detailed Guidelines
 
 For detailed patterns, refer to:
-- `.cursor/rules/testing.mdc` - Testing patterns (Minitest + fixtures)
-- `.cursor/rules/view_conventions.mdc` - ViewComponent vs Partials, Stimulus integration
-- `.cursor/rules/financial-architecture.mdc` - Calculator/Simulator patterns, jurisdiction-aware design
-- `.cursor/rules/stimulus_conventions.mdc` - Stimulus controller best practices
+- `.cursor/rules/testing.mdc` - Testing patterns (Minitest, fixtures, financial calculations)
+- `.cursor/rules/view_conventions.mdc` - ViewComponents, Stimulus controllers, UI/UX design
+- `.cursor/rules/financial-architecture.mdc` - Calculators, simulators, concerns, multi-jurisdiction
+- `.cursor/rules/project-design.mdc` - Core data model (accountables, entries, syncs, providers)
+- `.cursor/rules/debt-optimization.mdc` - Debt strategies and Smith Manoeuvre
+- `.cursor/rules/investment-projections.mdc` - Investment projections and PAG 2025
+
+## Available Skills
+
+Skills are slash commands (e.g. `/commit`, `/test`) that trigger predefined workflows. Use them in the AI chat to run common tasks.
+
+**Workflow skills**: `/commit`, `/pr`, `/branch`, `/pre-pr`
+**Dev environment**: `/db`, `/test`, `/lint`, `/setup`
+**Code review**: `/review`, `/phase-review`, `/pag-check`
+**Scaffolding**: `/component`, `/stimulus`, `/api-endpoint`, `/calculator`, `/simulator`, `/provider`, `/import`, `/sync`, `/oauth`
+
+See `docs/DOCS_GUIDE.md` for full descriptions of each skill.
 
 ## MCP Tools Available
 

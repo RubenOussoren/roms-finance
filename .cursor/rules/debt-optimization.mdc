@@ -928,6 +928,6 @@ end
 
 ## References
 
-- See DESIGN_VISION.md Part 2.2 for detailed debt optimization concepts
-- See DESIGN_VISION.md Part 2.3 for CRA audit trail requirements
-- See DESIGN_VISION.md Part 2.4 for integration with Maybe Finance models
+- See `docs/architecture/design-vision.md` Part 2.2 for detailed debt optimization concepts
+- See `docs/architecture/design-vision.md` Part 2.3 for CRA audit trail requirements
+- See `docs/architecture/design-vision.md` Part 2.4 for integration with Maybe Finance models

@@ -939,7 +939,6 @@ end
 
 ## References
 
-- See DESIGN_VISION.md Part 1.2 for detailed investment projection features
-- See DESIGN_VISION.md Part 3.2 for data quality validation patterns
-- See DESIGN_VISION.md Part 3.4 for performance requirements
-- See `investment-dashboard/` for Python prototype (reference only, not for integration)
+- See `docs/architecture/design-vision.md` Part 1.2 for detailed investment projection features
+- See `docs/architecture/design-vision.md` Part 3.2 for data quality validation patterns
+- See `docs/architecture/design-vision.md` Part 3.4 for performance requirements

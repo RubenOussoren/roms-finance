@@ -1,87 +1,434 @@
 ---
-description: 
-globs: test/**
+description: Testing patterns — general Rails (Minitest, fixtures) and financial calculations
+globs:
+  - "test/**/*.rb"
 alwaysApply: false
 ---
-Use this rule to learn how to write tests for the Maybe codebase.
 
-Due to the open-source nature of this project, we have chosen Minitest + Fixtures for testing to maximize familiarity and predictability.
+# Testing Patterns
 
-- **General testing rules**
-  - Always use Minitest and fixtures for testing, NEVER rspec or factories
-  - Keep fixtures to a minimum.  Most models should have 2-3 fixtures maximum that represent the "base cases" for that model.  "Edge cases" should be created on the fly, within the context of the test which it is needed.
-  - For tests that require a large number of fixture records to be created, use Rails helpers to help create the records needed for the test, then inline the creation. For example, [entries_test_helper.rb](mdc:test/support/entries_test_helper.rb) provides helpers to easily do this.
+This rule covers all testing conventions for the Maybe codebase — general Rails testing and financial-specific patterns.
 
-- **Write minimal, effective tests**
-  - Use system tests sparingly as they increase the time to complete the test suite
-  - Only write tests for critical and important code paths
-  - Write tests as you go, when required
-  - Take a practical approach to testing.  Tests are effective when their presence _significantly increases confidence in the codebase_.
+---
 
-  Below are examples of necessary vs. unnecessary tests:
+## Part 1: General Testing Patterns
 
-  ```rb
-  # GOOD!!
-  # Necessary test - in this case, we're testing critical domain business logic
-  test "syncs balances" do
-    Holding::Syncer.any_instance.expects(:sync_holdings).returns([]).once
+Due to the open-source nature of this project, we use Minitest + Fixtures for testing to maximize familiarity and predictability.
 
-    @account.expects(:start_date).returns(2.days.ago.to_date)
+### General Testing Rules
 
-    Balance::ForwardCalculator.any_instance.expects(:calculate).returns(
-      [
-        Balance.new(date: 1.day.ago.to_date, balance: 1000, cash_balance: 1000, currency: "USD"),
-        Balance.new(date: Date.current, balance: 1000, cash_balance: 1000, currency: "USD")
-      ]
+- Always use Minitest and fixtures for testing, NEVER rspec or factories
+- Keep fixtures to a minimum. Most models should have 2-3 fixtures maximum that represent the "base cases" for that model. "Edge cases" should be created on the fly, within the context of the test which it is needed.
+- For tests that require a large number of fixture records to be created, use Rails helpers to help create the records needed for the test, then inline the creation. For example, [entries_test_helper.rb](mdc:test/support/entries_test_helper.rb) provides helpers to easily do this.
+
+### Write Minimal, Effective Tests
+
+- Use system tests sparingly as they increase the time to complete the test suite
+- Only write tests for critical and important code paths
+- Write tests as you go, when required
+- Take a practical approach to testing. Tests are effective when their presence _significantly increases confidence in the codebase_.
+
+Below are examples of necessary vs. unnecessary tests:
+
+```rb
+# GOOD!!
+# Necessary test - in this case, we're testing critical domain business logic
+test "syncs balances" do
+  Holding::Syncer.any_instance.expects(:sync_holdings).returns([]).once
+
+  @account.expects(:start_date).returns(2.days.ago.to_date)
+
+  Balance::ForwardCalculator.any_instance.expects(:calculate).returns(
+    [
+      Balance.new(date: 1.day.ago.to_date, balance: 1000, cash_balance: 1000, currency: "USD"),
+      Balance.new(date: Date.current, balance: 1000, cash_balance: 1000, currency: "USD")
+    ]
+  )
+
+  assert_difference "@account.balances.count", 2 do
+    Balance::Syncer.new(@account, strategy: :forward).sync_balances
+  end
+end
+
+# BAD!!
+# Unnecessary test - in this case, this is simply testing ActiveRecord's functionality
+test "saves balance" do
+  balance_record = Balance.new(balance: 100, currency: "USD")
+
+  assert balance_record.save
+end
+```
+
+### Test Boundaries Correctly
+
+- Distinguish between commands and query methods. Test output of query methods; test that commands were called with the correct params.
+
+```rb
+class ExampleClass
+  def do_something
+    result = 2 + 2
+
+    CustomEventProcessor.process_result(result)
+
+    result
+  end
+end
+
+class ExampleClass < ActiveSupport::TestCase
+  test "boundaries are tested correctly" do
+    result = ExampleClass.new.do_something
+
+    # GOOD - we're only testing that the command was received, not internal implementation details
+    # The actual tests for CustomEventProcessor belong in a different test suite!
+    CustomEventProcessor.expects(:process_result).with(4).once
+
+    # GOOD - we're testing the implementation of ExampleClass inside its own test suite
+    assert_equal 4, result
+  end
+end
+```
+
+- Never test the implementation details of one class in another class's test suite
+
+### Stubs and Mocks
+
+- Use `mocha` gem
+- Always prefer `OpenStruct` when creating mock instances, or in complex cases, a mock class
+- Only mock what's necessary. If you're not testing return values, don't mock a return value.
+
+---
+
+## Part 2: Financial Testing Patterns
+
+**Philosophy**: *"Test the critical paths that give confidence, not coverage for coverage's sake"*
+
+### What to Test
+
+#### Financial Calculations
+
+Always test financial math with known values.
+
+```ruby
+# test/calculators/projection_calculator_test.rb
+class ProjectionCalculatorTest < ActiveSupport::TestCase
+  test "compound interest calculation matches formula" do
+    calc = ProjectionCalculator.new(
+      principal: 1000,
+      rate: 0.08,
+      contribution: 0
     )
 
-    assert_difference "@account.balances.count", 2 do
-      Balance::Syncer.new(@account, strategy: :forward).sync_balances
+    expected = 1000 * (1.08 ** 10)
+    assert_in_delta expected, calc.future_value_at_month(120), 1.0
+  end
+
+  test "monthly contribution increases portfolio value" do
+    calc = ProjectionCalculator.new(
+      principal: 50000,
+      rate: 0.06,
+      contribution: 500
+    )
+
+    result = calc.project(months: 120)
+
+    assert_equal 60000.0, result.last[:cumulative_contribution]
+    assert_operator result.last[:balance], :>, 50000 + 60000
+  end
+
+  test "zero balance projections remain valid" do
+    calc = ProjectionCalculator.new(principal: 0, rate: 0.06, contribution: 0)
+    result = calc.project(months: 12)
+    assert_equal 0.0, result.last[:balance]
+  end
+
+  test "negative returns decrease portfolio value" do
+    calc = ProjectionCalculator.new(principal: 10000, rate: -0.05, contribution: 0)
+    future_value = calc.future_value_at_month(12)
+    assert_operator future_value, :<, 10000
+  end
+end
+```
+
+#### Edge Cases
+
+Test boundary conditions and unusual inputs.
+
+```ruby
+class MilestoneCalculatorTest < ActiveSupport::TestCase
+  test "handles zero balance gracefully" do
+    account = accounts(:empty_account)
+    milestone = Milestone.create!(
+      account: account,
+      target_value: 100000,
+      milestone_type: :net_worth_target
+    )
+
+    result = MilestoneCalculator.new(milestone).calculate
+    assert result[:p50].present?
+    assert_operator result[:p50], :>, Date.today + 10.years
+  end
+
+  test "handles already-achieved milestones" do
+    account = accounts(:wealthy_account)
+    milestone = Milestone.create!(
+      account: account,
+      target_value: 500000,
+      milestone_type: :net_worth_target
+    )
+
+    result = MilestoneCalculator.new(milestone).calculate
+    assert_equal Date.today, result[:p50]
+    assert_equal 100, result[:confidence]
+  end
+end
+```
+
+#### Business Logic
+
+Test domain-specific rules and validations.
+
+```ruby
+class CanadianSmithManoeuvrSimulatorTest < ActiveSupport::TestCase
+  setup do
+    @strategy = debt_optimization_strategies(:monika_modified_smith)
+    @simulator = CanadianSmithManoeuvrSimulator.new(@strategy)
+  end
+
+  test "modified strategy stops when HELOC reaches limit" do
+    @strategy.auto_stop_heloc_percentage = 0.90
+    @strategy.heloc.credit_limit = 50000
+
+    result = @simulator.run(months: 360)
+
+    assert result[:stopped?]
+    stopped_entry = result[:month_by_month].find { |e| e[:strategy_stopped] }
+    assert_operator stopped_entry[:heloc_balance_end], :>=, 45000
+  end
+
+  test "HELOC interest is fully deductible when used for rental" do
+    result = @simulator.run(months: 12)
+    ledger = result[:month_by_month]
+
+    ledger.each do |entry|
+      assert_equal entry[:heloc_interest], entry[:deductible_interest],
+                   "All HELOC interest should be deductible per CRA rules"
     end
   end
 
-  # BAD!!
-  # Unnecessary test - in this case, this is simply testing ActiveRecord's functionality
-  test "saves balance" do 
-    balance_record = Balance.new(balance: 100, currency: "USD")
+  test "tax benefit calculation uses correct marginal rate" do
+    @strategy.marginal_tax_rate = 0.45
+    result = @simulator.run(months: 1)
+    entry = result[:month_by_month].first
 
-    assert balance_record.save
+    expected_tax_refund = entry[:deductible_interest] * 0.45
+    assert_in_delta expected_tax_refund, entry[:tax_refund_monthly], 0.01
   end
-  ```
+end
+```
 
-- **Test boundaries correctly**
-  - Distinguish between commands and query methods. Test output of query methods; test that commands were called with the correct params. See an example below:
+### What NOT to Test
 
-  ```rb
-  class ExampleClass
-    def do_something
-      result = 2 + 2
+- **Framework behavior** — Don't test that ActiveRecord saves work (Rails already tests this)
+- **Third-party libraries** — Don't test that library math works (they have their own tests)
+- **Trivial getters/setters** — Don't test simple attribute access
+- **Private methods** — Test through public interface only
 
-      CustomEventProcessor.process_result(result)
+```ruby
+# BAD - Testing ActiveRecord functionality
+test "saves balance" do
+  balance_record = Balance.new(balance: 100, currency: "USD")
+  assert balance_record.save
+end
 
-      result
+# GOOD - Test business logic validation
+test "rejects unrealistic volatility" do
+  projection = Projection.new(volatility: 3.0)
+  assert_not projection.valid?
+  assert_includes projection.errors[:volatility], "is very high"
+end
+
+# BAD - Testing private method directly
+test "simulate_path helper" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  result = calc.send(:simulate_path, months: 120, monthly_rate: 0.08/12, monthly_vol: 0.15)
+end
+
+# GOOD - Test public method that uses private helper
+test "projection uses compound growth" do
+  calc = ProjectionCalculator.new(principal: 1000, rate: 0.08, contribution: 0)
+  result = calc.future_value_at_month(120)
+  assert_operator result, :>, 1000
+end
+```
+
+### Testing Simulators
+
+#### Simulator Testing Pattern
+
+```ruby
+class BaselineSimulatorTest < ActiveSupport::TestCase
+  setup do
+    @strategy = debt_optimization_strategies(:baseline_strategy)
+    @simulator = BaselineSimulator.new(@strategy)
+  end
+
+  test "baseline simulator produces expected output format" do
+    result = @simulator.run(months: 12)
+
+    assert result.key?(:total_interest)
+    assert result.key?(:tax_benefit)
+    assert result.key?(:months_to_payoff)
+    assert result.key?(:ledger)
+    assert_equal 12, result[:ledger].size
+  end
+
+  test "baseline strategy does not use HELOC" do
+    result = @simulator.run(months: 12)
+
+    result[:ledger].each do |entry|
+      assert_equal 0, entry[:heloc_draw] || 0
+      assert_equal 0, entry[:heloc_balance_end] || 0
     end
   end
+end
+```
 
-  class ExampleClass < ActiveSupport::TestCase
-    test "boundaries are tested correctly" do 
-      result = ExampleClass.new.do_something
+#### Comparison Testing
 
-      # GOOD - we're only testing that the command was received, not internal implementation details
-      # The actual tests for CustomEventProcessor belong in a different test suite!
-      CustomEventProcessor.expects(:process_result).with(4).once
+```ruby
+class SimulatorComparisonTest < ActiveSupport::TestCase
+  test "modified strategy produces different results than baseline" do
+    strategy = debt_optimization_strategies(:monika_modified_smith)
 
-      # GOOD - we're testing the implementation of ExampleClass inside its own test suite
-      assert_equal 4, result
-    end
+    baseline_result = BaselineSimulator.new(strategy).run(months: 360)
+    modified_result = CanadianSmithManoeuvrSimulator.new(strategy).run(months: 360)
+
+    assert_operator modified_result[:modified_tax_benefit], :>, 0
+    assert_equal 0, baseline_result[:tax_benefit]
+
+    net_savings = baseline_result[:total_interest] - modified_result[:modified_total_interest] +
+                  modified_result[:modified_tax_benefit]
+    assert_operator net_savings, :>, 0
   end
-  ```
+end
+```
 
-  - Never test the implementation details of one class in another classes test suite
+### Testing PAG Compliance
 
-- **Stubs and mocks**
-  - Use `mocha` gem 
-  - Always prefer `OpenStruct` when creating mock instances, or in complex cases, a mock class
-  - Only mock what's necessary. If you're not testing return values, don't mock a return value.
+```ruby
+class ProjectionAssumptionTest < ActiveSupport::TestCase
+  test "PAG 2025 defaults match official guidelines" do
+    pag_defaults = ProjectionAssumption::PAG_2025_DEFAULTS
 
+    assert_equal 0.066, pag_defaults[:canadian_equity][:nominal]
+    assert_equal 0.157, pag_defaults[:canadian_equity][:volatility]
+    assert_equal 0.034, pag_defaults[:fixed_income][:nominal]
+  end
 
+  test "pag_compliant? returns true when all assets use PAG assumptions" do
+    account = accounts(:investment_account)
+    account.use_pag_assumptions!
+
+    assert account.pag_compliant?
+    assert_equal "Prepared using FP Canada PAG 2025", account.compliance_badge
+  end
+
+  test "pag_compliant? returns false when custom assumptions used" do
+    account = accounts(:investment_account)
+    account.projection_assumptions.first.update!(
+      nominal_return: 0.15,
+      standard_compliant: false
+    )
+
+    assert_not account.pag_compliant?
+  end
+end
+```
+
+### Fixture Best Practices
+
+- Keep fixtures minimal (2-3 per model for base cases)
+- Create edge cases on-the-fly within tests
+- Use test helpers for complex setup (see [entries_test_helper.rb](mdc:test/support/entries_test_helper.rb), [debt_simulator_test_helper.rb](mdc:test/support/debt_simulator_test_helper.rb))
+
+```ruby
+class ProjectionTest < ActiveSupport::TestCase
+  setup do
+    @account = accounts(:investment_account)
+    @milestone = milestones(:first_100k)
+  end
+
+  test "projection starts from current balance" do
+    projection = @account.adaptive_projection(years: 10, monthly_contribution: 500)
+    assert_equal @account.balance, projection[:starting_value]
+  end
+
+  # Create edge cases on-the-fly (not in fixtures)
+  test "handles extremely high volatility" do
+    assumption = ProjectionAssumption.create!(
+      family: families(:canadian_family),
+      asset_class: :custom,
+      nominal_return: 0.10,
+      volatility: 0.80,
+      standard_compliant: false
+    )
+
+    assert_not assumption.valid?
+  end
+end
+```
+
+### Test Helpers for Financial Data
+
+```ruby
+# test/support/financial_test_helper.rb
+module FinancialTestHelper
+  def create_projection(account:, years: 10, contribution: 500)
+    ProjectionCalculator.new(account).adaptive(
+      years: years,
+      monthly_contribution: contribution
+    )
+  end
+
+  def create_full_debt_strategy(family:, jurisdiction: nil)
+    jurisdiction ||= Jurisdiction.find_by(country_code: 'CA')
+    # ... creates primary mortgage, HELOC, rental mortgage, and strategy
+  end
+
+  def assert_within_percentage(expected, actual, percentage = 1.0, message = nil)
+    tolerance = expected.abs * (percentage / 100.0)
+    assert_in_delta expected, actual, tolerance, message
+  end
+end
+```
+
+### Performance Testing
+
+```ruby
+class ProjectionPerformanceTest < ActiveSupport::TestCase
+  test "deterministic projection completes in < 200ms" do
+    account = accounts(:investment_account)
+
+    time = Benchmark.realtime do
+      ProjectionCalculator.new(account).adaptive(years: 30, monthly_contribution: 500)
+    end
+
+    assert_operator time, :<, 0.2
+  end
+
+  test "month-by-month simulation for 30 years completes in < 2s" do
+    strategy = debt_optimization_strategies(:monika_modified_smith)
+    simulator = CanadianSmithManoeuvrSimulator.new(strategy)
+
+    time = Benchmark.realtime { simulator.run(months: 360) }
+
+    assert_operator time, :<, 2.0
+  end
+end
+```
+
+### Anti-Patterns Summary
+
+- **Don't test internal state** — Test public behavior, not `instance_variable_get`
+- **Don't over-mock** — Mock only external dependencies, test actual behavior
+- **Don't test in wrong suite** — Each class's behavior belongs in its own test suite
