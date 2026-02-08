@@ -7,7 +7,7 @@
           <%= form.text_field :name,
               label: "Name",
               required: true,
-              placeholder: @account.liability? ? "e.g., Paid Off!, 50% Paid" : "e.g., Emergency Fund $10K" %>
+              placeholder: @account.liability? ? "e.g., Paid Off!, 50% Paid" : "e.g., Emergency Fund 10K" %>
 
           <% if @account.liability? %>
             <div>

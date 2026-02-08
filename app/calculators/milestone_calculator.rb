@@ -74,6 +74,30 @@ class MilestoneCalculator
     end
   end
 
+  # Suggest milestones scaled to the account's current balance and growth trajectory
+  def suggest_scaled_milestones(max_suggestions: 5)
+    balance = current_balance.to_d
+
+    if reduction_milestone?
+      return suggest_debt_milestones(balance, max_suggestions)
+    end
+
+    return [] if balance <= 0
+
+    # Calculate rough 10-year projection ceiling
+    annual_return = assumption.effective_return.to_d
+    monthly = assumption.monthly_contribution.to_d
+    projected_10yr = balance * (1 + annual_return) ** 10 + monthly * 120 * (1 + annual_return) ** 5
+
+    # Generate nice round numbers between balance and 10yr projection
+    nice_numbers = generate_nice_numbers(balance, projected_10yr)
+
+    # Filter: above current balance, reasonable
+    nice_numbers.select { |n| n > balance }
+                .first(max_suggestions)
+                .map { |n| { name: format_nice_name(n), amount: n } }
+  end
+
   # Get next achievable milestone
   def next_achievable_milestone
     analyze_standard_milestones.find do |m|
@@ -224,6 +248,51 @@ class MilestoneCalculator
       else
         [ (current_balance / target * 100).round(1), 100 ].min
       end
+    end
+
+    def generate_nice_numbers(min, max)
+      candidates = [ 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000,
+                     250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000 ]
+
+      # Also add 2x, 5x, 10x current balance rounded to nice numbers
+      [ min * 2, min * 5, min * 10 ].each do |target|
+        candidates << round_to_nice(target)
+      end
+
+      candidates.uniq.sort.select { |n| n > min && n <= max * 1.5 }
+    end
+
+    def round_to_nice(amount)
+      return 0 if amount <= 0
+      magnitude = 10 ** Math.log10([ amount, 1 ].max).floor
+      (amount / magnitude).round * magnitude
+    end
+
+    def format_nice_name(amount)
+      symbol = Money::Currency.new(@currency).symbol
+      if amount >= 1_000_000
+        val = amount / 1_000_000.0
+        val == val.to_i ? "#{symbol}#{val.to_i}M" : "#{symbol}#{val.round(1)}M"
+      elsif amount >= 1_000
+        val = amount / 1_000.0
+        val == val.to_i ? "#{symbol}#{val.to_i}K" : "#{symbol}#{val.round(1)}K"
+      else
+        "#{symbol}#{amount.to_i}"
+      end
+    end
+
+    def suggest_debt_milestones(balance, max_suggestions)
+      return [] if balance.abs <= 0
+      abs_balance = balance.abs
+
+      [ abs_balance * 0.75, abs_balance * 0.5, abs_balance * 0.25, 0 ]
+        .map { |n| n.round(-2) }
+        .select { |n| n < abs_balance }
+        .first(max_suggestions)
+        .map do |target|
+          paid_pct = ((1 - target.to_d / abs_balance.to_d) * 100).round(0).to_i
+          { name: "#{paid_pct}% Paid Off", amount: target }
+        end
     end
 
     def debt_milestones

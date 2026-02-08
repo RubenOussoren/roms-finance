@@ -96,7 +96,7 @@
       <div>
         <%= f.label :rental_income, "Monthly Rental Income", class: "block text-sm font-medium text-primary mb-1" %>
         <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">$</span>
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary"><%= Money::Currency.new(strategy.currency).symbol %></span>
           <%= f.number_field :rental_income,
                 step: 0.01,
                 min: 0,
@@ -108,7 +108,7 @@
       <div>
         <%= f.label :rental_expenses, "Monthly Rental Expenses", class: "block text-sm font-medium text-primary mb-1" %>
         <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">$</span>
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary"><%= Money::Currency.new(strategy.currency).symbol %></span>
           <%= f.number_field :rental_expenses,
                 step: 0.01,
                 min: 0,

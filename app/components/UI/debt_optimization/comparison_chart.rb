@@ -1,12 +1,13 @@
 # D3.js chart for comparing baseline vs prepay-only vs modified strategy scenarios
 class UI::DebtOptimization::ComparisonChart < ApplicationComponent
-  attr_reader :chart_series, :chart_type
+  attr_reader :chart_series, :chart_type, :currency
 
   CHART_TYPES = %w[debt_comparison cumulative_tax_benefit net_cost_comparison].freeze
 
-  def initialize(chart_series:, chart_type: "debt_comparison")
+  def initialize(chart_series:, chart_type: "debt_comparison", currency: "CAD")
     @chart_series = chart_series
     @chart_type = chart_type
+    @currency = currency
   end
 
   def chart_id

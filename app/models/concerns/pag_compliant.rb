@@ -39,8 +39,8 @@ module PagCompliant
 
   # Get compliance badge text
   def compliance_badge
-    return "PAG 2025 Compliant (conservative)" if pag_compliant?
-    "Custom assumptions"
+    return "Using standard Canadian guidelines (conservative)" if pag_compliant?
+    "Using custom assumptions"
   end
 
   # Get PAG default for a specific assumption
@@ -59,17 +59,17 @@ module PagCompliant
 
     if assumption.expected_return.present?
       if assumption.expected_return > 0.12
-        warnings << "Expected return (#{(assumption.expected_return * 100).round(1)}%) exceeds PAG reasonable maximum (12%)"
+        warnings << "Your expected return of #{(assumption.expected_return * 100).round(1)}% is higher than the guideline maximum of 12%. Consider using a more conservative estimate."
       elsif assumption.expected_return < 0.02
-        warnings << "Expected return (#{(assumption.expected_return * 100).round(1)}%) is below PAG cash return assumption"
+        warnings << "Your expected return of #{(assumption.expected_return * 100).round(1)}% is below the guideline cash return of 2.95%. This may understate your growth potential."
       end
     end
 
     if assumption.inflation_rate.present?
       if assumption.inflation_rate > 0.05
-        warnings << "Inflation rate (#{(assumption.inflation_rate * 100).round(1)}%) exceeds historical norms"
+        warnings << "Your inflation rate of #{(assumption.inflation_rate * 100).round(1)}% is above the historical norm. This will significantly reduce projected real returns."
       elsif assumption.inflation_rate < 0.01
-        warnings << "Inflation rate (#{(assumption.inflation_rate * 100).round(1)}%) may be unrealistically low"
+        warnings << "Your inflation rate of #{(assumption.inflation_rate * 100).round(1)}% is unusually low. This may overstate your purchasing power in future projections."
       end
     end
 

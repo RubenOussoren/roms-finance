@@ -66,6 +66,18 @@
         <p class="text-sm text-subdued mb-4">
           Set financial goals to track your progress toward building wealth.
         </p>
+
+        <% if suggested_milestones.any? %>
+          <p class="text-xs text-subdued mb-3">Based on your current balance, consider:</p>
+          <div class="flex flex-wrap justify-center gap-2 mb-4">
+            <% suggested_milestones.each do |suggestion| %>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-container border border-primary text-primary">
+                <%= suggestion[:name] %>
+              </span>
+            <% end %>
+          </div>
+        <% end %>
+
         <%= link_to "Add your first milestone",
             new_milestone_path,
             class: "inline-flex items-center gap-2 text-sm font-medium text-link hover:underline",

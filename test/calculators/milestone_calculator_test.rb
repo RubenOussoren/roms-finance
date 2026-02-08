@@ -319,6 +319,80 @@ class MilestoneCalculatorTest < ActiveSupport::TestCase
     assert prob_high >= 0.5, "Probability should be clamped to 0.5% min, got #{prob_high}"
   end
 
+  # ============================================
+  # Scaled Milestone Suggestion Tests
+  # ============================================
+
+  test "suggest scaled milestones returns reasonable targets for growth" do
+    calc = MilestoneCalculator.new(
+      current_balance: 50_000,
+      assumption: @assumption
+    )
+
+    suggestions = calc.suggest_scaled_milestones(max_suggestions: 5)
+
+    assert suggestions.any?, "Should return suggestions"
+    assert suggestions.length <= 5
+    suggestions.each do |s|
+      assert s[:amount] > 50_000, "Suggestions should be above current balance"
+      assert s[:name].present?, "Each suggestion should have a name"
+    end
+  end
+
+  test "suggest scaled milestones returns debt milestones for reduction type" do
+    debt_assumption = OpenStruct.new(
+      effective_return: 0.05,
+      monthly_contribution: 1000,
+      effective_volatility: 0
+    )
+
+    calc = MilestoneCalculator.new(
+      current_balance: 100_000,
+      assumption: debt_assumption,
+      target_type: "reduce_to"
+    )
+
+    suggestions = calc.suggest_scaled_milestones(max_suggestions: 4)
+
+    assert suggestions.any?, "Should return debt suggestions"
+    suggestions.each do |s|
+      assert s[:amount] < 100_000, "Debt suggestions should be below current balance"
+      assert s[:name].include?("Paid Off"), "Debt suggestions should mention payoff"
+    end
+  end
+
+  test "suggest scaled milestones returns empty for zero balance" do
+    calc = MilestoneCalculator.new(
+      current_balance: 0,
+      assumption: @assumption
+    )
+
+    suggestions = calc.suggest_scaled_milestones
+
+    assert_equal [], suggestions
+  end
+
+  test "suggest scaled milestones scales to account size" do
+    small_calc = MilestoneCalculator.new(
+      current_balance: 5_000,
+      assumption: @assumption
+    )
+
+    large_calc = MilestoneCalculator.new(
+      current_balance: 500_000,
+      assumption: @assumption
+    )
+
+    small_suggestions = small_calc.suggest_scaled_milestones(max_suggestions: 3)
+    large_suggestions = large_calc.suggest_scaled_milestones(max_suggestions: 3)
+
+    # Large account should have larger milestone suggestions
+    if small_suggestions.any? && large_suggestions.any?
+      assert large_suggestions.first[:amount] > small_suggestions.first[:amount],
+        "Larger account should get larger milestone suggestions"
+    end
+  end
+
   test "analyzes debt milestones for reduction calculator" do
     debt_assumption = OpenStruct.new(
       effective_return: 0.05,

@@ -34,8 +34,8 @@ class ProjectionAssumptionTest < ActiveSupport::TestCase
   end
 
   test "returns compliance badge" do
-    assert_equal "PAG 2025 Compliant (conservative)", @assumption.compliance_badge
-    assert_equal "Custom assumptions", @custom.compliance_badge
+    assert_equal "Using standard Canadian guidelines (conservative)", @assumption.compliance_badge
+    assert_equal "Using custom assumptions", @custom.compliance_badge
   end
 
   test "applies PAG defaults" do

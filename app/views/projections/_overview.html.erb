@@ -3,7 +3,7 @@
   <%# Summary metrics grid %>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div class="bg-container shadow-border-xs rounded-xl p-4">
-      <p class="text-sm text-secondary">Current Net Worth</p>
+      <p class="text-sm text-secondary">Current Net Worth <%= finance_tooltip("Net worth") %></p>
       <p class="text-2xl font-semibold text-primary">
         <%= format_money(balance_sheet.net_worth_money) %>
       </p>

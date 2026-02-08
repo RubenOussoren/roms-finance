@@ -30,6 +30,24 @@ module Milestoneable
     pending_milestones.count
   end
 
+  def suggested_milestones
+    @suggested_milestones ||= begin
+      assumption = account.effective_projection_assumption
+      return [] unless assumption.present?
+
+      target_type = account.liability? ? "reduce_to" : "reach"
+      calculator = MilestoneCalculator.new(
+        current_balance: account.balance,
+        assumption: assumption,
+        currency: account.currency,
+        target_type: target_type
+      )
+      calculator.suggest_scaled_milestones(max_suggestions: 3)
+    rescue
+      []
+    end
+  end
+
   def new_milestone_path
     helpers.new_account_milestone_path(account, return_to: milestone_return_to)
   end

@@ -36,6 +36,10 @@
       <%= render "pages/dashboard/balance_sheet", balance_sheet: @balance_sheet %>
     </section>
 
+    <section>
+      <%= render partial: "pages/dashboard/data_quality", locals: { accounts: @accounts } %>
+    </section>
+
     <%= turbo_frame_tag "cashflow_sankey_section" do %>
       <section class="bg-container py-4 rounded-xl shadow-border-xs">
         <%= render partial: "pages/dashboard/cashflow_sankey", locals: {

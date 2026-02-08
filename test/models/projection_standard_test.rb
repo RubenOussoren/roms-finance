@@ -30,7 +30,7 @@ class ProjectionStandardTest < ActiveSupport::TestCase
   end
 
   test "returns compliance badge" do
-    assert_equal "PAG 2025 Compliant (conservative)", @pag_2025.compliance_badge
+    assert_equal "Using standard Canadian guidelines (conservative)", @pag_2025.compliance_badge
   end
 
   test "conservative blended return subtracts safety margin" do

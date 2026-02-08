@@ -78,7 +78,7 @@ class ProjectionAssumption < ApplicationRecord
 
   def compliance_badge
     return projection_standard.compliance_badge if pag_compliant?
-    "Custom assumptions"
+    "Using custom assumptions"
   end
 
   def apply_pag_defaults!

@@ -58,14 +58,14 @@ class FamilyTest < ActiveSupport::TestCase
 
   test "family compliance badge returns PAG badge when compliant" do
     # dylan_family has PAG-compliant default assumption in fixtures
-    assert_equal "PAG 2025 Compliant (conservative)", @family.compliance_badge
+    assert_equal "Using standard Canadian guidelines (conservative)", @family.compliance_badge
   end
 
   test "family compliance badge returns custom when not PAG compliant" do
     # Create family without PAG assumptions
     family = Family.create!(name: "Test Family", country: "US")
 
-    assert_equal "Custom assumptions", family.compliance_badge
+    assert_equal "Using custom assumptions", family.compliance_badge
   end
 
   test "family can get PAG default values" do
@@ -84,7 +84,7 @@ class FamilyTest < ActiveSupport::TestCase
 
     warnings = @family.pag_assumption_warnings
 
-    assert warnings.any? { |w| w.include?("exceeds PAG") }
+    assert warnings.any? { |w| w.include?("higher than the guideline maximum") }
   end
 
   # DataQualityCheckable concern tests

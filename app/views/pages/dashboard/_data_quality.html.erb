@@ -1,0 +1,45 @@
+<%
+  scores = accounts.map(&:data_quality_score)
+  score = scores.any? ? (scores.sum.to_f / scores.size).round : 100
+
+  color = if score < 40
+    "text-destructive"
+  elsif score <= 70
+    "text-warning"
+  else
+    "text-success"
+  end
+
+  bar_color = if score < 40
+    "bg-red-500"
+  elsif score <= 70
+    "bg-yellow-500"
+  else
+    "bg-green-500"
+  end
+
+  issues = accounts.flat_map { |a| a.data_quality_issues rescue [] }
+  top_issue = issues.find { |i| i[:severity] == :error } || issues.find { |i| i[:severity] == :warning }
+
+  suggestion = if score > 90
+    "Looking good! Your data is comprehensive and up to date."
+  elsif top_issue
+    top_issue[:message]
+  else
+    "Add more account details to improve your projection accuracy."
+  end
+%>
+
+<div class="bg-container rounded-xl border border-primary p-4">
+  <div class="flex items-center justify-between mb-2">
+    <div class="flex items-center gap-1.5">
+      <%= icon("bar-chart-2", size: "sm", color: "default") %>
+      <h4 class="text-sm font-medium text-secondary">Data completeness</h4>
+    </div>
+    <span class="text-base font-semibold <%= color %>"><%= score %>/100</span>
+  </div>
+  <div class="w-full bg-alpha-black-25 rounded-full h-1.5">
+    <div class="h-1.5 rounded-full transition-all <%= bar_color %>" style="width: <%= score %>%"></div>
+  </div>
+  <p class="text-xs text-secondary mt-2"><%= suggestion %></p>
+</div>

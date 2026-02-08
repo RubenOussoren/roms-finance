@@ -47,8 +47,8 @@ class ProjectionStandard < ApplicationRecord
   end
 
   def compliance_badge
-    return "PAG 2025 Compliant (conservative)" if pag_compliant?
-    "Custom assumptions"
+    return "Using standard Canadian guidelines (conservative)" if pag_compliant?
+    "Using custom assumptions"
   end
 
   class << self

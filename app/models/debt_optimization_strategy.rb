@@ -157,6 +157,34 @@ class DebtOptimizationStrategy < ApplicationRecord
     heloc_readvanceable == true
   end
 
+  def recommendation_message(summary_metrics)
+    return nil unless summary_metrics.present?
+
+    net_benefit = summary_metrics[:net_benefit] || 0
+    simulation_years = (simulation_months / 12.0).round(1)
+
+    prepay_only_all = prepay_only_entries
+    baseline_all = baseline_entries
+
+    if prepay_only_all.any? && baseline_all.any?
+      prepay_mortgage_interest = prepay_only_all.sum(:primary_mortgage_interest) +
+                                 prepay_only_all.sum(:rental_mortgage_interest)
+      baseline_mortgage_interest = baseline_all.sum(:primary_mortgage_interest) +
+                                   baseline_all.sum(:rental_mortgage_interest)
+      prepay_savings = baseline_mortgage_interest - prepay_mortgage_interest
+
+      if net_benefit > prepay_savings && net_benefit > 1000
+        "Based on your numbers, the Modified Smith Manoeuvre saves you #{Money.new(net_benefit, currency).format} over #{simulation_years} years compared to regular payments. The tradeoff: you'll need to maintain a HELOC, invest the borrowed funds, and track everything carefully for tax purposes. It's more work, but saves the most money."
+      elsif prepay_savings > 1000
+        "Making extra mortgage payments saves you #{Money.new(prepay_savings, currency).format} in interest over #{simulation_years} years. It's the simplest approach — no tax complexity, no HELOC needed."
+      else
+        "The other strategies don't save enough to justify the extra complexity. Your current payment plan is working well."
+      end
+    elsif net_benefit > 1000
+      "Based on your numbers, this strategy saves you #{Money.new(net_benefit, currency).format} over #{simulation_years} years compared to regular payments."
+    end
+  end
+
   private
 
     def calculate_summary_metrics!

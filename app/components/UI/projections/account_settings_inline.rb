@@ -36,7 +36,7 @@ class UI::Projections::AccountSettingsInline < ApplicationComponent
   end
 
   def compliance_badge
-    assumption&.compliance_badge || "Custom assumptions"
+    assumption&.compliance_badge || "Using custom assumptions"
   end
 
   def currency_symbol

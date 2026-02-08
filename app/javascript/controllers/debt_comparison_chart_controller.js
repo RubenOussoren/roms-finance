@@ -7,7 +7,8 @@ export default class extends Controller {
   static values = {
     series: Object,
     hasBaseline: Boolean,
-    hasPrepayOnly: Boolean
+    hasPrepayOnly: Boolean,
+    currency: { type: String, default: "USD" }
   }
 
   _resizeTimeout = null
@@ -153,12 +154,15 @@ export default class extends Controller {
   }
 
   formatCurrency(value) {
+    const currency = this.currencyValue
+    const symbol = new Intl.NumberFormat("en", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      .formatToParts(0).find(p => p.type === "currency")?.value || "$"
     if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`
+      return `${symbol}${(value / 1000000).toFixed(1)}M`
     }
     if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`
+      return `${symbol}${(value / 1000).toFixed(0)}K`
     }
-    return `$${value.toFixed(0)}`
+    return `${symbol}${value.toFixed(0)}`
   }
 }

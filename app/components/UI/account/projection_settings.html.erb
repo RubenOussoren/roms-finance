@@ -15,7 +15,7 @@
       <%= form_with url: account_projection_settings_path(account), method: :patch, data: { controller: "auto-submit-form", turbo_frame: dom_id(account, :projection_chart) } do |form| %>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Expected Return (%)</label>
+            <label class="text-xs font-medium text-secondary">Expected annual growth (%) <%= helpers.finance_tooltip("Expected return") %></label>
             <%= form.number_field :expected_return,
                 value: expected_return_percent,
                 step: 0.1,
@@ -24,20 +24,22 @@
                 class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
                 data: { "auto-submit-form-target": "auto" },
                 disabled: use_pag_defaults? %>
+            <p class="text-xs text-secondary mt-0.5">Stock markets have historically averaged 7-10% before inflation. A conservative estimate is 5-6%.</p>
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Monthly Contribution (<%= currency_symbol %>)</label>
+            <label class="text-xs font-medium text-secondary">Monthly Contribution (<%= currency_symbol %>) <%= helpers.finance_tooltip("Monthly contribution") %></label>
             <%= form.number_field :monthly_contribution,
                 value: monthly_contribution,
                 step: 100,
                 min: 0,
                 class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
                 data: { "auto-submit-form-target": "auto" } %>
+            <p class="text-xs text-secondary mt-0.5">How much you plan to add to this account each month.</p>
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Volatility (%)</label>
+            <label class="text-xs font-medium text-secondary">How much returns might vary (%) <%= helpers.finance_tooltip("Volatility") %></label>
             <%= form.number_field :volatility,
                 value: volatility_percent,
                 step: 0.5,
@@ -46,10 +48,11 @@
                 class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
                 data: { "auto-submit-form-target": "auto" },
                 disabled: use_pag_defaults? %>
+            <p class="text-xs text-secondary mt-0.5">15-20% is typical for a balanced portfolio. Higher means wider range of outcomes.</p>
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Projection Horizon</label>
+            <label class="text-xs font-medium text-secondary">How far ahead to project <%= helpers.finance_tooltip("Projection horizon") %></label>
             <%= form.select :projection_years,
                 [[" 5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
                 { selected: 10 },
@@ -58,12 +61,15 @@
           </div>
         </div>
 
-        <div class="mt-4 flex items-center gap-2">
-          <%= form.check_box :use_pag_defaults,
-              checked: use_pag_defaults?,
-              class: "rounded border-secondary text-blue-500 focus:ring-blue-500",
-              data: { "auto-submit-form-target": "auto", action: "change->auto-submit-form#submit" } %>
-          <label class="text-sm text-secondary">Use PAG 2025 default assumptions</label>
+        <div class="mt-4">
+          <div class="flex items-center gap-2">
+            <%= form.check_box :use_pag_defaults,
+                checked: use_pag_defaults?,
+                class: "rounded border-secondary text-blue-500 focus:ring-blue-500",
+                data: { "auto-submit-form-target": "auto", action: "change->auto-submit-form#submit" } %>
+            <label class="text-sm text-secondary">Use conservative Canadian planning standards (recommended) <%= helpers.finance_tooltip("PAG 2025") %></label>
+          </div>
+          <p class="text-xs text-secondary mt-0.5 ml-6">These are the assumptions Canadian financial planners are required to use. They're designed to avoid over-promising.</p>
         </div>
 
         <% if use_pag_defaults? %>

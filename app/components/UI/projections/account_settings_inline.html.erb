@@ -20,7 +20,7 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Expected Return (%)</label>
+            <label class="text-xs font-medium text-secondary">Expected annual growth (%) <%= helpers.finance_tooltip("Expected return") %></label>
             <%= form.number_field :expected_return,
                 value: expected_return_percent,
                 step: 0.1,
@@ -32,7 +32,7 @@
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Monthly (<%= currency_symbol %>)</label>
+            <label class="text-xs font-medium text-secondary">Monthly (<%= currency_symbol %>) <%= helpers.finance_tooltip("Monthly contribution") %></label>
             <%= form.number_field :monthly_contribution,
                 value: monthly_contribution,
                 step: 100,
@@ -42,7 +42,7 @@
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Volatility (%)</label>
+            <label class="text-xs font-medium text-secondary">How much returns vary (%) <%= helpers.finance_tooltip("Volatility") %></label>
             <%= form.number_field :volatility,
                 value: volatility_percent,
                 step: 0.5,
@@ -54,7 +54,7 @@
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium text-secondary">Horizon</label>
+            <label class="text-xs font-medium text-secondary">How far ahead <%= helpers.finance_tooltip("Projection horizon") %></label>
             <%= form.select :projection_years,
                 [["5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
                 { selected: projection_years },
@@ -69,7 +69,7 @@
                 checked: use_pag_defaults?,
                 class: "rounded border-secondary text-blue-500 focus:ring-blue-500",
                 data: { "auto-submit-form-target": "auto", action: "change->auto-submit-form#submit" } %>
-            <label class="text-sm text-secondary">PAG 2025 defaults</label>
+            <label class="text-sm text-secondary">Use conservative Canadian standards <%= helpers.finance_tooltip("PAG 2025") %></label>
           </div>
 
           <% if custom_settings? %>

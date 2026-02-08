@@ -80,22 +80,48 @@ class AccountTest < ActiveSupport::TestCase
     @account.balance = nil
     issues = @account.data_quality_issues
 
-    assert issues.any? { |i| i[:field] == :balance && i[:severity] == :error }
+    issue = issues.find { |i| i[:field] == :balance && i[:severity] == :error }
+    assert_not_nil issue
+    assert_equal "Update balance", issue[:action_text]
+    assert_equal :edit, issue[:action_path]
+    assert_includes issue[:message], @account.name
   end
 
   test "account reports data quality warning for negative balance" do
     @account.balance = -100
     issues = @account.data_quality_issues
 
-    assert issues.any? { |i| i[:field] == :balance && i[:severity] == :warning }
+    issue = issues.find { |i| i[:field] == :balance && i[:severity] == :warning }
+    assert_not_nil issue
+    assert_equal "Review transactions", issue[:action_text]
+    assert_equal :show, issue[:action_path]
   end
 
   test "account data quality score reflects projection status" do
-    # Account without projections gets info-level warning (2 point deduction)
+    # Account without projection_assumption gets info-level warning (2 point deduction)
     assert_equal 98, @account.data_quality_score
   end
 
   test "account data quality acceptable returns true for valid account" do
     assert @account.data_quality_acceptable?
+  end
+
+  test "account reports actionable stale data warning" do
+    @account.update_column(:updated_at, 31.days.ago)
+    issues = @account.data_quality_issues
+
+    issue = issues.find { |i| i[:field] == :updated_at && i[:severity] == :warning }
+    assert_not_nil issue
+    assert_equal "Refresh account", issue[:action_text]
+    assert_equal :show, issue[:action_path]
+  end
+
+  test "account reports missing projection assumptions" do
+    issues = @account.data_quality_issues
+
+    issue = issues.find { |i| i[:field] == :projection_assumptions && i[:severity] == :info }
+    assert_not_nil issue
+    assert_equal "Set up projections", issue[:action_text]
+    assert_equal :edit, issue[:action_path]
   end
 end

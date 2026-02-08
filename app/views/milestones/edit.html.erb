@@ -7,7 +7,7 @@
           <%= form.text_field :name,
               label: "Name",
               required: true,
-              placeholder: @milestone.reduction_milestone? ? "e.g., Paid Off!, 50% Paid" : "e.g., Emergency Fund $10K" %>
+              placeholder: @milestone.reduction_milestone? ? "e.g., Paid Off!, 50% Paid" : "e.g., Emergency Fund 10K" %>
 
           <% if @milestone.reduction_milestone? %>
             <div>
