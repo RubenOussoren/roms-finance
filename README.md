@@ -1,9 +1,5 @@
 # ROMS Finance: Personal Finance Management
 
-> [!NOTE]
-> This project is a fork of [Maybe Finance](https://github.com/maybe-finance/maybe), licensed under AGPLv3.
-> **This project is not affiliated with or endorsed by Maybe Finance Inc.**
-
 ## About
 
 ROMS Finance is a personal finance app that can be [self hosted with Docker](docs/hosting/docker.md). Key features include:
@@ -52,10 +48,8 @@ For further instructions, see guides below.
 
 ### Setup Guides
 
-- [Mac dev setup guide](https://github.com/maybe-finance/maybe/wiki/Mac-Dev-Setup-Guide) (upstream Maybe Finance guides — may differ for ROMS-specific features)
-- [Linux dev setup guide](https://github.com/maybe-finance/maybe/wiki/Linux-Dev-Setup-Guide) (upstream Maybe Finance guides — may differ for ROMS-specific features)
-- [Windows dev setup guide](https://github.com/maybe-finance/maybe/wiki/Windows-Dev-Setup-Guide) (upstream Maybe Finance guides — may differ for ROMS-specific features)
-- Dev containers - visit [this guide](https://code.visualstudio.com/docs/devcontainers/containers) to learn more
+- [Self-hosting with Docker](docs/hosting/docker.md)
+- [Dev containers](https://code.visualstudio.com/docs/devcontainers/containers)
 
 ## Copyright & License
 
