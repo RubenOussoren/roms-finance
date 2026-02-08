@@ -1,6 +1,6 @@
 class Account < ApplicationRecord
-  include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable
-  include Projectable, JurisdictionAware, DataQualityCheckable
+  include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable
+  include JurisdictionAware, DataQualityCheckable
 
   validates :name, :balance, :currency, presence: true
 
@@ -18,6 +18,8 @@ class Account < ApplicationRecord
   has_many :holdings, dependent: :destroy
   has_many :balances, dependent: :destroy
   has_one :projection_assumption, dependent: :destroy
+  has_many :projections, class_name: "Account::Projection", dependent: :destroy
+  has_many :milestones, dependent: :destroy
   has_many :strategies_as_primary, class_name: "DebtOptimizationStrategy", foreign_key: :primary_mortgage_id, dependent: :nullify
   has_many :strategies_as_heloc, class_name: "DebtOptimizationStrategy", foreign_key: :heloc_id, dependent: :nullify
   has_many :strategies_as_rental, class_name: "DebtOptimizationStrategy", foreign_key: :rental_mortgage_id, dependent: :nullify
@@ -183,7 +185,21 @@ class Account < ApplicationRecord
     projection_assumption.present?
   end
 
+  # Projection facade delegation (extracted from Projectable concern)
+  def adaptive_projection(...) = projection_facade.adaptive_projection(...)
+  def forecast_accuracy(...) = projection_facade.forecast_accuracy(...)
+  def next_milestone = projection_facade.next_milestone
+  def achieved_milestones = projection_facade.achieved_milestones
+  def update_milestone_progress! = projection_facade.update_milestone_progress!
+  def generate_projections!(...) = projection_facade.generate_projections!(...)
+  def update_milestone_projections! = projection_facade.update_milestone_projections!
+  def projection_chart_data(...) = projection_facade.projection_chart_data(...)
+
   private
+
+    def projection_facade
+      @projection_facade ||= Account::ProjectionFacade.new(self)
+    end
 
     def create_standard_milestones
       Milestone.create_standard_milestones_for(self)

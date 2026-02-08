@@ -181,4 +181,68 @@ class LoanTest < ActiveSupport::TestCase
 
     assert loan.valid?
   end
+
+  # original_balance / initial_balance column tests
+
+  test "original_balance uses initial_balance column when set" do
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Mortgage with initial_balance",
+      balance: 450000,
+      currency: "USD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 4.0,
+        term_months: 300,
+        rate_type: "fixed",
+        initial_balance: 500000
+      )
+    )
+
+    assert_equal 500000, loan_account.loan.original_balance.amount
+  end
+
+  test "original_balance falls back to first_valuation_amount when initial_balance is nil" do
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Legacy Loan",
+      balance: 450000,
+      currency: "USD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 4.0,
+        term_months: 300,
+        rate_type: "fixed",
+        initial_balance: nil
+      )
+    )
+
+    # Falls back to first_valuation_amount which defaults to balance_money
+    assert_equal loan_account.first_valuation_amount, loan_account.loan.original_balance
+  end
+
+  test "initial_balance is immutable once set" do
+    loan = Loan.create!(
+      interest_rate: 5.0,
+      term_months: 300,
+      rate_type: "fixed",
+      initial_balance: 500000
+    )
+
+    loan.initial_balance = 600000
+    assert_not loan.valid?
+    assert_includes loan.errors[:initial_balance], "cannot be changed once set"
+  end
+
+  test "initial_balance can be set from nil" do
+    loan = Loan.create!(
+      interest_rate: 5.0,
+      term_months: 300,
+      rate_type: "fixed",
+      initial_balance: nil
+    )
+
+    loan.initial_balance = 500000
+    assert loan.valid?
+  end
 end

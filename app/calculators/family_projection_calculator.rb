@@ -163,38 +163,9 @@ class FamilyProjectionCalculator
       class_a == class_b ? SAME_CLASS_CORRELATION : CROSS_CLASS_CORRELATION
     end
 
-    # Calculate percentile bands using log-normal distribution
-    # Handles both positive and negative net worth correctly
-    # For positive: p10 (pessimistic) < p50 < p90 (optimistic)
-    # For negative: p10 (more negative) < p50 < p90 (less negative)
-    # p50 uses drift correction: median = value * exp(-sigma²/2) for log-normal
     def calculate_percentiles(net_worth, month, volatility)
-      time_factor = Math.sqrt(month / 12.0)
-      sigma = volatility * time_factor
-      drift_correction = Math.exp(-sigma**2 / 2.0)
-
-      if net_worth >= 0
-        # Standard percentiles for positive net worth
-        {
-          p10: (net_worth * Math.exp(Z_P10 * sigma)).to_f.round(2),
-          p25: (net_worth * Math.exp(Z_P25 * sigma)).to_f.round(2),
-          p50: (net_worth * drift_correction).to_f.round(2),
-          p75: (net_worth * Math.exp(Z_P75 * sigma)).to_f.round(2),
-          p90: (net_worth * Math.exp(Z_P90 * sigma)).to_f.round(2)
-        }
-      else
-        # For negative net worth, invert the multipliers
-        # p10 = pessimistic = more negative
-        # p90 = optimistic = less negative
-        abs_value = net_worth.abs
-        {
-          p10: -(abs_value * Math.exp(-Z_P10 * sigma)).to_f.round(2),
-          p25: -(abs_value * Math.exp(-Z_P25 * sigma)).to_f.round(2),
-          p50: -(abs_value * drift_correction).to_f.round(2),
-          p75: -(abs_value * Math.exp(-Z_P75 * sigma)).to_f.round(2),
-          p90: -(abs_value * Math.exp(-Z_P90 * sigma)).to_f.round(2)
-        }
-      end
+      sigma = volatility * Math.sqrt(month / 12.0)
+      calculate_percentiles_for_value(net_worth, sigma)
     end
 
     def project_account_balance(account, month)

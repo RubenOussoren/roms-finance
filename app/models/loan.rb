@@ -13,6 +13,7 @@ class Loan < ApplicationRecord
   validates :annual_lump_sum_month, inclusion: { in: 1..12 }, allow_nil: true
   validates :renewal_term_months, numericality: { greater_than: 0 }, allow_nil: true
   validates :prepayment_privilege_percent, numericality: { greater_than: 0, less_than_or_equal_to: 100 }, allow_nil: true
+  validate :initial_balance_immutable, on: :update
 
   # Check if this is a Canadian-style mortgage with renewal
   def canadian_mortgage?
@@ -42,6 +43,12 @@ class Loan < ApplicationRecord
 
   private
 
+    def initial_balance_immutable
+      if initial_balance_changed? && initial_balance_was.present?
+        errors.add(:initial_balance, "cannot be changed once set")
+      end
+    end
+
     def calculate_monthly_payment
       return nil if term_months.nil? || interest_rate.nil? || rate_type.nil? || rate_type != "fixed"
       return Money.new(0, account.currency) if original_balance.amount.zero? || term_months.zero?
@@ -65,7 +72,10 @@ class Loan < ApplicationRecord
   public
 
   def original_balance
-    @original_balance ||= Money.new(account.first_valuation_amount, account.currency)
+    @original_balance ||= begin
+      amount = initial_balance.presence || account.first_valuation_amount
+      Money.new(amount, account.currency)
+    end
   end
 
   class << self

@@ -46,8 +46,10 @@ class Milestone < ApplicationRecord
 
   def update_progress!(current_balance)
     # Initialize starting_balance for reduction milestones if not set
+    # Uses earliest known balance (original loan amount) rather than current balance,
+    # which may have already been reduced by payments
     if reduction_milestone? && starting_balance.nil?
-      update!(starting_balance: current_balance.abs)
+      update!(starting_balance: earliest_known_balance)
     end
 
     new_progress = calculate_progress(current_balance)
@@ -92,6 +94,14 @@ class Milestone < ApplicationRecord
   end
 
   private
+
+    def earliest_known_balance
+      if account.accountable.respond_to?(:original_balance)
+        account.accountable.original_balance.amount.abs
+      else
+        account.first_valuation_amount.amount.abs
+      end
+    end
 
     def calculate_progress(current_balance)
       if reduction_milestone?

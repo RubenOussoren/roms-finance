@@ -249,11 +249,25 @@ class MilestoneTest < ActiveSupport::TestCase
     assert_equal "reach", Milestone.default_target_type_for(nil)
   end
 
-  test "initializes starting_balance on first debt progress update" do
+  test "initializes starting_balance from original loan balance, not current balance" do
+    # Create loan with known initial_balance
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Test Loan",
+      balance: 90000, # already reduced by payments
+      currency: "USD",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 300,
+        rate_type: "fixed",
+        initial_balance: 100000 # original amount
+      )
+    )
+
     new_milestone = Milestone.create!(
-      account: @loan_account,
+      account: loan_account,
       name: "Test Debt Goal",
-      target_amount: 100000,
+      target_amount: 50000,
       currency: "USD",
       target_type: "reduce_to",
       starting_balance: nil
@@ -261,9 +275,38 @@ class MilestoneTest < ActiveSupport::TestCase
 
     assert_nil new_milestone.starting_balance
 
-    new_milestone.update_progress!(300000)
+    # Update with current balance of 90000 (already reduced)
+    new_milestone.update_progress!(90000)
 
-    assert_equal 300000, new_milestone.starting_balance
+    # starting_balance should be set from original_balance (100000), not current_balance (90000)
+    assert_equal 100000, new_milestone.starting_balance
+  end
+
+  test "initializes starting_balance from first_valuation for non-loan liabilities" do
+    # Non-loan liabilities (e.g., credit cards) fall back to first_valuation_amount
+    credit_card_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Test CC",
+      balance: 5000,
+      currency: "USD",
+      accountable: CreditCard.create!
+    )
+
+    # Use a custom target that won't conflict with auto-generated milestones
+    new_milestone = Milestone.create!(
+      account: credit_card_account,
+      name: "Custom CC Goal",
+      target_amount: 1234,
+      currency: "USD",
+      target_type: "reduce_to",
+      starting_balance: nil,
+      is_custom: true
+    )
+
+    new_milestone.update_progress!(5000)
+
+    # Should use first_valuation_amount (which defaults to balance_money = 5000)
+    assert_equal 5000, new_milestone.starting_balance
   end
 
   test "validates target_type inclusion" do
