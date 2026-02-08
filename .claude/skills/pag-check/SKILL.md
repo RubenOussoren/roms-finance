@@ -18,11 +18,11 @@ Verify that financial projections comply with FP Canada's Projection Assumption 
 ## PAG 2025 Standard Assumptions
 
 ### Investment Returns
-- Canadian Equities: 6.3% nominal
+- Canadian Equities: 6.28% nominal
 - U.S. Equities: 6.1% nominal
 - International Equities: 6.4% nominal
-- Canadian Fixed Income: 3.6% nominal
-- Cash/Money Market: 2.5% nominal
+- Canadian Fixed Income: 4.09% nominal
+- Cash/Money Market: 2.95% nominal
 
 ### Inflation Rate
 - 2.1% annual inflation
@@ -137,7 +137,7 @@ Violations Found:
 -----------------
 1. app/calculators/old_calculator.rb:45
    Hardcoded tax rate: 0.45
-   Fix: Use tax_calculator_config.marginal_tax_rate(income:)
+   Fix: Use marginal_tax_rate(income:) via JurisdictionAware concern
 
 2. app/services/projection_service.rb:23
    Missing PagCompliant concern

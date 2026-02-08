@@ -205,5 +205,10 @@ From CLAUDE.md:
 
 ## Test Credentials
 
-- **Email:** user@maybe.local
-- **Password:** password
+**Upstream seed account:**
+- **Email:** `user@maybe.local` / **Password:** `password`
+
+**Canadian test data** (for financial features like Smith Manoeuvre):
+- **Email:** `test.canadian@example.com` / **Password:** `password123`
+
+> For first-time project setup, prefer `/setup` which includes environment verification.

@@ -82,7 +82,7 @@ After setup, access the application at http://localhost:3000:
 
 #### PostgreSQL connection refused
 ```bash
-brew services start postgresql@14
+brew services start postgresql@16
 ```
 
 #### Redis connection refused
@@ -171,7 +171,7 @@ Expected: Bundle complete, npm packages installed
 ### Remediation Commands
 
 - **Ruby version wrong:** `rbenv install 3.4.4 && rbenv rehash`
-- **PostgreSQL not running:** `brew services start postgresql@14`
+- **PostgreSQL not running:** `brew services start postgresql@16`
 - **Redis not running:** `brew services start redis`
 - **Database missing:** `bin/rails db:prepare`
 - **Tailwind not built:** `bin/rails tailwindcss:build`

@@ -42,7 +42,7 @@ Create a well-formatted git commit following repository conventions.
    git commit -m "$(cat <<'EOF'
    Commit message here.
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
    EOF
    )"
    ```
@@ -55,7 +55,7 @@ Create a well-formatted git commit following repository conventions.
 
 <optional body explaining why>
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
 ### Types

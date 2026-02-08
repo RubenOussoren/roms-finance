@@ -39,7 +39,7 @@ Use this checklist when evaluating Dimension 3 (Architectural Coherence) of the 
 
 ## Tests
 
-- [ ] New test files follow existing directory structure (`spec/models/`, `spec/services/`, etc.)
+- [ ] New test files follow existing directory structure (`test/models/`, `test/services/`, etc.)
 - [ ] Test names describe behavior, not implementation ("calculates monthly payment" not "calls rate_helper")
 - [ ] Financial tests use known-value assertions with documented expected values
 - [ ] No test depends on execution order or shared mutable state

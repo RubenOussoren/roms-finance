@@ -33,117 +33,50 @@ Simulators handle **complex scenarios** with:
 ```ruby
 # frozen_string_literal: true
 
-# 🇨🇦 Canadian Smith Manoeuvre simulator
-# 🔧 Extensibility: Supports jurisdiction configuration
-class CanadianSmithManoeuvrSimulator
+# Canadian-first financial simulator
+# For debt simulators, inherit from AbstractDebtSimulator instead
+class ExampleSimulator
   include PagCompliant
   include JurisdictionAware
 
-  SimulationResult = Struct.new(
-    :baseline_path,
-    :optimized_path,
-    :total_tax_savings,
-    :net_benefit,
-    keyword_init: true
-  )
+  Result = Struct.new(:paths, :net_benefit, keyword_init: true)
 
-  MonthState = Struct.new(
-    :month,
-    :mortgage_balance,
-    :heloc_balance,
-    :investment_value,
-    :tax_deduction,
-    keyword_init: true
-  )
-
-  def initialize(mortgage:, heloc_limit:, investment_return:, tax_rate:, years:, jurisdiction: nil)
-    @mortgage = mortgage
-    @heloc_limit = heloc_limit
-    @investment_return = investment_return
-    @tax_rate = tax_rate
-    @years = years
-    @jurisdiction = jurisdiction || Jurisdiction.default
+  def initialize(strategy:)
+    @strategy = strategy
   end
 
-  def simulate
-    baseline = simulate_baseline
-    optimized = simulate_smith_manoeuvre
-
-    SimulationResult.new(
-      baseline_path: baseline,
-      optimized_path: optimized,
-      total_tax_savings: calculate_tax_savings(optimized),
-      net_benefit: calculate_net_benefit(baseline, optimized)
-    )
+  def simulate!
+    # Multi-step simulation logic
+    # Use marginal_tax_rate(income:) directly from JurisdictionAware concern
   end
 
   private
 
-  def simulate_baseline
-    path = []
-    balance = @mortgage
-
-    (@years * 12).times do |month|
-      balance = apply_mortgage_payment(balance)
-      path << MonthState.new(
-        month: month,
-        mortgage_balance: balance,
-        heloc_balance: 0,
-        investment_value: 0,
-        tax_deduction: 0
-      )
-    end
-
-    path
-  end
-
-  def simulate_smith_manoeuvre
-    # Implementation for Smith Manoeuvre strategy
-    # Convert non-deductible mortgage debt to deductible investment debt
-    # Track HELOC interest cash source for CRA audit trail:
-    #   entry[:heloc_interest_cash_source] = :joint_account
-    #   entry[:heloc_interest_paid_from_cash] = heloc_interest
-    []
-  end
-
-  # 🇨🇦 Canadian mortgage compounding: semi-annual, not monthly
+  # Canadian mortgage compounding: semi-annual, not monthly
   # Fixed-rate mortgages compound semi-annually per Canadian federal law.
   # HELOC (variable rate) uses simple monthly compounding: rate/12
   def canadian_monthly_mortgage_rate(annual_rate)
     ((1 + annual_rate / 2.0) ** (1.0 / 6)) - 1
   end
-
-  def apply_mortgage_payment(balance)
-    # 🇨🇦 Use semi-annual compounding for Canadian fixed-rate mortgages
-    monthly_rate = canadian_monthly_mortgage_rate(@mortgage[:rate])
-    interest = balance * monthly_rate
-    principal = @mortgage[:payment] - interest
-    balance - principal
-  end
-
-  def calculate_tax_savings(path)
-    path.sum(&:tax_deduction) * marginal_tax_rate
-  end
-
-  def calculate_net_benefit(baseline, optimized)
-    # Compare final states
-    0
-  end
-
-  def marginal_tax_rate
-    tax_calculator_config.marginal_tax_rate(income: @mortgage * 5)
-  end
 end
 ```
+
+## Debt Simulators
+
+For debt-related simulators, inherit from `AbstractDebtSimulator` (not standalone):
+- Uses template method pattern with `simulate!` as entry point (no arguments)
+- Subclasses implement `scenario_type` and `calculate_prepayment`
+- Includes `MortgageRenewalSupport` and `LoanTermDefaults` concerns
+- See `.cursor/rules/debt-optimization.mdc` for full architecture
 
 ## Instructions
 
 1. Parse simulator name from arguments
 2. Generate simulator class in `app/services/`
-3. Include appropriate concerns
-4. Create Result and State structs
-5. Generate corresponding test file
-6. Include baseline vs optimized comparison structure
+3. For debt simulators: inherit from `AbstractDebtSimulator`
+4. For other simulators: include appropriate concerns (PagCompliant, JurisdictionAware)
+5. Create Result and State structs
+6. Generate corresponding test file
 
 ## Simulator vs Calculator
 
@@ -157,7 +90,7 @@ end
 
 ## Financial Architecture Rules
 
-### 🇨🇦 Canadian Smith Manoeuvre
+### Canadian Smith Manoeuvre
 - CRA-compliant debt optimization
 - Interest deductibility rules
 - HELOC readvancement tracking
@@ -166,8 +99,8 @@ end
 - HELOC: simple monthly compounding `rate / 12`
 
 ### Never Hardcode
-- ❌ `tax_benefit = interest * 0.45`
-- ✅ `tax_benefit = interest * marginal_tax_rate`
+- BAD: `tax_benefit = interest * 0.45`
+- GOOD: `tax_benefit = interest * marginal_tax_rate(income:)`
 
 ### Performance
 - Target < 2s (background job acceptable)

@@ -20,7 +20,7 @@ Generate a new Stimulus controller following project conventions.
 ### Global Controllers
 Location: `app/javascript/controllers/`
 - Used across multiple views/components
-- Registered automatically via manifest
+- Registered automatically via `controllers/index.js` (eager-loaded from importmap)
 
 ### Component Controllers
 Location: `app/components/[component_name]/[name]_controller.js`

@@ -17,109 +17,65 @@ Generate an import handler following the project's Import pattern.
 
 ## Import Architecture
 
-The application uses a structured import system:
-- `Import` model manages import sessions
-- Supports transaction and balance imports
-- Custom field mapping with transformation rules
-- Validation and error reporting
+The application uses a structured import system based on the `Import` base class:
+- **Status enum:** `pending`, `complete`, `importing`, `reverting`, `revert_failed`, `failed` (string enum)
+- **Types:** `TransactionImport`, `TradeImport`, `AccountImport`, `MintImport`
+- Subclasses implement: `import!`, `column_keys`, `required_column_keys`, `mapping_steps`
+- Errors stored in `.error` string column (not an association)
+- CSV rows stored in `Import::Row` records, mappings in `Import::Mapping` records
 
 ## Generated Files
 
-1. **Import handler:** `app/models/import/{{name}}_import.rb`
-2. **Test:** `test/models/import/{{name}}_import_test.rb`
+1. **Import handler:** `app/models/{{name}}_import.rb`
+2. **Test:** `test/models/{{name}}_import_test.rb`
 
 ## Import Handler Template
 
 ```ruby
 # frozen_string_literal: true
 
-class TransactionImport < Import
-  # Define required and optional columns
-  REQUIRED_COLUMNS = %w[date amount].freeze
-  OPTIONAL_COLUMNS = %w[description category merchant].freeze
-
-  # Field mappings
-  def column_mappings
-    {
-      "date" => :transaction_date,
-      "amount" => :amount,
-      "description" => :description,
-      "category" => :category_name,
-      "merchant" => :merchant_name
-    }
-  end
-
-  # Transform raw row into importable attributes
-  def transform_row(row)
-    {
-      date: parse_date(row[:transaction_date]),
-      amount: parse_amount(row[:amount]),
-      description: row[:description],
-      category: find_or_create_category(row[:category_name]),
-      merchant: row[:merchant_name]
-    }
-  end
-
-  # Validate a single row
-  def validate_row(row)
-    errors = []
-    errors << "Date is required" if row[:date].blank?
-    errors << "Amount is required" if row[:amount].blank?
-    errors << "Invalid date format" unless valid_date?(row[:date])
-    errors
-  end
-
-  # Process the import
-  def process!
+class ExampleImport < Import
+  def import!
     transaction do
-      rows.each_with_index do |row, index|
-        transformed = transform_row(row)
-        errors = validate_row(transformed)
+      mappings.each(&:create_mappable!)
 
-        if errors.any?
-          record_error(index, errors)
-          next
+      records = rows.map do |row|
+        mapped_account = if account
+          account
+        else
+          mappings.accounts.mappable_for(row.account)
         end
 
-        create_transaction(transformed)
+        # Build your domain object from the mapped row
+        # Example from TransactionImport:
+        # Transaction.new(
+        #   entry: Entry.new(
+        #     account: mapped_account,
+        #     date: row.date_iso,
+        #     amount: row.signed_amount,
+        #     name: row.name,
+        #     currency: row.currency,
+        #     import: self
+        #   )
+        # )
       end
-
-      update!(status: errors.any? ? :completed_with_errors : :completed)
     end
   end
 
-  private
-
-  def parse_date(value)
-    Date.parse(value.to_s)
-  rescue ArgumentError
-    nil
+  def required_column_keys
+    %i[date amount]
   end
 
-  def parse_amount(value)
-    BigDecimal(value.to_s.gsub(/[^0-9.-]/, ""))
-  rescue ArgumentError
-    nil
+  def column_keys
+    base = %i[date amount name currency category tags notes]
+    base.unshift(:account) if account.nil?
+    base
   end
 
-  def valid_date?(value)
-    parse_date(value).present?
-  end
-
-  def find_or_create_category(name)
-    return nil if name.blank?
-    Current.family.categories.find_or_create_by(name: name)
-  end
-
-  def create_transaction(attributes)
-    Current.family.transactions.create!(attributes)
-  end
-
-  def record_error(row_index, errors)
-    import_errors.create!(
-      row_number: row_index + 1,
-      messages: errors
-    )
+  def mapping_steps
+    base = [Import::CategoryMapping, Import::TagMapping]
+    base << Import::AccountMapping if account.nil?
+    base
   end
 end
 ```
@@ -127,28 +83,30 @@ end
 ## Instructions
 
 1. Parse import name from arguments
-2. Generate import class inheriting from `Import`
-3. Define required and optional columns
-4. Implement column mappings
-5. Implement row transformation
-6. Implement validation
+2. Generate import class inheriting from `Import` at `app/models/`
+3. Implement `import!` — the core import logic, wrapped in a transaction
+4. Implement `required_column_keys` — symbols for required CSV columns
+5. Implement `column_keys` — all supported CSV columns
+6. Implement `mapping_steps` — array of `Import::*Mapping` classes
 7. Generate corresponding test file
 
 ## Import Workflow
 
 ```
 1. User uploads CSV file
-2. System parses headers and shows mapping UI
-3. User maps CSV columns to system fields
-4. Import.process! runs in background job
-5. Results shown with success/error counts
+2. System parses CSV and creates Import::Row records
+3. User maps columns via Import::Mapping UI
+4. import.publish_later enqueues ImportJob
+5. ImportJob calls import.publish → import!
+6. On success: status → complete. On failure: status → failed, error message in .error
+7. Revert via import.revert_later if needed
 ```
 
 ## Important Notes
 
 - Use `Current.family` for scoping all created records
-- Wrap processing in transaction for atomicity
-- Record row-level errors for user feedback
-- Support both required and optional columns
-- Handle various date and number formats
-- Validate before creating records
+- The `import!` method is called within `publish` which handles status transitions
+- Do NOT set status manually — `publish` and `revert` manage the state machine
+- Errors go to the `.error` string column, not an association
+- Row data is accessed through `Import::Row` records (e.g., `row.date_iso`, `row.signed_amount`)
+- Mappings use `Import::CategoryMapping`, `Import::TagMapping`, `Import::AccountMapping`

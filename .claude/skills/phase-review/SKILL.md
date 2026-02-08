@@ -42,7 +42,7 @@ Group the changed files into categories:
 - **Services/calculators** — `app/services/`, `app/calculators/`, `lib/`
 - **Controllers** — `app/controllers/`
 - **Views/partials** — `app/views/`, `app/helpers/`, `app/javascript/`
-- **Tests** — `spec/`, `test/`
+- **Tests** — `test/`
 - **Migrations** — `db/migrate/`
 - **Config/docs** — `config/`, `*.md`, `doc/`
 
@@ -120,7 +120,7 @@ git diff --name-only main -- app/ lib/ | xargs ruby -e '
 # Find new files and check they're referenced somewhere
 git diff --name-only --diff-filter=A main | while read f; do
   base=$(basename "$f" .rb | sed 's/_/ /g')
-  count=$(grep -rl "$(echo $base | sed 's/ /./g')" app/ lib/ spec/ --include='*.rb' | wc -l)
+  count=$(grep -rl "$(echo $base | sed 's/ /./g')" app/ lib/ test/ --include='*.rb' | wc -l)
   [ "$count" -le 1 ] && echo "ORPHAN? $f (referenced in $count files)"
 done
 ```
@@ -146,7 +146,7 @@ Refer to `references/architecture-checklist.md` for the full checklist organized
 echo "=== New methods ==="
 git diff main -- app/ lib/ | grep '^+.*def ' | grep -v 'private\|protected'
 echo "=== New test cases ==="
-git diff main -- spec/ test/ | grep '^+.*\(it \|test \|describe \|context \)'
+git diff main -- test/ | grep '^+.*\(test \|describe \|context \)'
 ```
 
 **Pass criteria:** All new public methods tested. Financial calculations use known-value assertions. Golden masters updated.

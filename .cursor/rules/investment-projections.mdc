@@ -8,937 +8,356 @@ alwaysApply: false
 
 # Investment Projection Patterns
 
-This rule defines patterns for implementing adaptive projections, Monte Carlo simulations, PAG 2025 compliance, and milestone tracking.
+Adaptive investment projections with Monte Carlo confidence bands, PAG 2025 compliance,
+and milestone tracking. Calculators are pure (no caching, no side effects).
+Caching lives in `ProjectionsController`.
 
-## Core Philosophy
+## Architecture Overview
 
-**Traditional calculators are naive** - they assume perfect contributions and constant returns.
+```
+Calculators (pure math, app/calculators/):
+  ProjectionCalculator     — single-account compound growth + Monte Carlo
+  FamilyProjectionCalculator — family net worth aggregation + correlation matrix
+  MilestoneCalculator      — time-to-goal + probability estimation
 
-**Our approach: Adaptive Projections** - Start from actual current balance, project forward using real data, provide probabilistic forecasts.
+Shared module:
+  PercentileZScores        — z-score constants + drift-corrected percentile bands
+
+Models:
+  ProjectionStandard       — PAG 2025 canonical return assumptions
+  ProjectionAssumption     — per-account or family-default customizable assumptions
+  Account::ProjectionFacade — projection/milestone facade for Account (replaces Projectable concern)
+  Account::Projection      — stored projection records (DB checkpoints)
+  Milestone                — financial goal tracking
+
+Concerns:
+  PagCompliant             — PAG 2025 compliance checks and warnings
+```
 
 ---
 
-## Adaptive Historical Tracking Pattern
+## ProjectionCalculator
 
-### What it does
-
-Compares actual portfolio growth against projections based on contribution plan.
-
-### Implementation (Actual - Phase 1 & 2 Complete)
-
-```ruby
-# app/models/account/projection.rb
-# 🌍 Universal: Monthly projected vs actual balance tracking
-class Account::Projection < ApplicationRecord
-  belongs_to :account
-  belongs_to :projection_assumption, optional: true
-
-  # Core projection data
-  # date :projection_date
-  # decimal :projected_balance
-  # decimal :actual_balance (nullable - filled in when date arrives)
-  # jsonb :percentiles (p10, p25, p50, p75, p90 for Monte Carlo)
-  # jsonb :metadata
-
-  scope :future, -> { where("projection_date > ?", Date.current) }
-  scope :past, -> { where("projection_date <= ?", Date.current) }
-  scope :ordered, -> { order(:projection_date) }
-
-  def forecast_error_percent
-    return nil unless actual_balance.present? && projected_balance.present?
-    return nil if projected_balance.zero?
-    ((actual_balance - projected_balance).abs / projected_balance * 100).round(2)
-  end
-
-  def ahead_of_projection?
-    return nil unless actual_balance.present?
-    actual_balance > projected_balance
-  end
-
-  def confidence_range(level: 80)
-    return nil unless percentiles.present?
-    case level
-    when 80 then { lower: percentiles["p10"], upper: percentiles["p90"] }
-    when 50 then { lower: percentiles["p25"], upper: percentiles["p75"] }
-    else nil
-    end
-  end
-end
-
-# app/models/concerns/projectable.rb
-# 🌍 Universal: Projection capabilities for accounts
-module Projectable
-  extend ActiveSupport::Concern
-
-  included do
-    has_many :projections,
-             class_name: "Account::Projection",
-             dependent: :destroy
-  end
-
-  # Generate adaptive projection starting from current balance
-  def adaptive_projection(years:, contribution: 0)
-    assumption = family&.projection_assumptions&.default_for_account(self)
-    rate = assumption&.effective_return || 0.066 # Default to PAG 2025 balanced
-
-    calculator = ProjectionCalculator.new(
-      principal: balance || 0,
-      rate: rate,
-      contribution: contribution,
-      currency: currency
-    )
-
-    calculator.project(months: years * 12)
-  end
-
-  # Calculate forecast accuracy metrics
-  def forecast_accuracy
-    ForecastAccuracyCalculator.new(projections).calculate
-  end
-
-  # Generate projections with Monte Carlo confidence bands
-  def generate_projections_with_percentiles(years:, contribution: 0, volatility: 0.15)
-    assumption = family&.projection_assumptions&.default_for_account(self)
-    rate = assumption&.effective_return || 0.066
-
-    calculator = ProjectionCalculator.new(
-      principal: balance || 0,
-      rate: rate,
-      contribution: contribution,
-      currency: currency
-    )
-
-    calculator.project_with_percentiles(
-      months: years * 12,
-      volatility: volatility,
-      simulations: 1000
-    )
-  end
-end
-
-# Include in Account model
-class Account
-  include Projectable
-end
-```
-
-### Calculator Pattern (Actual Implementation)
+Pure calculator for single-account compound growth projections.
 
 ```ruby
 # app/calculators/projection_calculator.rb
-# 🌍 Universal: Adaptive growth projection calculator
-# Pure function calculator with no side effects
 class ProjectionCalculator
-  attr_reader :principal, :rate, :contribution, :currency
+  include PercentileZScores
 
   def initialize(principal:, rate:, contribution: 0, currency: "CAD")
-    @principal = principal.to_d
-    @rate = rate.to_d
-    @contribution = contribution.to_d
-    @currency = currency
-  end
 
-  # Calculate future value at a specific month
-  # Uses compound interest formula: FV = P(1 + r)^n + PMT * ((1 + r)^n - 1) / r
-  #
-  # NOTE: rate/12 is correct for investment growth projections.
-  # Canadian mortgages use different compounding — see debt-optimization.mdc
-  # for the semi-annual formula: (1 + rate/2)^(1/6) - 1
-  def future_value_at_month(month)
-    return principal if month <= 0
-    monthly_rate = rate / 12
-    if monthly_rate.zero?
-      principal + (contribution * month)
-    else
-      compound_factor = (1 + monthly_rate) ** month
-      principal_growth = principal * compound_factor
-      contribution_growth = contribution * ((compound_factor - 1) / monthly_rate)
-      principal_growth + contribution_growth
-    end
-  end
+  # Core methods
+  def future_value_at_month(month)     # FV = P(1+r)^n + PMT*((1+r)^n - 1)/r
+  def project(months:)                 # Array of {month, date, balance, cumulative_contribution, growth}
+  def months_to_target(target:)        # Binary search, returns nil if unreachable
+  def years_to_target(target:)         # months_to_target / 12
+  def required_contribution(target:, months:)
+  def real_future_value_at_month(month, inflation_rate:)
 
-  # Generate projection data for multiple months
-  def project(months:)
-    (1..months).map do |month|
-      {
-        month: month,
-        date: Date.current + month.months,
-        balance: future_value_at_month(month).round(2),
-        cumulative_contribution: (contribution * month).round(2),
-        growth: (future_value_at_month(month) - principal - (contribution * month)).round(2)
-      }
-    end
-  end
-
-  # Calculate months to reach a target amount (binary search)
-  def months_to_target(target:)
-    return 0 if principal >= target
-    return nil if rate <= 0 && contribution <= 0
-    # Binary search implementation for accuracy
-    # ... (see actual implementation for details)
-  end
-
-  # Generate projection with confidence intervals (Monte Carlo in pure Ruby)
-  # NOTE: rate/12 is correct for investment growth. Mortgage interest uses
-  # semi-annual compounding — see debt-optimization.mdc.
-  def project_with_percentiles(months:, volatility:, simulations: 1000)
-    monthly_rate = rate / 12
-    monthly_vol = volatility.to_d / Math.sqrt(12)
-
-    results = (1..months).map do |month|
-      sim_values = simulations.times.map do
-        simulate_path(months: month, monthly_rate: monthly_rate, monthly_vol: monthly_vol)
-      end.sort
-
-      {
-        month: month,
-        date: Date.current + month.months,
-        p10: sim_values[(simulations * 0.10).to_i],
-        p25: sim_values[(simulations * 0.25).to_i],
-        p50: sim_values[(simulations * 0.50).to_i],
-        p75: sim_values[(simulations * 0.75).to_i],
-        p90: sim_values[(simulations * 0.90).to_i],
-        mean: sim_values.sum / simulations
-      }
-    end
-  end
+  # Confidence bands
+  def project_with_percentiles(months:, volatility:, simulations: 1000)  # Monte Carlo
+  def project_with_analytical_bands(months:, volatility:)                # Deterministic + sqrt(t) bands
 end
+```
 
-# app/calculators/forecast_accuracy_calculator.rb
-# 🌍 Universal: Forecast accuracy metrics calculator
-# Calculates MAPE, RMSE, and Tracking Signal
-class ForecastAccuracyCalculator
-  attr_reader :projections
+Investment growth uses monthly compounding (`rate / 12`).
+Canadian mortgages use semi-annual compounding — see `debt-optimization.mdc`.
 
-  def initialize(projections)
-    @projections = projections.to_a
-  end
+### Monte Carlo Implementation
 
-  def calculate
-    return nil if projections.empty? || valid_projections.empty?
+Pure Ruby Box-Muller transform with `Float::EPSILON` guard:
 
+```ruby
+def gaussian_random
+  u1 = [rand, Float::EPSILON].max  # prevents log(0) = -Infinity
+  u2 = rand
+  Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math::PI * u2)
+end
+```
+
+Each simulation path: `balance = balance * (1 + monthly_rate + monthly_vol * gaussian_random) + contribution`
+
+---
+
+## PercentileZScores Module
+
+Shared z-score constants and drift-corrected percentile calculation.
+
+```ruby
+# app/calculators/percentile_z_scores.rb
+module PercentileZScores
+  Z_P10 = -1.28
+  Z_P25 = -0.67
+  Z_P75 =  0.67
+  Z_P90 =  1.28
+
+  def calculate_percentiles_for_value(value, sigma)
+    drift_correction = Math.exp(-sigma**2 / 2.0)
+    # p50 uses drift correction: median = value * exp(-sigma^2/2)
+    # This ensures p50 shows the true median, not the mean
+    # (mean > median for log-normal distributions)
     {
-      mape: mean_absolute_percentage_error,
-      rmse: root_mean_square_error,
-      tracking_signal: tracking_signal,
-      bias: forecast_bias,
-      count: valid_projections.count,
-      accuracy_score: accuracy_score
+      p10: value * Math.exp(Z_P10 * sigma),
+      p25: value * Math.exp(Z_P25 * sigma),
+      p50: value * drift_correction,
+      p75: value * Math.exp(Z_P75 * sigma),
+      p90: value * Math.exp(Z_P90 * sigma)
     }
   end
+end
+```
 
-  # MAPE: Lower is better, typically < 10% is good
-  def mean_absolute_percentage_error
-    return nil if valid_projections.empty?
-    errors = valid_projections.map do |p|
-      next nil if p.projected_balance.to_d.zero?
-      ((p.actual_balance.to_d - p.projected_balance.to_d).abs / p.projected_balance.to_d.abs * 100)
-    end.compact
-    return nil if errors.empty?
-    (errors.sum / errors.count).round(2)
-  end
+Handles negative values (debts) by flipping signs. Included by `ProjectionCalculator`,
+`FamilyProjectionCalculator`, and `MilestoneCalculator`.
 
-  # Tracking Signal: Values between -4 and 4 indicate good forecast
-  def tracking_signal
-    # Measures cumulative forecast error relative to MAD
-    # ... (see actual implementation)
-  end
+---
 
-  # Overall accuracy score (0-100)
-  def accuracy_score
-    # Based on MAPE and tracking signal
-    # ... (see actual implementation)
-  end
+## FamilyProjectionCalculator
 
-  private
+Aggregates projections across all family accounts for net worth trajectory.
 
-  def valid_projections
-    @valid_projections ||= projections.select do |p|
-      p.actual_balance.present? && p.projected_balance.present?
-    end
-  end
+```ruby
+# app/calculators/family_projection_calculator.rb
+class FamilyProjectionCalculator
+  include PercentileZScores
+
+  DEFAULT_SAVINGS_RATE = 0.02
+  SAME_CLASS_CORRELATION = 0.8   # equity-equity
+  CROSS_CLASS_CORRELATION = 0.3  # equity-bonds
+
+  def initialize(family)
+  def project(years:)        # Returns {historical, projections, currency, today, summary, currency_warnings}
+  def summary_metrics        # Quick {current_net_worth, total_assets, total_liabilities, currency}
+end
+```
+
+### Portfolio Variance with Correlation Matrix
+
+```ruby
+# Var(portfolio) = sum_i(sum_j(w_i * w_j * sigma_i * sigma_j * rho_ij))
+def aggregate_volatility(asset_accounts)
+  # Builds weight/volatility/asset_class arrays from accounts
+  # rho = 1.0 for self, SAME_CLASS_CORRELATION for same class, CROSS_CLASS_CORRELATION for cross
+  # Returns sqrt(variance), defaults to 0.15 if empty
+end
+```
+
+Asset class mapping: `Investment`/`Crypto` = `:equity`, `Depository` = `:fixed_income`.
+
+### Per-Account Assumption Caching
+
+```ruby
+def assumption_for(account)
+  @assumption_cache ||= {}
+  @assumption_cache[account.id] ||= ProjectionAssumption.for_account(account)
+end
+```
+
+Prevents N+1 queries. `aggregate_volatility` reuses this cache.
+
+### Currency Mismatch Warnings
+
+If any account uses a non-family currency, a warning is surfaced in the projection result:
+`currency_warnings` key in the returned hash.
+
+---
+
+## MilestoneCalculator
+
+Time-to-goal calculator supporting both growth milestones and debt reduction milestones.
+
+```ruby
+# app/calculators/milestone_calculator.rb
+class MilestoneCalculator
+  include PercentileZScores
+
+  def initialize(current_balance:, assumption:, currency: "CAD", target_type: "reach")
+  def time_to_target(target:)          # Delegates to time_to_grow_to or time_to_reduce_to
+  def required_contribution(target:, target_date:)
+  def analyze_standard_milestones      # All standard milestones with progress
+  def suggest_scaled_milestones(max_suggestions: 5)
+  def next_achievable_milestone
+  def milestone_probability(target:, months:, simulations: 1000)
+  def contribution_sensitivity(target:)  # 0x/0.5x/1x/1.5x/2x scenarios
+end
+```
+
+### Log-Normal CDF Probability Estimation
+
+Smooth extrapolation instead of hard-clamped bounds:
+
+```ruby
+def estimate_probability(target:, values:, percentiles:)
+  # Fit log-normal: mu = log(p50), sigma = (log(p90) - log(p10)) / (2 * Z_P90)
+  # Then: z = (log(target) - mu) / sigma
+  # probability = (1 - normal_cdf(z)) * 100
+  # Clamped to 0.5..99.5
+end
+```
+
+### 30-Day Month Approximation
+
+`months = ((target_date - Date.current) / 30).to_i` — maximum ~3% error vs calendar months.
+Acceptable for a planning tool. Documented in code comment.
+
+---
+
+## ProjectionStandard
+
+PAG 2025 canonical values from FP Canada.
+
+```ruby
+# app/models/projection_standard.rb
+class ProjectionStandard < ApplicationRecord
+  belongs_to :jurisdiction
+  has_many :projection_assumptions, dependent: :nullify
+
+  PAG_2025_DEFAULTS = {
+    equity_return: 0.0628,           # 6.28% nominal
+    fixed_income_return: 0.0409,     # 4.09% nominal
+    cash_return: 0.0295,             # 2.95% nominal
+    inflation_rate: 0.021,           # 2.10%
+    volatility_equity: 0.18,         # 18% standard deviation
+    volatility_fixed_income: 0.05,   # 5% standard deviation
+    safety_margin: -0.005            # -0.50% conservative adjustment
+  }.freeze
+
+  def blended_return(equity_weight: 0.6, fixed_income_weight: 0.3, cash_weight: 0.1)
+  def conservative_blended_return(...)  # blended_return + safety_margin
+  def real_return(nominal_return: nil)  # (1 + rate) / (1 + inflation) - 1
+
+  def self.pag_2025  # find_by(code: "PAG_2025")
 end
 ```
 
 ---
 
-## Monte Carlo Risk Modeling Pattern
+## ProjectionAssumption
 
-### Architecture Decision (Actual Implementation)
-
-**Implemented**: Pure Ruby Monte Carlo using Box-Muller transform
-
-**Rationale**: Keep the application self-contained without external dependencies. Ruby's performance is acceptable for 1000 simulations with proper implementation.
-
-### Implementation (Actual - Pure Ruby)
-
-```ruby
-# Monte Carlo is built directly into ProjectionCalculator
-# app/calculators/projection_calculator.rb
-class ProjectionCalculator
-  # ... other methods ...
-
-  # Generate projection with confidence intervals (Monte Carlo)
-  def project_with_percentiles(months:, volatility:, simulations: 1000)
-    monthly_rate = rate / 12
-    monthly_vol = volatility.to_d / Math.sqrt(12)
-
-    results = (1..months).map do |month|
-      sim_values = simulations.times.map do
-        simulate_path(months: month, monthly_rate: monthly_rate, monthly_vol: monthly_vol)
-      end.sort
-
-      {
-        month: month,
-        date: Date.current + month.months,
-        p10: sim_values[(simulations * 0.10).to_i],
-        p25: sim_values[(simulations * 0.25).to_i],
-        p50: sim_values[(simulations * 0.50).to_i],
-        p75: sim_values[(simulations * 0.75).to_i],
-        p90: sim_values[(simulations * 0.90).to_i],
-        mean: sim_values.sum / simulations
-      }
-    end
-  end
-
-  private
-
-  def simulate_path(months:, monthly_rate:, monthly_vol:)
-    balance = principal
-
-    months.times do
-      random_return = monthly_rate + (monthly_vol * gaussian_random)
-      balance = balance * (1 + random_return) + contribution
-    end
-
-    balance.round(2)
-  end
-
-  def gaussian_random
-    # Box-Muller transform for normal distribution
-    u1 = rand
-    u2 = rand
-    Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math::PI * u2)
-  end
-end
-
-# Usage in Projectable concern:
-# account.generate_projections_with_percentiles(years: 10, contribution: 500, volatility: 0.15)
-```
-
-### Database Schema for Monte Carlo Results (Actual)
-
-```ruby
-# db/migrate/YYYYMMDD_create_account_projections.rb
-create_table :account_projections, id: :uuid do |t|
-  t.references :account, type: :uuid, null: false, foreign_key: true
-  t.references :projection_assumption, type: :uuid, foreign_key: true
-
-  t.date :projection_date, null: false
-  t.decimal :projected_balance, precision: 19, scale: 4, null: false
-  t.decimal :actual_balance, precision: 19, scale: 4  # Filled when date arrives
-
-  # Store percentiles from Monte Carlo (ONLY percentiles, not all paths)
-  t.jsonb :percentiles, default: {}
-  # Example: { "p10": 45000, "p25": 48000, "p50": 52000, "p75": 56000, "p90": 61000 }
-
-  t.jsonb :metadata, default: {}
-
-  t.timestamps
-end
-
-add_index :account_projections, [:account_id, :projection_date], unique: true
-```
-
-### Performance Requirements
-
-- **Deterministic projections**: < 200ms
-- **Monte Carlo (300 runs)**: < 2s (background job acceptable)
-- **Chart rendering**: < 100ms
-- **Cache projections** with smart cache keys
-
-```ruby
-def projection_cache_key
-  [
-    "projection",
-    account.id,
-    account.updated_at.to_i,
-    account.holdings.maximum(:updated_at)&.to_i,
-    projection_params.hash
-  ].join("-")
-end
-
-def cached_projection
-  Rails.cache.fetch(projection_cache_key, expires_in: 1.hour) do
-    calculate_projection
-  end
-end
-```
-
----
-
-## PAG 2025 Compliance Pattern (Canadian)
-
-### What is PAG 2025?
-
-FP Canada Projection Assumption Guidelines 2025 - the professional standard for Canadian financial planning.
-
-**Why it matters**:
-- Based on 50 years of actuarial data
-- Safety margin: -0.5% applied to `blended_return` via `safety_margin` field in `PAG_2025_ASSUMPTIONS`
-- Industry standard for defensible projections
-- Allows financial planners to cite projections as professionally prepared
-
-### Implementation (Actual - Phase 1 & 2 Complete)
+Per-account or family-default customizable assumptions.
 
 ```ruby
 # app/models/projection_assumption.rb
-# 🇨🇦 Family-level projection assumptions with PAG 2025 support
 class ProjectionAssumption < ApplicationRecord
   belongs_to :family
+  belongs_to :account, optional: true          # nil = family default
   belongs_to :projection_standard, optional: true
 
-  # Core assumption values
-  # decimal :expected_return      # e.g., 0.0628 for 6.28%
-  # decimal :inflation_rate       # e.g., 0.021 for 2.1%
-  # decimal :volatility           # e.g., 0.12 for 12%
-  # decimal :monthly_contribution
-  # string :asset_allocation      # "balanced", "growth", "conservative"
+  # Scopes
+  scope :active, -> { where(is_active: true) }
+  scope :using_pag, -> { where(use_pag_defaults: true) }
+  scope :family_default, -> { where(account_id: nil) }
+  scope :for_account_id, ->(account_id) { where(account_id: account_id) }
 
-  validates :expected_return, numericality: { greater_than_or_equal_to: -0.5, less_than_or_equal_to: 0.5 }
-  validates :inflation_rate, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 0.2 }
-  validates :volatility, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
+  # Effective values — delegate to ProjectionStandard when use_pag_defaults is true
+  def effective_return      # conservative_blended_return (PAG) or expected_return (custom)
+  def effective_inflation   # from standard or custom
+  def effective_volatility  # from standard or custom
 
-  scope :default_for_account, ->(account) { where(asset_allocation: "balanced").first }
-
-  # 🇨🇦 Calculate effective (real) return after inflation
-  def effective_return
-    expected_return - inflation_rate
-  end
-
-  def effective_volatility
-    volatility || 0.12
-  end
-
-  # 🇨🇦 Check if using standard PAG 2025 assumptions
-  def pag_compliant?
-    projection_standard&.standard_type == "pag_2025"
-  end
-
-  def compliance_badge
-    pag_compliant? ? projection_standard.compliance_badge_text : nil
-  end
-end
-
-# app/models/projection_standard.rb
-# 🔧 Extensibility: Supports multiple projection standards (PAG 2025, CFP Board, etc.)
-class ProjectionStandard < ApplicationRecord
-  belongs_to :jurisdiction
-  has_many :projection_assumptions
-
-  # enum standard_type: pag_2025, cfp_board_2025, custom
-
-  # 🇨🇦 PAG 2025 canonical values
-  PAG_2025_ASSUMPTIONS = {
-    inflation_rate: 0.021,        # 2.1% (CPP/QPP actuarial assumption)
-    equity_return: 0.0628,        # 6.28% (blended Canadian/US/Intl)
-    fixed_income_return: 0.0409,  # 4.09%
-    equity_volatility: 0.157,     # 15.7%
-    fixed_income_volatility: 0.078, # 7.8%
-    safety_margin: -0.005         # -0.5% conservatism applied to blended return
-  }.freeze
-
-  def blended_return(equity_weight: 0.6)
-    equity = asset_assumptions.dig("equity_return") || PAG_2025_ASSUMPTIONS[:equity_return]
-    fixed = asset_assumptions.dig("fixed_income_return") || PAG_2025_ASSUMPTIONS[:fixed_income_return]
-    margin = PAG_2025_ASSUMPTIONS[:safety_margin]
-    (equity * equity_weight) + (fixed * (1 - equity_weight)) + margin
-  end
-
-  def real_return(equity_weight: 0.6)
-    blended_return(equity_weight: equity_weight) - inflation_rate
-  end
-end
-
-# app/models/concerns/pag_compliant.rb 🇨🇦
-module PagCompliant
-  extend ActiveSupport::Concern
-
-  def pag_assumption_warnings
-    warnings = []
-    assumption = default_projection_assumption
-
-    return ["No projection assumptions configured"] unless assumption
-
-    standard = ProjectionStandard::PAG_2025_ASSUMPTIONS
-
-    if assumption.expected_return > standard[:equity_return] + 0.02
-      warnings << "Expected return significantly exceeds PAG 2025 guidelines"
-    end
-
-    if assumption.inflation_rate < standard[:inflation_rate] - 0.005
-      warnings << "Inflation assumption below PAG 2025 guidelines"
-    end
-
-    warnings
-  end
-
-  def pag_compliant?
-    pag_assumption_warnings.empty? && default_projection_assumption&.pag_compliant?
-  end
-
-  def compliance_badge
-    pag_compliant? ? "Prepared using FP Canada PAG 2025" : nil
-  end
+  # Factory methods
+  def self.default_for(family)           # finds or creates family default
+  def self.for_account(account)          # account-specific or family default fallback
+  def self.create_for_account(account, overrides = {})
 end
 ```
 
-### UI Pattern
+When `use_pag_defaults` is true, `effective_return` delegates to
+`projection_standard.conservative_blended_return` (which includes the -0.5% safety margin).
 
-```ruby
-# app/components/projection_settings_component.rb
-class ProjectionSettingsComponent < ViewComponent::Base
-  def initialize(account:)
-    @account = account
-  end
-
-  def pag_toggle_checked?
-    @account.pag_compliant?
-  end
-end
-
-# app/components/projection_settings_component.html.erb
-<div class="settings-panel">
-  <h3>Projection Settings</h3>
-
-  <label class="toggle">
-    <%= check_box_tag :use_pag_2025, "1", pag_toggle_checked?,
-        data: { action: "change->projection-settings#togglePag" } %>
-    <span>Use Canadian professional assumptions</span>
-    <span class="badge text-xs text-secondary">FP Canada PAG 2025</span>
-  </label>
-
-  <% if @account.pag_compliant? %>
-    <div class="compliance-badge">
-      Uses conservative, professionally-vetted return estimates
-    </div>
-  <% else %>
-    <div class="warning">
-      Custom assumptions in use — projections may differ from professional standards
-    </div>
-  <% end %>
-</div>
-```
+Cache invalidation: `after_save :touch_associated_account` touches the account
+(or first family account for family defaults) to bust controller-level cache keys.
 
 ---
 
-## Milestone Tracking Pattern
+## Account::ProjectionFacade
 
-### What it does
-
-Answers "When will I reach $100K, $500K, $1M?" with probabilistic dates.
-
-### Implementation (Actual - Phase 1 & 2 Complete)
+Replaces the old `Projectable` concern. Extracted to reduce Account's concern count.
+Account delegates projection-related methods here via a lazy-initialized private accessor.
 
 ```ruby
-# app/models/milestone.rb
-# 🌍 Universal: Financial goal tracking with progress updates
-class Milestone < ApplicationRecord
-  belongs_to :family
+# app/models/account/projection_facade.rb
+class Account::ProjectionFacade
+  def initialize(account)
 
-  # enum milestone_type: net_worth_target, savings_target, debt_payoff, custom
-
-  # Core fields:
-  # string :name
-  # decimal :target_amount
-  # decimal :current_amount
-  # date :target_date (optional user-set date)
-  # date :projected_date (calculated)
-  # string :status (not_started, in_progress, achieved)
-  # jsonb :metadata
-
-  STANDARD_MILESTONES = [
-    { name: "First $10K", amount: 10_000 },
-    { name: "First $50K", amount: 50_000 },
-    { name: "First $100K", amount: 100_000 },
-    { name: "Quarter Million", amount: 250_000 },
-    { name: "Half Million", amount: 500_000 },
-    { name: "Millionaire", amount: 1_000_000 }
-  ].freeze
-
-  scope :achieved, -> { where(status: "achieved") }
-  scope :in_progress, -> { where(status: "in_progress") }
-
-  def progress_percentage
-    return 100.0 if achieved?
-    return 0.0 if target_amount.nil? || target_amount.zero?
-    [(current_amount.to_d / target_amount * 100).round(1), 100.0].min
-  end
-
-  def achieved?
-    status == "achieved" || (current_amount.present? && current_amount >= target_amount)
-  end
-
-  def update_progress!(new_amount)
-    self.current_amount = new_amount
-    self.status = achieved? ? "achieved" : "in_progress"
-    save!
-  end
-end
-
-# app/calculators/milestone_calculator.rb
-# 🌍 Universal: Time-to-goal milestone calculator
-class MilestoneCalculator
-  attr_reader :current_balance, :assumption, :currency
-
-  def initialize(current_balance:, assumption:, currency: "CAD")
-    @current_balance = current_balance.to_d
-    @assumption = assumption
-    @currency = currency
-  end
-
-  # Calculate time to reach a target amount
-  def time_to_target(target:)
-    return { achieved: true, months: 0, years: 0 } if current_balance >= target
-
-    calculator = ProjectionCalculator.new(
-      principal: current_balance,
-      rate: assumption.effective_return,
-      contribution: assumption.monthly_contribution,
-      currency: currency
-    )
-
-    months = calculator.months_to_target(target: target)
-    return { achievable: false } if months.nil?
-
-    {
-      achieved: false,
-      achievable: true,
-      months: months,
-      years: (months / 12.0).round(1),
-      projected_date: Date.current + months.months
-    }
-  end
-
-  # Analyze all standard milestones
-  def analyze_standard_milestones
-    Milestone::STANDARD_MILESTONES.map do |milestone|
-      result = time_to_target(target: milestone[:amount])
-      {
-        name: milestone[:name],
-        amount: milestone[:amount],
-        progress: [(current_balance / milestone[:amount] * 100).round(1), 100].min
-      }.merge(result)
-    end
-  end
-
-  # Calculate milestone probability using Monte Carlo
-  def milestone_probability(target:, months:, simulations: 1000)
-    # Uses ProjectionCalculator.project_with_percentiles internally
-    # Returns probability estimate based on where target falls in distribution
-  end
-end
-```
-
-### Common Milestones (Pre-populated Suggestions)
-
-```ruby
-# app/models/milestone.rb
-STANDARD_MILESTONES = [
-  { name: "First $10K", amount: 10_000 },
-  { name: "First $50K", amount: 50_000 },
-  { name: "First $100K", amount: 100_000 },
-  { name: "Quarter Million", amount: 250_000 },
-  { name: "Half Million", amount: 500_000 },
-  { name: "Millionaire", amount: 1_000_000 }
-].freeze
-```
-
-### UI Pattern (Actual Implementation - Phase 4 Complete)
-
-```ruby
-# app/components/UI/account/milestone_card.rb
-# Individual milestone display with progress bar and status
-class UI::Account::MilestoneCard < ApplicationComponent
-  attr_reader :milestone
-
-  def initialize(milestone:, highlight: false)
-    @milestone = milestone
-    @highlight = highlight
-  end
-
-  def status_badge_classes
-    case milestone.status
-    when "achieved" then "bg-green-100 text-green-700"
-    when "in_progress" then "bg-blue-100 text-blue-700"
-    else "bg-gray-100 text-secondary"
-    end
-  end
-
-  def formatted_target
-    helpers.format_money(Money.new(milestone.target_amount, milestone.currency))
-  end
-
-  def days_remaining_text
-    days = milestone.days_to_target
-    return nil if days.nil?
-    return "Achieved!" if milestone.achieved?
-    days > 0 ? "#{days} days" : "#{days.abs} days ago"
-  end
-end
-
-# app/components/UI/account/milestone_tracker.rb
-# Container component for account milestones
-class UI::Account::MilestoneTracker < ApplicationComponent
-  attr_reader :account
-
-  def initialize(account:)
-    @account = account
-  end
-
-  def milestones
-    @milestones ||= account.milestones.ordered_by_target
-  end
-
+  def adaptive_projection(years:, contribution: nil, assumption: nil)
+  def forecast_accuracy(period: :all)
   def next_milestone
-    @next_milestone ||= account.next_milestone
-  end
-
   def achieved_milestones
-    @achieved_milestones ||= milestones.achieved
-  end
+  def update_milestone_progress!
+  def generate_projections!(months: 120)
+  def update_milestone_projections!
+  def projection_chart_data(years: 10, assumption: nil)  # {historical, projections, currency, today}
 end
 ```
 
-### Controller (Actual Implementation)
+Uses `ProjectionCalculator#project_with_analytical_bands` for chart data (deterministic
+bands, not Monte Carlo — faster for rendering).
+
+---
+
+## PagCompliant Concern
 
 ```ruby
-# app/controllers/milestones_controller.rb
-# CRUD for custom milestones, nested under accounts
-class MilestonesController < ApplicationController
-  before_action :set_account, only: %i[index new create]
-  before_action :set_milestone, only: %i[update destroy]
+# app/models/concerns/pag_compliant.rb
+module PagCompliant
+  PAG_2025_ASSUMPTIONS = { ... }  # same values as ProjectionStandard::PAG_2025_DEFAULTS
 
-  def create
-    @milestone = @account.milestones.new(milestone_params)
-    @milestone.currency ||= @account.currency
-    @milestone.is_custom = true
-    @milestone.status = "pending"
-
-    if @milestone.save
-      @milestone.update_progress!(@account.balance)
-      redirect_to account_path(@account), notice: "Milestone created"
-    else
-      render :new, status: :unprocessable_entity
-    end
-  end
-
-  # ... update, destroy actions
-end
-
-# config/routes.rb (nested under accounts with shallow routing)
-resources :accounts do
-  resources :milestones, only: %i[index new create update destroy]
+  def pag_compliant?          # checks assumption.pag_compliant?
+  def pag_assumption_warnings # returns array of warning strings
+  def compliance_badge        # "Using standard Canadian guidelines (conservative)" or "Using custom assumptions"
+  def pag_default(key)        # lookup from PAG_2025_ASSUMPTIONS
 end
 ```
 
 ---
 
-## Chart Visualization Patterns
+## Caching Strategy
 
-### Extend D3.js for Projection Charts
-
-**Recommendation**: Extend existing D3.js charts (consistent with app, no new dependencies)
-
-```javascript
-// app/javascript/controllers/projection_chart_controller.js
-import { Controller } from "@hotwired/stimulus"
-import * as d3 from "d3"
-
-export default class extends Controller {
-  static values = {
-    data: Array,
-    showMonteCarlo: Boolean,
-    milestones: Array
-  }
-
-  connect() {
-    this.render()
-  }
-
-  render() {
-    const svg = d3.select(this.element).append("svg")
-      .attr("width", 800)
-      .attr("height", 400)
-
-    // Render main projection line (p50)
-    this.renderProjectionLine(svg, this.dataValue.p50_values)
-
-    // Render historical data
-    this.renderHistoricalLine(svg, this.dataValue.historical)
-
-    // Render Monte Carlo bands (if enabled)
-    if (this.showMonteCarloValue) {
-      this.renderMonteCarloBands(svg)
-    }
-
-    // Render milestone markers
-    this.renderMilestones(svg)
-  }
-
-  renderMonteCarloBands(svg) {
-    // Outer band: p10-p90
-    const outerArea = d3.area()
-      .x((d, i) => this.xScale(i))
-      .y0(d => this.yScale(this.dataValue.p10_values[d]))
-      .y1(d => this.yScale(this.dataValue.p90_values[d]))
-      .curve(d3.curveMonotoneX)
-
-    svg.append("path")
-      .datum(d3.range(this.dataValue.p10_values.length))
-      .attr("class", "monte-carlo-band-outer")
-      .attr("d", outerArea)
-      .style("fill", "rgba(37, 99, 235, 0.1)")
-
-    // Inner band: p25-p75
-    const innerArea = d3.area()
-      .x((d, i) => this.xScale(i))
-      .y0(d => this.yScale(this.dataValue.p25_values[d]))
-      .y1(d => this.yScale(this.dataValue.p75_values[d]))
-      .curve(d3.curveMonotoneX)
-
-    svg.append("path")
-      .datum(d3.range(this.dataValue.p25_values.length))
-      .attr("class", "monte-carlo-band-inner")
-      .attr("d", innerArea)
-      .style("fill", "rgba(37, 99, 235, 0.2)")
-  }
-
-  renderMilestones(svg) {
-    this.milestonesValue.forEach(milestone => {
-      // Render vertical line at projected date
-      // Render marker with target value
-    })
-  }
-}
-```
-
----
-
-## Data Quality Validation
-
-**Philosophy**: Warn loudly, fail gracefully. Never block users from unusual (but valid) data.
+Calculators are pure — no caching inside them. Caching lives in `ProjectionsController`:
 
 ```ruby
-# app/models/concerns/data_quality_checkable.rb (Actual Implementation)
-# Never fails hard, guides users with warnings instead
-module DataQualityCheckable
-  extend ActiveSupport::Concern
-
-  # Get all data quality issues as warnings
-  def data_quality_issues
-    issues = []
-    issues.concat(balance_quality_issues) if respond_to?(:balance_quality_issues)
-    issues.concat(projection_quality_issues) if respond_to?(:projection_quality_issues)
-    issues.concat(assumption_quality_issues) if respond_to?(:assumption_quality_issues)
-    issues.concat(custom_quality_issues) if respond_to?(:custom_quality_issues)
-    issues
-  end
-
-  # Check if data quality is acceptable
-  def data_quality_acceptable?
-    data_quality_issues.none? { |issue| issue[:severity] == :error }
-  end
-
-  # Get data quality score (0-100)
-  def data_quality_score
-    issues = data_quality_issues
-    return 100 if issues.empty?
-
-    deductions = issues.sum do |issue|
-      case issue[:severity]
-      when :error then 25
-      when :warning then 10
-      when :info then 2
-      else 0
-      end
-    end
-
-    [100 - deductions, 0].max
-  end
-
-  private
-
-  # Default balance quality checks
-  def balance_quality_issues
-    issues = []
-    if respond_to?(:balance)
-      if balance.nil?
-        issues << { field: :balance, message: "Balance is missing", severity: :error }
-      elsif balance.negative?
-        issues << { field: :balance, message: "Negative balance may indicate data issue", severity: :warning }
-      elsif balance.zero?
-        issues << { field: :balance, message: "Zero balance - projections will not grow", severity: :info }
-      end
-    end
-    issues
-  end
-
-  # Default projection quality checks
-  def projection_quality_issues
-    issues = []
-    if respond_to?(:projections)
-      if projections.empty?
-        issues << { field: :projections, message: "No projections generated", severity: :info }
-      end
-    end
-    issues
-  end
-
-  # Default assumption quality checks
-  def assumption_quality_issues
-    issues = []
-    if respond_to?(:pag_assumption_warnings)
-      pag_assumption_warnings.each do |warning|
-        issues << { field: :assumptions, message: warning, severity: :warning }
-      end
-    end
-    issues
-  end
-end
+# Controller-level caching with projection_cache_key
+# Cache invalidated when:
+#   - Account is touched (balance change, sync)
+#   - ProjectionAssumption is saved (touch_associated_account callback)
+#   - Projection params change
 ```
 
 ---
 
-## Implementation Status
+## Testing Patterns
 
-| Component | Status | Location |
-|-----------|--------|----------|
-| Account::Projection model | ✅ Complete | `app/models/account/projection.rb` |
-| Projectable concern | ✅ Complete | `app/models/concerns/projectable.rb` |
-| ProjectionCalculator | ✅ Complete | `app/calculators/projection_calculator.rb` |
-| ForecastAccuracyCalculator | ✅ Complete | `app/calculators/forecast_accuracy_calculator.rb` |
-| MilestoneCalculator | ✅ Complete | `app/calculators/milestone_calculator.rb` |
-| Milestone model | ✅ Complete | `app/models/milestone.rb` |
-| ProjectionAssumption model | ✅ Complete | `app/models/projection_assumption.rb` |
-| ProjectionStandard model | ✅ Complete | `app/models/projection_standard.rb` |
-| Jurisdiction model | ✅ Complete | `app/models/jurisdiction.rb` |
-| JurisdictionAware concern | ✅ Complete | `app/models/concerns/jurisdiction_aware.rb` |
-| PagCompliant concern | ✅ Complete | `app/models/concerns/pag_compliant.rb` |
-| DataQualityCheckable concern | ✅ Complete | `app/models/concerns/data_quality_checkable.rb` |
-| Seed data (Canada + PAG 2025) | ✅ Complete | `db/seeds/jurisdictions.rb`, `db/seeds/projection_standards.rb` |
-| Tests | ✅ Complete | `test/models/`, `test/calculators/` |
-| **UI Components - Milestone Tracker** | ✅ Complete | `app/components/UI/account/milestone_tracker.rb`, `milestone_card.rb` |
-| **MilestonesController** | ✅ Complete | `app/controllers/milestones_controller.rb` |
-| **UI Components - Projection Timeline** | ✅ Complete | `app/components/UI/account/projection_chart.rb`, `projection_chart_controller.js` |
-| **UI Components - Projection Settings** | ✅ Complete | `app/components/UI/account/projection_settings.rb`, `projection_settings_controller.rb` |
-| UI Components - Data Quality Alerts | ⏳ Phase 4.4 | Pending (warnings display) |
-| Smith Manoeuvre Simulator | ⏳ Phase 3 | Pending |
+Key assertions for projection tests:
+
+```ruby
+# Drift correction: p50 < mean for volatile portfolios
+assert result[:p50] < result[:mean], "p50 should be less than mean (log-normal)"
+
+# Safety margin applied
+assert_in_delta PAG_2025_DEFAULTS[:safety_margin], -0.005, 0.0001
+
+# Box-Muller guard
+assert_nothing_raised { calc.project_with_percentiles(months: 1, volatility: 0.5) }
+
+# Unreachable target returns nil
+assert_nil calc.months_to_target(target: 1_000_000_000)
+
+# Currency warnings surfaced
+assert result[:currency_warnings].present? if mixed_currencies
+```
+
+Use `DebtSimulatorTestHelper` from `test/support/` for debt simulation test setup.
 
 ---
 
-## References
+## Anti-Patterns — DO NOT
 
-- See `docs/architecture/design-vision.md` Part 1.2 for detailed investment projection features
-- See `docs/architecture/design-vision.md` Part 3.2 for data quality validation patterns
-- See `docs/architecture/design-vision.md` Part 3.4 for performance requirements
+- **DO NOT** reference `Projectable` concern — it does not exist. Use `Account::ProjectionFacade`
+- **DO NOT** use `0.066` as default return — actual PAG blended is `0.0628` equity, `0.0409` fixed, with `-0.005` safety margin
+- **DO NOT** use scope `default_for_account` — actual scopes are `for_account_id`, `active`, `using_pag`, `family_default`
+- **DO NOT** use `ProjectionStandard::PAG_2025_ASSUMPTIONS` with keys like `equity_volatility: 0.157` — actual key is `volatility_equity: 0.18`
+- **DO NOT** use `rand` directly in Box-Muller — use `[rand, Float::EPSILON].max` to guard against log(0)
+- **DO NOT** put caching in calculators — caching belongs in `ProjectionsController`
+- **DO NOT** show p50 as mean — p50 uses drift correction `exp(-sigma^2/2)` for true log-normal median
+- **DO NOT** use `rate / 12` for Canadian mortgages — that's for investments only. Mortgages use `CanadianMortgage.monthly_rate`

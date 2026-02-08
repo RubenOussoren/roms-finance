@@ -27,12 +27,14 @@
 **Problem:** `(1 + annual_rate / 2.0)**(1.0 / 6) - 1` uses bare `2` and `6` without named constants.
 **What to do:** Consider extracting `COMPOUNDING_PERIODS_PER_YEAR = 2` and `MONTHS_PER_COMPOUNDING_PERIOD = 6`. Low priority — the header comment explains the formula clearly.
 **Severity:** Low.
+**Status:** WONT-FIX (header comment is sufficient documentation)
 
 ### 3. [NOTE] File placement: app/models/ vs app/calculators/
 **File:** `app/models/canadian_mortgage.rb`
 **Problem:** Pure financial math with no entity representation. The codebase has `app/calculators/` for pure math (ProjectionCalculator, MilestoneCalculator, LoanPayoffCalculator).
 **What to do:** No action needed. Precedent exists for POROs in `app/models/` (e.g., `BalanceSheet`). Defensible either way.
 **Severity:** Cosmetic.
+**Status:** WONT-FIX (existing precedent for POROs in app/models/)
 
 ## Observations
 

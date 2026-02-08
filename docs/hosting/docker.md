@@ -1,6 +1,8 @@
-# Self Hosting Maybe with Docker
+# Self Hosting ROMS Finance with Docker
 
-This guide will help you setup, update, and maintain your self-hosted Maybe application with Docker Compose. Docker Compose is the most popular and recommended way to self-host the Maybe app.
+> ROMS Finance uses the upstream Maybe Finance Docker image.
+
+This guide will help you setup, update, and maintain your self-hosted ROMS Finance application with Docker Compose. Docker Compose is the most popular and recommended way to self-host the app.
 
 ## Setup Guide
 
@@ -171,7 +173,7 @@ After doing this, make sure and restart the app:
 ```bash
 docker compose pull # This pulls the "latest" published image from GHCR
 docker compose build # This rebuilds the app with updates
-docker compose up --no-deps -d app # This restarts the app using the newest version
+docker compose up --no-deps -d web worker # This restarts the app using the newest version
 ```
 
 ## Troubleshooting
@@ -191,4 +193,12 @@ docker compose down
 docker volume rm maybe_postgres-data # this is the name of the volume the DB is mounted to
 docker compose up
 docker exec -it maybe-postgres-1 psql -U maybe -d maybe_production -c "SELECT 1;" # This will verify that the issue is fixed
+```
+
+### Database Backup
+
+To create a backup of your database:
+
+```bash
+docker exec maybe-db-1 pg_dump -U ${POSTGRES_USER:-maybe_user} ${POSTGRES_DB:-maybe_production} | gzip > maybe_backup_$(date +%Y%m%d).sql.gz
 ```

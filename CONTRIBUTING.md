@@ -1,11 +1,13 @@
-# Contributing to Maybe
+# Contributing to ROMS Finance
 
-It means so much that you're interested in contributing to Maybe! Seriously. Thank you. The entire community benefits from these contributions!
+This project is a fork of Maybe Finance. Check issues and PRs in **this** repository.
+
+It means so much that you're interested in contributing! Seriously. Thank you. The entire community benefits from these contributions!
 
 ## House Rules
 
 - Before contributing, familiarize yourself with our project conventions. You should read through [CLAUDE.md](CLAUDE.md), which documents our development guidelines and conventions.
-- While totally optional, consider using Cursor + VSCode as it will automatically apply our project conventions to your code via the `.cursor/rules` directory.
+- While totally optional, consider using Cursor + VSCode or Claude Code as they will automatically apply our project conventions to your code via the `.cursor/rules` directory and `CLAUDE.md`.
 - Before contributing, please check if it already exists in [issues](https://github.com/maybe-finance/maybe/issues) or [PRs](https://github.com/maybe-finance/maybe/pulls)
 - Given the speed at which we're moving on the codebase, we don't assign issues or "give" issues to anyone.
 - When multiple PRs are submitted for the same issue, we take the one that most succinctly & efficiently solves a given problem and stays within the scope of work.
@@ -13,9 +15,9 @@ It means so much that you're interested in contributing to Maybe! Seriously. Tha
 
 ## What should I contribute?
 
-As we are still in the early days of this project, we recommend [heading over to the Wiki](https://github.com/maybe-finance/maybe/wiki) to get a better idea of _what_ to contribute.
+Check out our [feature roadmap](docs/FEATURE_ROADMAP.md) and [open issues](https://github.com/maybe-finance/maybe/issues) to get a better idea of _what_ to contribute.
 
-In general, _full features_ that get us closer to [our Vision](https://github.com/maybe-finance/maybe/wiki/Vision) are the most valuable contributions at this stage.
+In general, _full features_ that align with the project's vision (investment projections, Canadian debt optimization, multi-account tracking) are the most valuable contributions.
 
 ## Development
 

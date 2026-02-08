@@ -198,7 +198,7 @@ class CanadianSmithManoeuvrSimulatorTest < ActiveSupport::TestCase
     @strategy.auto_stop_heloc_percentage = 0.90
     @strategy.heloc.credit_limit = 50000
 
-    result = @simulator.run(months: 360)
+    result = @simulator.simulate!
 
     assert result[:stopped?]
     stopped_entry = result[:month_by_month].find { |e| e[:strategy_stopped] }
@@ -206,7 +206,7 @@ class CanadianSmithManoeuvrSimulatorTest < ActiveSupport::TestCase
   end
 
   test "HELOC interest is fully deductible when used for rental" do
-    result = @simulator.run(months: 12)
+    result = @simulator.simulate!
     ledger = result[:month_by_month]
 
     ledger.each do |entry|
@@ -217,7 +217,7 @@ class CanadianSmithManoeuvrSimulatorTest < ActiveSupport::TestCase
 
   test "tax benefit calculation uses correct marginal rate" do
     @strategy.marginal_tax_rate = 0.45
-    result = @simulator.run(months: 1)
+    result = @simulator.simulate!
     entry = result[:month_by_month].first
 
     expected_tax_refund = entry[:deductible_interest] * 0.45
@@ -273,7 +273,7 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
   end
 
   test "baseline simulator produces expected output format" do
-    result = @simulator.run(months: 12)
+    result = @simulator.simulate!
 
     assert result.key?(:total_interest)
     assert result.key?(:tax_benefit)
@@ -283,7 +283,7 @@ class BaselineSimulatorTest < ActiveSupport::TestCase
   end
 
   test "baseline strategy does not use HELOC" do
-    result = @simulator.run(months: 12)
+    result = @simulator.simulate!
 
     result[:ledger].each do |entry|
       assert_equal 0, entry[:heloc_draw] || 0
@@ -300,8 +300,8 @@ class SimulatorComparisonTest < ActiveSupport::TestCase
   test "modified strategy produces different results than baseline" do
     strategy = debt_optimization_strategies(:monika_modified_smith)
 
-    baseline_result = BaselineSimulator.new(strategy).run(months: 360)
-    modified_result = CanadianSmithManoeuvrSimulator.new(strategy).run(months: 360)
+    baseline_result = BaselineSimulator.new(strategy).simulate!
+    modified_result = CanadianSmithManoeuvrSimulator.new(strategy).simulate!
 
     assert_operator modified_result[:modified_tax_benefit], :>, 0
     assert_equal 0, baseline_result[:tax_benefit]
@@ -378,26 +378,26 @@ class ProjectionTest < ActiveSupport::TestCase
 end
 ```
 
-### Test Helpers for Financial Data
+### Test Helpers
+
+The following test helpers are available in `test/support/`:
+
+- `entries_test_helper.rb` — Helpers for creating entry/transaction test data
+- `debt_simulator_test_helper.rb` — Shared setup for debt simulator tests (strategies, accounts, fixtures)
+- `balance_test_helper.rb` — Balance calculation test utilities
+- `securities_test_helper.rb` — Security/holding test data
+- `provider_test_helper.rb` — Provider mock/stub helpers
+- `ledger_testing_helper.rb` — Ledger entry assertions
+- `query_counting_helper.rb` — N+1 query detection
 
 ```ruby
-# test/support/financial_test_helper.rb
-module FinancialTestHelper
-  def create_projection(account:, years: 10, contribution: 500)
-    ProjectionCalculator.new(account).adaptive(
-      years: years,
-      monthly_contribution: contribution
-    )
-  end
+# Example: Using DebtSimulatorTestHelper
+class BaselineSimulatorTest < ActiveSupport::TestCase
+  include DebtSimulatorTestHelper
 
-  def create_full_debt_strategy(family:, jurisdiction: nil)
-    jurisdiction ||= Jurisdiction.find_by(country_code: 'CA')
-    # ... creates primary mortgage, HELOC, rental mortgage, and strategy
-  end
-
-  def assert_within_percentage(expected, actual, percentage = 1.0, message = nil)
-    tolerance = expected.abs * (percentage / 100.0)
-    assert_in_delta expected, actual, tolerance, message
+  setup do
+    @strategy = debt_optimization_strategies(:baseline_strategy)
+    @simulator = BaselineSimulator.new(@strategy)
   end
 end
 ```
@@ -407,10 +407,9 @@ end
 ```ruby
 class ProjectionPerformanceTest < ActiveSupport::TestCase
   test "deterministic projection completes in < 200ms" do
-    account = accounts(:investment_account)
-
     time = Benchmark.realtime do
-      ProjectionCalculator.new(account).adaptive(years: 30, monthly_contribution: 500)
+      calc = ProjectionCalculator.new(principal: 50000, rate: 0.06, contribution: 500)
+      calc.project(months: 360)
     end
 
     assert_operator time, :<, 0.2
@@ -420,7 +419,7 @@ class ProjectionPerformanceTest < ActiveSupport::TestCase
     strategy = debt_optimization_strategies(:monika_modified_smith)
     simulator = CanadianSmithManoeuvrSimulator.new(strategy)
 
-    time = Benchmark.realtime { simulator.run(months: 360) }
+    time = Benchmark.realtime { simulator.simulate! }
 
     assert_operator time, :<, 2.0
   end

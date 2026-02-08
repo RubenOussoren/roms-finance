@@ -43,6 +43,7 @@ For style checking only (no fixes):
 
 ## Important Notes
 
+- This runs linters only. It is a subset of `/pre-pr`, which also runs tests and security analysis.
 - Auto-fix is enabled by default (-a flag)
 - Some issues may require manual intervention
 - Run `/pre-pr` for the complete CI workflow including tests and security

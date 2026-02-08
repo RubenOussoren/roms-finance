@@ -183,3 +183,105 @@ The codebase uses TailwindCSS v4.x with a custom design system defined in [maybe
 - Never create new styles in [maybe-design-system.css](mdc:app/assets/tailwind/maybe-design-system.css) or [application.css](mdc:app/assets/tailwind/application.css) without explicitly receiving permission to do so
 - Always generate semantic HTML
 - Always use `icon` helper, never `lucide_icon` directly
+
+---
+
+## Part 4: Turbo Frame & Stream Conventions
+
+### Turbo Frames
+
+Use `turbo_frame_tag` to define replaceable page sections. Frames enable partial page updates without full reloads.
+
+```erb
+<%# Wrap content in a frame for lazy loading or inline editing %>
+<%= turbo_frame_tag dom_id(account, :holdings), src: holdings_path(account_id: account.id) do %>
+  Loading holdings...
+<% end %>
+
+<%# Modal pattern: wrap modal content in a "modal" frame %>
+<%= turbo_frame_tag "modal" do %>
+  <dialog>...</dialog>
+<% end %>
+```
+
+**Conventions**:
+- Use `dom_id(model)` or `dom_id(model, :prefix)` for frame IDs
+- Use `src:` attribute for lazy-loaded frames
+- Use `turbo_frame_tag "modal"` for all modal/drawer content
+
+### Turbo Streams
+
+Use `.turbo_stream.erb` templates for multi-element updates from a single action.
+
+```erb
+<%# app/views/transfers/update.turbo_stream.erb %>
+<%= turbo_stream.replace @transfer.inflow_transaction.entry %>
+<%= turbo_stream.replace dom_id(@budget, :allocation_progress),
+    partial: "budget_categories/allocation_progress",
+    locals: { budget: @budget } %>
+```
+
+**Conventions**:
+- Prefer `turbo_stream.replace` for updating existing content
+- Use `turbo_stream.update` for replacing inner HTML only
+- Always use `dom_id` helpers for consistent target IDs
+
+---
+
+## Part 5: ViewComponent Slot API
+
+Components use `renders_one` and `renders_many` to define composable content slots.
+
+### DS (Design System) Components
+
+DS components inherit from `DesignSystemComponent` and provide reusable UI primitives:
+
+```ruby
+# app/components/DS/dialog.rb
+class DS::Dialog < DesignSystemComponent
+  renders_one :header, ->(title: nil, subtitle: nil, hide_close_icon: false, **opts, &block) do
+    # ...
+  end
+  renders_one :body
+  renders_many :actions, ->(cancel_action: false, **button_opts) do
+    # ...
+  end
+  renders_many :sections, ->(title:, **disclosure_opts, &block) do
+    # ...
+  end
+end
+```
+
+### UI (Business) Components
+
+UI components inherit from `ApplicationComponent` and encapsulate domain-specific UI:
+
+```ruby
+# app/components/UI/account_page.rb
+class UI::AccountPage < ApplicationComponent
+  renders_one :activity_feed, ->(feed_data:, pagy:, search:) {
+    UI::Account::ActivityFeed.new(feed_data: feed_data, pagy: pagy, search: search)
+  }
+  renders_one :milestone_tracker, -> {
+    UI::Account::MilestoneTracker.new(account: account)
+  }
+end
+```
+
+### Using Slots in Templates
+
+```erb
+<%= render DS::Dialog.new(variant: :drawer) do |dialog| %>
+  <% dialog.with_header(title: "Account Settings") %>
+  <% dialog.with_body do %>
+    Dialog content here
+  <% end %>
+  <% dialog.with_action(variant: "primary") { "Save" } %>
+<% end %>
+```
+
+**Conventions**:
+- `DS::*` components: design primitives (buttons, dialogs, menus, tabs, alerts)
+- `UI::*` components: business-specific (account pages, projections, debt optimization)
+- Use lambda slots (`->()`) when the slot needs to instantiate another component
+- Use block slots for simple content injection

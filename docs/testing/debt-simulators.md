@@ -26,7 +26,7 @@ AbstractDebtSimulator           # Base: monthly loop, renewal, privilege limits
 
 ## How to Add a Scenario Test
 
-1. **Create accounts** using the private helpers in each test file:
+1. **Create accounts** using helpers from `DebtSimulatorTestHelper` (`test/support/debt_simulator_test_helper.rb`):
 
 ```ruby
 primary = create_loan_account(@family, "Name", balance, rate_percent, term_months)

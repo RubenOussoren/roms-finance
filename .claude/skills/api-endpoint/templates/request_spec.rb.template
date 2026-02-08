@@ -6,8 +6,20 @@ class Api::V1::{{CLASS_NAME}}ControllerTest < ActionDispatch::IntegrationTest
   setup do
     @family = families(:one)
     @user = users(:one)
-    # Setup authentication headers
-    @headers = authenticated_headers(@user)
+
+    # Create OAuth application and access token
+    @oauth_app = Doorkeeper::Application.create!(
+      name: "Test API App",
+      redirect_uri: "https://example.com/callback",
+      scopes: "read read_write"
+    )
+    @access_token = Doorkeeper::AccessToken.create!(
+      application: @oauth_app,
+      resource_owner_id: @user.id,
+      scopes: "read read_write",
+      expires_in: 2.hours
+    )
+    @headers = { "Authorization" => "Bearer #{@access_token.token}" }
   end
 
   test "GET /api/v1/{{resource}} returns list" do
@@ -41,17 +53,5 @@ class Api::V1::{{CLASS_NAME}}ControllerTest < ActionDispatch::IntegrationTest
     get api_v1_{{resource}}_url
 
     assert_response :unauthorized
-  end
-
-  private
-
-  def authenticated_headers(user)
-    # Return headers with valid authentication token
-    { "Authorization" => "Bearer #{generate_token(user)}" }
-  end
-
-  def generate_token(user)
-    # Generate JWT or OAuth token for user
-    "test_token"
   end
 end

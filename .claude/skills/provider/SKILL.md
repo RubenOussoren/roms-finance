@@ -27,8 +27,8 @@ The application uses a provider pattern for third-party data:
 ### Two Types of Provider Data
 
 1. **Concept Data** - Generic with swappable providers
-   - Each concept has interface in `app/models/provider/concepts/`
-   - Example: `ExchangeRate` concept uses different providers
+   - Concepts are modules with `ActiveSupport::Concern` at `app/models/provider/`
+   - Example: `Provider::ExchangeRateConcept` defines the interface, providers include it
 
 2. **One-off Data** - Provider-specific methods
    - Called directly without abstractions
@@ -46,7 +46,7 @@ The application uses a provider pattern for third-party data:
 
 class Provider::ExchangeRateProvider < Provider
   # Implement concept interface
-  include Provider::Concepts::ExchangeRate
+  include Provider::ExchangeRateConcept
 
   def fetch_rate(from:, to:, date: Date.current)
     with_provider_response do

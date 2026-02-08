@@ -189,6 +189,8 @@ end
 #   After 65: +0.7% per month (max +42% at age 70)
 
 def estimated_cpp(start_age:, contribution_years:, max_pensionable: 1364.60)
+  # NOTE: CPP/OAS dollar amounts are indexed annually by the Government of Canada.
+  #       Update max_pensionable and max_oas defaults each January.
   # contribution_years out of 39 qualifying years
   base = max_pensionable * [contribution_years / 39.0, 1.0].min
 
@@ -493,7 +495,7 @@ Family → BalanceSheet (existing)
 
 - Currency: All balances converted to family currency (CAD) using exchange rates at each date
 - RRSP/TFSA balances included at market value (pre-tax for RRSP — note in UI: "RRSP values shown pre-tax")
-- Property values: Updated via Valuation entries (manual or Zillow/HouseSigma integration)
+- Property values: Updated via Valuation entries (manual, or future/aspirational integration with Zillow/HouseSigma)
 
 #### Thin-Slice Implementation Plan
 

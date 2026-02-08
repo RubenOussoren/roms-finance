@@ -33,8 +33,8 @@ Calculators are **pure functions** with:
 ```ruby
 # frozen_string_literal: true
 
-# 🇨🇦 Canadian-first financial calculator
-# 🔧 Extensibility: Supports jurisdiction configuration
+# Canadian-first financial calculator
+# Supports jurisdiction configuration
 class ProjectionCalculator
   include PagCompliant
   include JurisdictionAware
@@ -121,10 +121,11 @@ end
 
 ## Financial Architecture Rules
 
-### 🇨🇦 Canadian-First, Jurisdiction-Aware
+### Canadian-First, Jurisdiction-Aware
 - NEVER hardcode tax rules or brackets
 - Use `Jurisdiction#marginal_tax_rate(income:)` for tax calculations
 - Default to Canada (`country_code: 'CA'`)
+- PAG 2025 reference values: equity 6.28%, fixed income 4.09%, cash 2.95%, safety margin -0.5%
 - Include PAG 2025 compliance hooks via `ProjectionStandard`
 
 ### Performance Requirements

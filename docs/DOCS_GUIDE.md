@@ -31,6 +31,7 @@ docs/
 | Content Type | Location | Owner |
 |---|---|---|
 | Quick-start setup, project overview | `README.md` | Anyone (keep minimal) |
+| Contribution guidelines, PR workflow | `CONTRIBUTING.md` | Maintainer (update when workflow changes) |
 | AI agent rules, dev commands, conventions | `CLAUDE.md` | Maintainer (update when conventions change) |
 | Detailed architecture and design decisions | `docs/architecture/` | Maintainer (update per phase) |
 | Test documentation and golden masters | `docs/testing/` | Maintainer (update when test infra changes) |

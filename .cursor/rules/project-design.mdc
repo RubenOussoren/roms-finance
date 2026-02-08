@@ -33,14 +33,14 @@ This rule provides detailed documentation of the core domain models beyond what 
 
 ## Account Balances
 
-An account [balance.rb](mdc:app/models/account/balance.rb) represents a single balance value for an account on a specific `date`. A series of balance records is generated daily for each account and powers historical balance graphs.
+An account [balance.rb](mdc:app/models/balance.rb) represents a single balance value for an account on a specific `date`. A series of balance records is generated daily for each account and powers historical balance graphs.
 
 - **Simple accounts** (e.g. Checking): balance = amount of cash on that date
 - **Complex accounts** (e.g. Investment Brokerage): balance = cash balance + holdings value
 - For `asset` classification: balance = "How much the account is worth"
 - For `liability` classification: balance = "How much is owed on the account"
 
-All balances are calculated daily by [balance_calculator.rb](mdc:app/models/account/balance_calculator.rb).
+All balances are calculated daily by [forward_calculator.rb](mdc:app/models/balance/forward_calculator.rb) (or [reverse_calculator.rb](mdc:app/models/balance/reverse_calculator.rb) for certain account types).
 
 ---
 
@@ -48,7 +48,7 @@ All balances are calculated daily by [balance_calculator.rb](mdc:app/models/acco
 
 An account [holding.rb](mdc:app/models/holding.rb) applies to [investment.rb](mdc:app/models/investment.rb) type accounts and represents a `qty` of a certain [security.rb](mdc:app/models/security.rb) at a specific `price` on a specific `date`.
 
-For investment accounts with holdings, [base_calculator.rb](mdc:app/models/holding/base_calculator.rb) calculates daily historical holding quantities and prices, which are rolled up into a final "Balance" for the account in [base_calculator.rb](mdc:app/models/account/balance/base_calculator.rb).
+For investment accounts with holdings, [forward_calculator.rb](mdc:app/models/holding/forward_calculator.rb) (and [reverse_calculator.rb](mdc:app/models/holding/reverse_calculator.rb)) calculate daily historical holding quantities and prices, which are rolled up into a final "Balance" for the account in [base_calculator.rb](mdc:app/models/balance/base_calculator.rb).
 
 ---
 
@@ -121,13 +121,12 @@ Generic data where providers can be swapped. Each concept has an interface in `a
 ```
 app/models/
   exchange_rate/
-    provided.rb     # Selects the concept provider from the registry
-  provider.rb       # Base provider class
+    provided.rb             # Selects the concept provider from the registry
+  provider.rb               # Base provider class
   provider/
-    registry.rb     # Defines available providers by concept
-    concepts/
-      exchange_rate.rb  # Interface required for the exchange rate concept
-    synth.rb        # Concrete provider implementation
+    registry.rb             # Defines available providers by concept
+    exchange_rate_concept.rb  # Interface required for the exchange rate concept
+    synth.rb                # Concrete provider implementation
 ```
 
 ### One-off Data

@@ -10,26 +10,56 @@ Generate a new ViewComponent following project conventions.
 ## Usage
 
 ```
-/component ButtonComponent              # Basic component
-/component CardComponent --stimulus     # With Stimulus controller
-/component Modal::DialogComponent       # Namespaced component
+/component DS::Alert                    # Design system component
+/component UI::Account::Chart           # Business/feature component
+/component DS::Badge --stimulus         # With Stimulus controller
 ```
+
+## Namespace Convention
+
+Components use two namespaces:
+- **`DS::`** — Design system primitives (buttons, alerts, dialogs). Inherit from `DesignSystemComponent`.
+- **`UI::`** — Business/feature components (account charts, projection settings). Inherit from `ApplicationComponent`.
+
+Ask which namespace to use if not specified.
 
 ## Generated Files
 
-For a component named `ExampleComponent`:
+For a `DS::Alert` component:
 
-1. **Component class:** `app/components/example_component.rb`
-2. **Template:** `app/components/example_component.html.erb`
-3. **Stimulus controller (optional):** `app/components/example_component/example_component_controller.js`
-4. **Lookbook preview:** `test/components/previews/example_component_preview.rb`
+1. **Component class:** `app/components/DS/alert.rb`
+2. **Template:** `app/components/DS/alert.html.erb`
+3. **Stimulus controller (optional):** `app/components/DS/alert_controller.js`
+4. **Lookbook preview:** `test/components/previews/ds/alert_preview.rb`
 
-## Component Template
+For a `UI::Account::Chart` component:
 
+1. **Component class:** `app/components/UI/account/chart.rb`
+2. **Template:** `app/components/UI/account/chart.html.erb`
+
+## Component Templates
+
+### DS Component (Design System)
 ```ruby
 # frozen_string_literal: true
 
-class ExampleComponent < ApplicationComponent
+class DS::Alert < DesignSystemComponent
+  def initialize(attribute:, **options)
+    @attribute = attribute
+    @options = options
+  end
+
+  private
+
+  attr_reader :attribute, :options
+end
+```
+
+### UI Component (Business)
+```ruby
+# frozen_string_literal: true
+
+class UI::Account::Chart < ApplicationComponent
   def initialize(attribute:, **options)
     @attribute = attribute
     @options = options
@@ -65,12 +95,13 @@ export default class extends Controller {
 
 ## Instructions
 
-1. Parse the component name from arguments
-2. Determine if Stimulus controller is needed (--stimulus flag)
-3. Generate component class with proper inheritance
-4. Generate ERB template using design system tokens
-5. If --stimulus, generate Stimulus controller in component directory
-6. Generate Lookbook preview for component development
+1. Parse the component name from arguments (must include `DS::` or `UI::` namespace)
+2. If no namespace given, ask the user: DS for design system primitives, UI for business components
+3. Determine if Stimulus controller is needed (--stimulus flag)
+4. Generate component class: `DS::` inherits from `DesignSystemComponent`, `UI::` inherits from `ApplicationComponent`
+5. Generate ERB template using design system tokens
+6. If --stimulus, generate Stimulus controller in component directory
+7. Generate Lookbook preview matching the namespace
 
 ## Design System Requirements
 

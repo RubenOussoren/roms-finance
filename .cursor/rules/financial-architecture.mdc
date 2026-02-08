@@ -102,47 +102,32 @@ end
 - Used for "what-if" analysis
 
 **Structure**:
+
+All debt simulators inherit from `AbstractDebtSimulator` (template method pattern) or reuse its concerns:
+
 ```ruby
-# app/services/[domain]_simulator.rb
-class CanadianSmithManoeuvrSimulator
+# app/services/abstract_debt_simulator.rb
+class AbstractDebtSimulator
+  include MortgageRenewalSupport
+  include LoanTermDefaults
+
   def initialize(strategy)
     @strategy = strategy
-    @tax_config = strategy.jurisdiction.tax_calculator_config
   end
 
-  def run(months:)
-    results = {
-      baseline: simulate_baseline(months),
-      modified: simulate_modified(months)
-    }
-
-    {
-      baseline_total_interest: results[:baseline][:total_interest],
-      modified_total_interest: results[:modified][:total_interest],
-      net_savings: calculate_net_savings(results),
-      month_by_month: results[:modified][:ledger]
-    }
-  end
-
-  private
-
-  def simulate_modified(months)
-    ledger = []
-    months.times do |month|
-      entry = calculate_month_entry(month)
-      validate_compliance(entry)
-      check_auto_stop_rules(entry)
-      ledger << entry
-    end
-    ledger
+  def simulate!  # Entry point — no arguments
+    # Template method: builds ledger entries month-by-month
   end
 end
 ```
 
+Subclasses override `scenario_type` and `calculate_prepayment` to control behavior. The Smith simulator keeps its own loop (HELOC/readvanceable logic is too different) but reuses `MortgageRenewalSupport`.
+
 **Implemented Simulators**:
-- `CanadianSmithManoeuvrSimulator` - CRA-compliant debt optimization
-- `BaselineSimulator` - Default no-optimization strategy
-- `PrepayOnlySimulator` - Prepayment-only comparator
+- `AbstractDebtSimulator` - Base class with template method pattern
+- `BaselineSimulator < AbstractDebtSimulator` - Default no-optimization strategy
+- `PrepayOnlySimulator < AbstractDebtSimulator` - Prepayment-only comparator
+- `CanadianSmithManoeuvrSimulator` - CRA-compliant debt optimization (own loop, includes `MortgageRenewalSupport`)
 
 **Anti-patterns**:
 - Don't put simulators in models (too complex for model logic)
@@ -162,31 +147,6 @@ end
 | **Location** | `app/calculators/` | `app/services/` |
 
 ### Concern Modules for Financial Behavior
-
-**`Projectable`** - For accounts with projections:
-```ruby
-module Projectable
-  extend ActiveSupport::Concern
-
-  included do
-    has_many :projections, class_name: "Account::Projection", dependent: :destroy
-  end
-
-  def adaptive_projection(years:, contribution: 0)
-    assumption = family&.projection_assumptions&.default_for_account(self)
-    rate = assumption&.effective_return || 0.066
-
-    calculator = ProjectionCalculator.new(
-      principal: balance || 0,
-      rate: rate,
-      contribution: contribution,
-      currency: currency
-    )
-
-    calculator.project(months: years * 12)
-  end
-end
-```
 
 **`PagCompliant`** - For PAG 2025 assumptions (Canadian):
 
@@ -247,7 +207,6 @@ end
 create_table :debt_optimization_strategies do |t|
   t.references :family, null: false, foreign_key: true
   t.references :jurisdiction, type: :uuid, foreign_key: true, null: true
-  t.references :tax_calculator_config, foreign_key: true
 end
 
 create_table :projection_standards do |t|
@@ -296,28 +255,12 @@ end
 
 ### Tax Rules as Configuration (NEVER Hardcode)
 
+Tax calculations are provided by the `JurisdictionAware` concern — there is no separate `TaxCalculatorConfig` AR model. The `Jurisdiction` model stores tax brackets in its `tax_config` JSONB column and provides `marginal_tax_rate(income:)` directly:
+
 ```ruby
-class TaxCalculatorConfig < ApplicationRecord
-  belongs_to :jurisdiction
-
-  # Tax brackets stored as JSONB by jurisdiction
-  # Deductibility rules per jurisdiction
-  # Calculate marginal_tax_rate(income:, province_or_state:) from brackets
-
-  def marginal_tax_rate(income:, province_or_state: nil)
-    federal_rate = calculate_bracket_rate(income, federal_brackets.dig("2025"))
-    provincial_rate = 0
-
-    if province_or_state && provincial_state_brackets.key?(province_or_state)
-      provincial_rate = calculate_bracket_rate(
-        income,
-        provincial_state_brackets.dig(province_or_state, "2025")
-      )
-    end
-
-    federal_rate + provincial_rate
-  end
-end
+# Use via JurisdictionAware concern
+marginal_tax_rate(income: family.annual_income)
+# → Combines federal + provincial brackets from Jurisdiction#tax_config
 ```
 
 ### Strategy Simulators as Pluggable Classes
@@ -340,8 +283,8 @@ class DebtOptimizationStrategy < ApplicationRecord
     end
   end
 
-  def simulate(months:)
-    simulator.run(months: months)
+  def run_simulation!
+    simulator.simulate!
   end
 end
 ```
@@ -357,11 +300,7 @@ end
 
 # GOOD
 def calculate_tax_benefit(interest)
-  marginal_rate = tax_calculator_config.marginal_tax_rate(
-    income: family.annual_income,
-    province_or_state: family.province
-  )
-  interest * marginal_rate
+  interest * marginal_tax_rate(income: family.annual_income)
 end
 ```
 
@@ -375,7 +314,7 @@ elsif jurisdiction.country_code == 'US'
 end
 
 # GOOD
-strategy.simulator.run(months: 360)  # Factory pattern selects correct simulator
+strategy.simulator.simulate!  # Factory pattern selects correct simulator
 ```
 
 ### Provider Pattern Alignment
@@ -389,7 +328,7 @@ Provider::Registry.get_provider(:plaid)  # Bank connectivity
 # Extended for jurisdictions
 Jurisdiction.find_by(country_code: 'CA')
   → .projection_standard                 # PAG 2025
-  → .tax_calculator_config               # CRA rules
+  → .tax_config                          # CRA rules (JSONB on Jurisdiction)
   → .available_strategies                 # Modified Smith Manoeuvre
 ```
 

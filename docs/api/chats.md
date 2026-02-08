@@ -1,6 +1,10 @@
 # Chat API Documentation
 
-The Chat API allows external applications to interact with Maybe's AI chat functionality.
+The Chat API allows external applications to interact with ROMS Finance's AI chat functionality.
+
+## Getting Started
+
+To obtain API credentials, navigate to Settings > API > Create Application.
 
 ## Authentication
 
@@ -182,9 +186,7 @@ Currently, you need to poll the chat endpoint to check for new AI responses. Loo
 
 ### Available AI Models
 
-- `gpt-4` (default)
-- `gpt-4-turbo`
-- `gpt-3.5-turbo`
+Available models are configured per-instance. Check your instance's Settings > AI page for supported models.
 
 ### Tool Calls
 
@@ -224,5 +226,7 @@ Common error codes:
 - `rate_limit_exceeded` - Too many requests
 
 ## Rate Limits
+
+Default: 100 requests/minute. Configurable via `RATE_LIMIT_*` environment variables.
 
 Chat API endpoints are subject to the standard API rate limits based on your API key tier.

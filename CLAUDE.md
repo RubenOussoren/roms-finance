@@ -49,7 +49,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Investment & Debt Features
 - **Calculators**: `app/calculators/` - Pure financial math (ProjectionCalculator, MilestoneCalculator)
 - **Simulators**: `app/services/` - Multi-step processes with state (CanadianSmithManoeuvrSimulator)
-- **Concerns**: `app/models/concerns/` - Projectable, JurisdictionAware, PagCompliant, DataQualityCheckable
+- **Concerns**: `app/models/concerns/` - JurisdictionAware, PagCompliant, DataQualityCheckable, MortgageRenewalSupport
 
 The `investment-dashboard/` directory is a Python prototype for reference only. Never integrate it with Rails.
 
@@ -89,7 +89,7 @@ Sidekiq handles async tasks: account syncing, import processing, AI chat respons
 - Favor old and reliable over new and flashy
 
 ### Convention 2: Skinny Controllers, Fat Models
-- Business logic in `app/models/`, avoid `app/services/`
+- Business logic in `app/models/`, avoid `app/services/`. **Exception:** Debt simulators live in `app/services/` as they are multi-step processes with external state (see `AbstractDebtSimulator`).
 - Use Rails concerns and POROs for organization
 - Models should answer questions about themselves: `account.balance_series` not `AccountSeries.new(account).call`
 

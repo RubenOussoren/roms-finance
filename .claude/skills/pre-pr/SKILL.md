@@ -45,6 +45,7 @@ bin/brakeman --no-pager
 
 ## Important Notes
 
+- Expected test count: ~1363+ tests. A significant drop may indicate missing test files.
 - Do NOT proceed with PR creation if any check fails
 - Auto-fix is enabled for rubocop and erb_lint (-a flag)
 - If auto-fix makes changes, report what was fixed

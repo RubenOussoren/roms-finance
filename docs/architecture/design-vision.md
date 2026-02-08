@@ -1,6 +1,8 @@
 # ROMS Finance Design Vision & Integration Guide
 
-**Purpose**: This document serves as the **authoritative reference** for design decisions when integrating investment dashboard and HELOC tool concepts into the Maybe Finance Rails application. It captures the vision, principles, and architectural patterns from two sophisticated financial tools and provides guidance for adapting them to the Rails ecosystem.
+**Purpose**: This document captures the original **design vision** for integrating investment dashboard and HELOC tool concepts into the Rails application. It served as a planning artifact during early phases.
+
+> **WARNING — Aspirational document**: Code examples in this file reflect the *original design vision*, not the current implementation. Several patterns were implemented differently (e.g., `Projectable` concern was replaced by `Account::ProjectionFacade`, `TaxCalculatorConfig` model was replaced by `JurisdictionAware` concern, `run(months:)` API was replaced by `simulate!`). For current architecture, see the Cursor rules in `.cursor/rules/` and the actual source code.
 
 ---
 
@@ -18,92 +20,9 @@ We are building a **comprehensive personal finance platform** that goes beyond s
 
 ---
 
-## Implementation Status (Updated January 2026)
+## Implementation Status
 
-| Phase | Component | Status | Notes |
-|-------|-----------|--------|-------|
-| **1** | Database Migrations | ✅ **Complete** | Jurisdictions, ProjectionStandards, Milestones, ProjectionAssumptions, Account::Projections |
-| **1** | Jurisdiction Model | ✅ **Complete** | Canada seeded with tax brackets and PAG 2025 reference |
-| **1** | ProjectionStandard Model | ✅ **Complete** | PAG 2025 canonical values (6.28% equity, 4.09% fixed income, 2.1% inflation) |
-| **1** | Milestone Model | ✅ **Complete** | Standard milestones from $10K to $5M |
-| **1** | ProjectionAssumption Model | ✅ **Complete** | Family-level assumptions with PAG compliance tracking |
-| **1** | Account::Projection Model | ✅ **Complete** | Monthly projected vs actual balance tracking with percentiles |
-| **2** | ProjectionCalculator | ✅ **Complete** | Compound growth, time-to-target, Monte Carlo in pure Ruby (Box-Muller) |
-| **2** | ForecastAccuracyCalculator | ✅ **Complete** | MAPE, RMSE, Tracking Signal, accuracy scoring |
-| **2** | MilestoneCalculator | ✅ **Complete** | Time-to-goal, contribution sensitivity analysis |
-| **2** | Projectable Concern | ✅ **Complete** | Accounts can generate projections, optimized to use pre-stored data |
-| **2** | JurisdictionAware Concern | ✅ **Complete** | Tax rates, interest deductibility, Smith Manoeuvre support |
-| **2** | PagCompliant Concern | ✅ **Complete** | PAG 2025 compliance checking and warnings |
-| **2** | DataQualityCheckable Concern | ✅ **Complete** | Non-failing validation with quality scores |
-| **2** | Seed Data | ✅ **Complete** | Canada + PAG 2025 + comprehensive test family with projections |
-| **2** | Tests | ✅ **Complete** | 73 new tests, all passing |
-| **3** | Smith Manoeuvre Simulator | ✅ **Complete** | `AbstractDebtSimulator` (base), `BaselineSimulator`, `PrepayOnlySimulator`, `CanadianSmithManoeuvrSimulator` |
-| **3** | CRA Audit Trail | ✅ **Complete** | `DebtOptimizationStrategy::AuditTrail` for tax reporting |
-| **3** | Debt Optimization Models | ✅ **Complete** | `DebtOptimizationStrategy`, `DebtOptimizationLedgerEntry`, `AutoStopRule` |
-| **3** | Debt Optimization Controller | ✅ **Complete** | Full CRUD + simulate action, chart builders |
-| **3** | Debt Optimization UI | ✅ **Complete** | `StrategyCard`, `LedgerTable`, `ComparisonChart` components |
-| **4** | Milestone Tracker UI | ✅ **Complete** | MilestoneCardComponent, MilestoneTrackerComponent, MilestonesController |
-| **4** | Projection Timeline UI | ✅ **Complete** | D3.js chart with Monte Carlo bands (p10-p90), ProjectionChart ViewComponent |
-| **4** | Projection Settings UI | ✅ **Complete** | ProjectionSettings ViewComponent, ProjectionSettingsController (icon helper fixed) |
-| **4** | Data Quality Alerts UI | ⏳ **Pending** | Warnings display component |
-
-### Recent Updates (January 21, 2026)
-
-**Phase 3 Complete - Debt Optimization (Smith Manoeuvre):**
-- Database migration for 3 new tables: `debt_optimization_strategies`, `debt_optimization_ledger_entries`, `debt_optimization_auto_stop_rules`
-- Added `credit_limit` column to `loans` table for HELOC tracking
-- Models created:
-  - `DebtOptimizationStrategy` - Main strategy configuration with jurisdiction awareness
-  - `DebtOptimizationLedgerEntry` - Month-by-month simulation results
-  - `DebtOptimizationStrategy::AutoStopRule` - 7 rule types for strategy termination
-- Simulators created (3-way comparison architecture):
-  - `AbstractDebtSimulator` - Template method base class for simple simulators
-  - `BaselineSimulator` - No optimization (inherits AbstractDebtSimulator)
-  - `PrepayOnlySimulator` - Prepays primary mortgage from rental surplus, no HELOC (inherits AbstractDebtSimulator)
-  - `CanadianSmithManoeuvrSimulator` - 🇨🇦 CRA-compliant Modified Smith Manoeuvre (runs all three scenarios)
-- Shared concerns:
-  - `LoanTermDefaults` - Common loan helpers and default constants (rates, terms, privilege limits)
-  - `MortgageRenewalSupport` - Periodic mortgage renewal logic
-- Supporting classes:
-  - `DebtOptimizationStrategy::ChartSeriesBuilder` - Chart data for comparisons
-  - `DebtOptimizationStrategy::AuditTrail` - CRA-compliant annual reports
-- UI Components:
-  - `UI::DebtOptimization::StrategyCard` - Summary card for strategy list
-  - `UI::DebtOptimization::LedgerTable` - Month-by-month ledger display
-  - `UI::DebtOptimization::ComparisonChart` - D3.js debt comparison charts
-- Controller: `DebtOptimizationStrategiesController` with full CRUD + simulate action
-- Routes: `resources :debt_optimization_strategies` with simulate member action
-- Seed data: `db/seeds/debt_optimization.rb` for test accounts and strategy
-- 61 new tests: **All passing**
-
-**Phase 1 & 2 (Previously Deployed):**
-- All Phase 1 & 2 migrations executed
-- Comprehensive test seed data created (`db/seeds/projection_test_data.rb`):
-  - Canadian test family (country='CA', currency='CAD')
-  - 3 investment accounts (TFSA ~$52K, RRSP ~$103K, Non-Registered ~$31K)
-  - 1 HELOC for future Smith Manoeuvre testing
-  - 33 milestones across accounts with progress tracking
-  - 3 projection assumptions (PAG default, Conservative, Aggressive)
-  - 216 projections (12 months historical with actuals, 60 months future with Monte Carlo percentiles)
-- Performance optimization: `Projectable#projection_data` now uses pre-stored projections instead of computing Monte Carlo on every page load
-- Bug fix: `ProjectionSettings` component icon helper calls fixed (`helpers.icon` instead of `icon`)
-
-**Test Results:**
-- 61 debt optimization tests: **All passing**
-- 73 projection-specific tests: **All passing**
-- 1004+ total tests: **All passing**
-
-**Verification:**
-- All 22 verification checks pass including:
-  - PAG 2025 compliance (`family.pag_compliant?` → true)
-  - Forecast accuracy metrics (MAPE: 2.41%, accuracy score: 90)
-  - Data quality scoring (score: 90/100)
-  - Tax rate calculations (26% at $150K income)
-  - Interest deductibility and Smith Manoeuvre support
-- Debt optimization:
-  - `/debt_optimization_strategies` UI accessible
-  - Strategy creation with auto-stop rules
-  - Simulation runs and generates ledger entries
+For current implementation status, see git log and phase review reports in `docs/reviews/`. For planned features, see `docs/FEATURE_ROADMAP.md`.
 
 **Note**: The `investment-dashboard/` directory contains a **Python prototype** used for requirements discovery and proof-of-concept only. All production implementation is pure Rails/Ruby - no Python microservice integration.
 
@@ -2137,25 +2056,7 @@ This design achieves **80% Canadian focus** while maintaining **100% architectur
 - **Developers** work with clear patterns: universal concepts (🌍), Canadian implementations (🇨🇦), and extensibility hooks (🔧)
 - **Future expansion** requires only seed data + simulators, no refactoring
 
-**Next Steps (Phase 4+):**
-1. ~~Review this document with team~~ ✅
-2. ~~Make Phase 1 vs Phase 2+ prioritization decisions~~ ✅
-3. ~~Begin Phase 1 (Foundation)~~ ✅ Complete
-4. ~~Begin Phase 2 (Calculations)~~ ✅ Complete
-5. ~~Seed Canadian jurisdiction data (PAG 2025, CRA rules)~~ ✅ Complete
-6. ~~Phase 3: Build Smith Manoeuvre Simulator~~ ✅ Complete
-   - ~~Create `CanadianSmithManoeuvrSimulator` service~~ ✅
-   - ~~Add CRA audit trail compliance reporting~~ ✅
-   - ~~Build debt optimization ledger entries~~ ✅
-   - ~~Build debt optimization UI components~~ ✅
-7. **Phase 4: Complete remaining UI** ← Next priority
-   - Data Quality Alerts UI component
-   - Account projections controller and views
-8. **Phase 5: Advanced Features**
-   - PDF export for projections and debt optimization reports
-   - API exposure for projections (`/api/v1/projections`)
-   - Monte Carlo background job (for large simulations)
-   - Rebalancing strategy comparison
+**Next Steps:** See `docs/FEATURE_ROADMAP.md` for the current feature roadmap and sprint planning priorities.
 
 ---
 
