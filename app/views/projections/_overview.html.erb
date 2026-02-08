@@ -2,16 +2,16 @@
 <div class="space-y-6">
   <%# Summary metrics grid %>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="bg-container shadow-border-xs rounded-xl p-4">
+    <div class="bg-container shadow-border-xs rounded-xl p-4 min-w-0">
       <p class="text-sm text-secondary">Current Net Worth <%= finance_tooltip("Net worth") %></p>
-      <p class="text-2xl font-semibold text-primary">
+      <p class="text-lg md:text-2xl font-semibold text-primary truncate">
         <%= format_money(balance_sheet.net_worth_money) %>
       </p>
     </div>
 
-    <div class="bg-container shadow-border-xs rounded-xl p-4">
+    <div class="bg-container shadow-border-xs rounded-xl p-4 min-w-0">
       <p class="text-sm text-secondary">Projected (<%= projection_years %>y)</p>
-      <p class="text-2xl font-semibold text-primary">
+      <p class="text-lg md:text-2xl font-semibold text-primary truncate">
         <% if net_worth_projection && net_worth_projection[:summary][:projected_net_worth] %>
           <%= format_money(Money.new(net_worth_projection[:summary][:projected_net_worth], family.currency)) %>
         <% else %>
@@ -20,16 +20,16 @@
       </p>
     </div>
 
-    <div class="bg-container shadow-border-xs rounded-xl p-4">
+    <div class="bg-container shadow-border-xs rounded-xl p-4 min-w-0">
       <p class="text-sm text-secondary">Total Assets</p>
-      <p class="text-2xl font-semibold text-green-600">
+      <p class="text-lg md:text-2xl font-semibold text-green-600 truncate">
         <%= format_money(balance_sheet.assets.total_money) %>
       </p>
     </div>
 
-    <div class="bg-container shadow-border-xs rounded-xl p-4">
+    <div class="bg-container shadow-border-xs rounded-xl p-4 min-w-0">
       <p class="text-sm text-secondary">Total Liabilities</p>
-      <p class="text-2xl font-semibold text-red-600">
+      <p class="text-lg md:text-2xl font-semibold text-red-600 truncate">
         <%= format_money(balance_sheet.liabilities.total_money) %>
       </p>
     </div>

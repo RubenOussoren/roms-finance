@@ -23,7 +23,31 @@ class UI::Projections::DebtSettingsInline < ApplicationComponent
   end
 
   def custom_settings?
-    assumption&.debt_settings?
+    assumption&.debt_settings? || loan_lump_sum?
+  end
+
+  def loan
+    @loan ||= account.accountable if account.accountable_type == "Loan"
+  end
+
+  def is_mortgage?
+    account.subtype == "mortgage"
+  end
+
+  def annual_lump_sum_amount
+    loan&.annual_lump_sum_amount.to_f.round(0)
+  end
+
+  def annual_lump_sum_month
+    loan&.annual_lump_sum_month
+  end
+
+  def month_options
+    (1..12).map { |m| [Date::MONTHNAMES[m], m] }
+  end
+
+  def loan_lump_sum?
+    loan&.annual_lump_sum_amount.to_f.positive?
   end
 
   def currency_symbol
@@ -46,15 +70,15 @@ class UI::Projections::DebtSettingsInline < ApplicationComponent
     helpers.reset_account_debt_repayment_settings_path(account)
   end
 
-  # Calculate potential savings for right-side display
+  # Calculate potential savings for right-side display (memoized to avoid double computation)
   def potential_savings_formatted
-    return nil unless extra_monthly_payment.positive?
+    return @potential_savings_formatted if defined?(@potential_savings_formatted)
 
-    calculator = LoanPayoffCalculator.new(account, extra_payment: extra_monthly_payment)
-    saved = calculator.interest_saved_with_extra_payment
-    return nil if saved.zero?
-
-    helpers.format_money(Money.new(saved, account.currency))
+    @potential_savings_formatted = if extra_monthly_payment.positive?
+      calculator = LoanPayoffCalculator.new(account, extra_payment: extra_monthly_payment)
+      saved = calculator.interest_saved_with_extra_payment
+      saved.zero? ? nil : helpers.format_money(Money.new(saved, account.currency))
+    end
   end
 
   def has_savings?

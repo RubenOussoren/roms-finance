@@ -42,6 +42,32 @@
           </div>
         </div>
 
+        <% if is_mortgage? %>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-secondary">Annual Lump Sum (<%= currency_symbol %>)</label>
+              <%= form.number_field :annual_lump_sum_amount,
+                  value: annual_lump_sum_amount,
+                  step: 500,
+                  min: 0,
+                  placeholder: "0",
+                  class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
+                  data: { "auto-submit-form-target": "auto" } %>
+              <p class="text-xs text-tertiary">Yearly prepayment privilege</p>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-secondary">Lump Sum Month</label>
+              <%= form.select :annual_lump_sum_month,
+                  options_for_select(month_options, annual_lump_sum_month),
+                  { include_blank: "Select month" },
+                  class: "w-full bg-container border border-secondary rounded-lg px-3 py-2 text-sm text-primary focus:outline-hidden focus:ring-1 focus:ring-blue-500",
+                  data: { "auto-submit-form-target": "auto" } %>
+              <p class="text-xs text-tertiary">Month for annual payment</p>
+            </div>
+          </div>
+        <% end %>
+
         <% if custom_settings? %>
           <div class="mt-3 flex justify-end">
             <%= button_to "Reset to defaults",

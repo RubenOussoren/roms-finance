@@ -2,6 +2,11 @@
 
 <%= render "accounts/form", account: account, url: url do |form| %>
   <%= form.select :subtype,
-                 Investment::SUBTYPES.map { |k, v| [v[:long], k] },
-                 { label: true, prompt: t("investments.form.subtype_prompt"), include_blank: t("investments.form.none") } %>
+                 grouped_options_for_select(
+                   Investment::SUBTYPE_GROUPS.map { |group, keys|
+                     [group, keys.map { |k| [Investment::SUBTYPES[k][:long], k] }]
+                   },
+                   account.subtype
+                 ),
+                 { label: true, include_blank: t("investments.form.subtype_prompt") } %>
 <% end %>

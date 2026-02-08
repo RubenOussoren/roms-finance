@@ -1,7 +1,7 @@
 class Vehicle < ApplicationRecord
   include Accountable
 
-  attribute :mileage_unit, :string, default: "mi"
+  attribute :mileage_unit, :string, default: "km"
 
   def mileage
     Measurement.new(mileage_value, mileage_unit) if mileage_value.present?
@@ -13,6 +13,10 @@ class Vehicle < ApplicationRecord
 
   def trend
     Trend.new(current: account.balance_money, previous: first_valuation_amount)
+  end
+
+  def balance_display_name
+    "estimated market value"
   end
 
   class << self

@@ -1,15 +1,17 @@
 class ProjectionsController < ApplicationController
+  layout -> { false if turbo_frame_request? }
+
   def index
     @family = Current.family
     @projection_years = params[:projection_years]&.to_i || 10
-    @tab = params[:tab]&.to_sym || :overview
+    @tab = params[:tab] || "overview"
 
-    # Load all tab data - the DS::Tabs component uses client-side JS to switch tabs
-    # so all content must be rendered on initial page load
-    prepare_overview_data
-    prepare_investments_data
-    prepare_debts_data
-    prepare_strategies_data
+    case @tab
+    when "overview"    then prepare_overview_data
+    when "investments" then prepare_investments_data
+    when "debts"       then prepare_debts_data
+    when "strategies"  then prepare_strategies_data
+    end
   end
 
   private

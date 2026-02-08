@@ -4,49 +4,55 @@
       <h1 class="text-2xl font-semibold text-primary">Projections</h1>
       <p class="text-secondary">Plan your financial future</p>
     </div>
-
-    <%= form_with url: projections_path, method: :get, data: { controller: "auto-submit-form" } do |form| %>
-      <%= form.hidden_field :tab, value: @tab %>
-      <%= form.select :projection_years,
-          [["5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
-          { selected: @projection_years },
-          class: "bg-container border border-secondary rounded-lg text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
-          data: { "auto-submit-form-target": "auto" } %>
-    <% end %>
   </div>
 
-  <%= render DS::Tabs.new(active_tab: @tab.to_s, url_param_key: :tab) do |tabs| %>
-    <% tabs.with_nav do |nav| %>
-      <% nav.with_btn(id: "overview", label: "Overview") %>
-      <% nav.with_btn(id: "investments", label: "Investments") %>
-      <% nav.with_btn(id: "debts", label: "Debts") %>
-      <% nav.with_btn(id: "strategies", label: "Strategies") %>
-    <% end %>
+  <%= turbo_frame_tag "projections-content" do %>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between gap-4">
+        <nav class="flex bg-surface-inset p-1 rounded-lg grow">
+          <% { "overview" => "Overview", "investments" => "Investments", "debts" => "Debts", "strategies" => "Strategies" }.each do |tab_id, label| %>
+            <%= link_to label,
+                projections_path(tab: tab_id, projection_years: @projection_years),
+                class: class_names(
+                  "w-full inline-flex justify-center items-center text-sm font-medium px-2 py-1 rounded-md transition-colors duration-200",
+                  @tab == tab_id ?
+                    "bg-white theme-dark:bg-gray-700 text-primary shadow-sm" :
+                    "text-secondary hover:bg-surface-inset-hover"
+                ),
+                data: { turbo_action: "replace" } %>
+          <% end %>
+        </nav>
 
-    <% tabs.with_panel(tab_id: "overview") do %>
-      <%= render "projections/overview",
-          family: @family,
-          projection_years: @projection_years,
-          net_worth_projection: @net_worth_projection,
-          milestones: @milestones,
-          balance_sheet: @balance_sheet %>
-    <% end %>
+        <%= form_with url: projections_path, method: :get, data: { controller: "auto-submit-form" } do |form| %>
+          <%= form.hidden_field :tab, value: @tab %>
+          <%= form.select :projection_years,
+              [["5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
+              { selected: @projection_years },
+              class: "bg-container border border-secondary rounded-lg text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
+              data: { "auto-submit-form-target": "auto" } %>
+        <% end %>
+      </div>
 
-    <% tabs.with_panel(tab_id: "investments") do %>
-      <%= render "projections/investments",
-          accounts: @investment_accounts,
-          projection_years: @projection_years %>
-    <% end %>
-
-    <% tabs.with_panel(tab_id: "debts") do %>
-      <%= render "projections/debts",
-          loan_accounts: @loan_accounts,
-          loan_payoffs: @loan_payoffs,
-          projection_years: @projection_years %>
-    <% end %>
-
-    <% tabs.with_panel(tab_id: "strategies") do %>
-      <%= render "projections/strategies", strategies: @strategies %>
-    <% end %>
+      <% case @tab %>
+      <% when "overview" %>
+        <%= render "projections/overview",
+            family: @family,
+            projection_years: @projection_years,
+            net_worth_projection: @net_worth_projection,
+            milestones: @milestones,
+            balance_sheet: @balance_sheet %>
+      <% when "investments" %>
+        <%= render "projections/investments",
+            accounts: @investment_accounts,
+            projection_years: @projection_years %>
+      <% when "debts" %>
+        <%= render "projections/debts",
+            loan_accounts: @loan_accounts,
+            loan_payoffs: @loan_payoffs,
+            projection_years: @projection_years %>
+      <% when "strategies" %>
+        <%= render "projections/strategies", strategies: @strategies %>
+      <% end %>
+    </div>
   <% end %>
 </div>

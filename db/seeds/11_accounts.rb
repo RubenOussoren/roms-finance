@@ -148,19 +148,19 @@ cibc_cc = create_account!(
 
 manulife_rrsp = create_account!(
   family: family, created_by: wife, accountable: Investment.new,
-  name: "Manulife RRSP", balance: 45_000, subtype: "retirement",
+  name: "Manulife RRSP", balance: 45_000, subtype: "rrsp",
   opening_date: jan_2023, opening_balance: 25_000
 )
 
 ws_rrsp_wife = create_account!(
   family: family, created_by: wife, accountable: Investment.new,
-  name: "Wealthsimple RRSP", balance: 120, subtype: "retirement",
+  name: "Wealthsimple RRSP", balance: 120, subtype: "rrsp",
   opening_date: Date.new(2025, 12, 1), opening_balance: 0
 )
 
 ws_tfsa_wife = create_account!(
   family: family, created_by: wife, accountable: Investment.new,
-  name: "Wealthsimple TFSA", balance: 21_300, subtype: "retirement",
+  name: "Wealthsimple TFSA", balance: 21_300, subtype: "tfsa",
   opening_date: jan_2023, opening_balance: 10_000
 )
 
@@ -193,13 +193,13 @@ scotia_cc = create_account!(
 
 ws_rrsp_husband = create_account!(
   family: family, created_by: husband, accountable: Investment.new,
-  name: "Wealthsimple RRSP", balance: 8_600, subtype: "retirement",
+  name: "Wealthsimple RRSP", balance: 8_600, subtype: "rrsp",
   opening_date: Date.new(2025, 1, 1), opening_balance: 0
 )
 
 ws_tfsa_husband = create_account!(
   family: family, created_by: husband, accountable: Investment.new,
-  name: "Wealthsimple TFSA", balance: 3_200, subtype: "retirement",
+  name: "Wealthsimple TFSA", balance: 3_200, subtype: "tfsa",
   opening_date: Date.new(2025, 2, 1), opening_balance: 0
 )
 
@@ -221,7 +221,7 @@ end
 ws_nonreg = create_account!(
   family: family, created_by: husband, is_joint: true,
   accountable: Investment.new, name: "Wealthsimple Non-Registered",
-  balance: 600, subtype: "brokerage",
+  balance: 600, subtype: "non_registered",
   opening_date: Date.new(2025, 10, 1), opening_balance: 0
 )
 

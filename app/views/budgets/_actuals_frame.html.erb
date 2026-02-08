@@ -1,0 +1,5 @@
+<%= turbo_frame_tag "budget-actuals" do %>
+  <div class="bg-container rounded-xl shadow-border-xs">
+    <%= render "budgets/actuals_summary", budget: budget %>
+  </div>
+<% end %>

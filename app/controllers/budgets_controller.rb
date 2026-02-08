@@ -6,6 +6,9 @@ class BudgetsController < ApplicationController
   end
 
   def show
+    if params[:tab] == "actuals" && turbo_frame_request?
+      render partial: "budgets/actuals_frame", locals: { budget: @budget }
+    end
   end
 
   def edit

@@ -31,9 +31,11 @@
             <% end %>
 
             <% tabs.with_panel(tab_id: "actuals") do %>
-              <div class="bg-container rounded-xl shadow-border-xs">
-                <%= render "budgets/actuals_summary", budget: @budget %>
-              </div>
+              <%= turbo_frame_tag "budget-actuals",
+                  src: budget_path(@budget, tab: "actuals"),
+                  loading: "lazy" do %>
+                <div class="bg-container rounded-xl shadow-border-xs p-4 animate-pulse h-48"></div>
+              <% end %>
             <% end %>
           <% end %>
         <% else %>

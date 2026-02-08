@@ -36,7 +36,7 @@ class BalanceSheet
   end
 
   def net_worth
-    assets.total - liabilities.total
+    @net_worth ||= assets.total - liabilities.total
   end
 
   def net_worth_series(period: Period.last_30_days)

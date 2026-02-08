@@ -240,11 +240,11 @@ export default class BaseD3ChartController extends Controller {
   }
 
   get _d3ContainerWidth() {
-    return this._d3InitialContainerWidth - this._margin.left - this._margin.right;
+    return Math.max(0, this._d3InitialContainerWidth - this._margin.left - this._margin.right);
   }
 
   get _d3ContainerHeight() {
-    return this._d3InitialContainerHeight - this._margin.top - this._margin.bottom;
+    return Math.max(0, this._d3InitialContainerHeight - this._margin.top - this._margin.bottom);
   }
 
   get _d3Container() {

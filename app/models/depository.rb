@@ -2,11 +2,16 @@ class Depository < ApplicationRecord
   include Accountable
 
   SUBTYPES = {
+    # General
     "checking" => { short: "Checking", long: "Checking" },
     "savings" => { short: "Savings", long: "Savings" },
-    "hsa" => { short: "HSA", long: "Health Savings Account" },
+    "money_market" => { short: "MM", long: "Money Market" },
+    # Canadian
+    "gic" => { short: "GIC", long: "Guaranteed Investment Certificate (GIC)" },
+    "high_interest_savings" => { short: "HISA", long: "High-Interest Savings Account" },
+    # US
+    "hsa" => { short: "HSA", long: "Health Savings Account (HSA)" },
     "cd" => { short: "CD", long: "Certificate of Deposit" },
-    "money_market" => { short: "MM", long: "Money Market" }
   }.freeze
 
   class << self

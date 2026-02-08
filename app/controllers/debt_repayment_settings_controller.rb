@@ -11,6 +11,8 @@ class DebtRepaymentSettingsController < ApplicationController
       target_payoff_date: debt_settings_params[:target_payoff_date].presence
     )
 
+    update_loan_lump_sum if @account.accountable_type == "Loan"
+
     respond_to do |format|
       format.html { redirect_to projections_path(tab: "debt") }
       format.turbo_stream do
@@ -30,6 +32,10 @@ class DebtRepaymentSettingsController < ApplicationController
 
   def reset
     @account.projection_assumption&.update!(extra_monthly_payment: 0, target_payoff_date: nil)
+
+    if @account.accountable_type == "Loan"
+      @account.accountable.update!(annual_lump_sum_amount: nil, annual_lump_sum_month: nil)
+    end
 
     respond_to do |format|
       format.html { redirect_to projections_path(tab: "debt") }
@@ -65,6 +71,14 @@ class DebtRepaymentSettingsController < ApplicationController
     end
 
     def debt_settings_params
-      params.permit(:extra_monthly_payment, :target_payoff_date)
+      params.permit(:extra_monthly_payment, :target_payoff_date, :annual_lump_sum_amount, :annual_lump_sum_month)
+    end
+
+    def update_loan_lump_sum
+      loan = @account.accountable
+      attrs = {}
+      attrs[:annual_lump_sum_amount] = debt_settings_params[:annual_lump_sum_amount].to_f if debt_settings_params.key?(:annual_lump_sum_amount)
+      attrs[:annual_lump_sum_month] = debt_settings_params[:annual_lump_sum_month].presence&.to_i if debt_settings_params.key?(:annual_lump_sum_month)
+      loan.update!(attrs) if attrs.present?
     end
 end

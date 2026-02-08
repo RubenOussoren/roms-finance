@@ -66,8 +66,8 @@ class FamilyProjectionCalculator
     def project_net_worth(months:)
       # Aggregate projections from all accounts
       # Eager load accountable, entries, and projection_assumption to prevent N+1 queries
-      asset_accounts = family.accounts.where(classification: "asset").active.includes(:accountable, :entries, :projection_assumption)
-      liability_accounts = family.accounts.where(classification: "liability").active.includes(:accountable, :entries, :projection_assumption)
+      asset_accounts = family.accounts.where(classification: "asset").active.includes(:accountable, :projection_assumption)
+      liability_accounts = family.accounts.where(classification: "liability").active.includes(:accountable, :projection_assumption)
 
       # Validate currency consistency
       all_accounts = asset_accounts + liability_accounts
@@ -205,20 +205,25 @@ class FamilyProjectionCalculator
     end
 
     # Delegate to LoanPayoffCalculator for consistent amortization logic
-    # LoanPayoffCalculator has memoization, making this efficient even when called multiple times
+    # Calculator and schedule are cached per account for O(1) month lookup
     def project_loan_balance(account, month)
       loan = account.accountable
       return account.balance if loan.nil?
       return 0 if account.balance <= 0
 
-      assumption = assumption_for(account)
-      extra_payment = assumption&.extra_monthly_payment || 0
-
-      calculator = LoanPayoffCalculator.new(account, extra_payment: extra_payment)
-      schedule = calculator.amortization_schedule
-
-      entry = schedule.find { |e| e[:month] == month }
+      schedule_index = loan_schedule_index_for(account)
+      entry = schedule_index[month]
       entry ? entry[:balance] : 0
+    end
+
+    def loan_schedule_index_for(account)
+      @loan_schedule_cache ||= {}
+      @loan_schedule_cache[account.id] ||= begin
+        assumption = assumption_for(account)
+        extra_payment = assumption&.extra_monthly_payment || 0
+        calculator = LoanPayoffCalculator.new(account, extra_payment: extra_payment)
+        calculator.amortization_schedule.index_by { |e| e[:month] }
+      end
     end
 
     def build_summary(projections)

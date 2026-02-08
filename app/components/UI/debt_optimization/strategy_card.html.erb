@@ -12,17 +12,17 @@
   </div>
 
   <div class="grid grid-cols-3 gap-4 mb-4">
-    <div>
+    <div class="min-w-0">
       <p class="text-xs text-secondary uppercase tracking-wide">Tax Benefit</p>
-      <p class="text-lg font-semibold text-green-600"><%= formatted_tax_benefit %></p>
+      <p class="text-lg font-semibold text-green-600 truncate"><%= formatted_tax_benefit %></p>
     </div>
-    <div>
+    <div class="min-w-0">
       <p class="text-xs text-secondary uppercase tracking-wide">Interest Saved</p>
-      <p class="text-lg font-semibold text-primary"><%= formatted_interest_saved %></p>
+      <p class="text-lg font-semibold text-primary truncate"><%= formatted_interest_saved %></p>
     </div>
-    <div>
+    <div class="min-w-0">
       <p class="text-xs text-secondary uppercase tracking-wide">Time Saved</p>
-      <p class="text-lg font-semibold text-primary"><%= months_accelerated_text %></p>
+      <p class="text-lg font-semibold text-primary truncate"><%= months_accelerated_text %></p>
     </div>
   </div>
 

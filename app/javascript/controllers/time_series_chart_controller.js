@@ -269,8 +269,8 @@ export default class extends Controller {
     this._d3Group
       .append("rect")
       .attr("id", `${this.element.id}-trendline-gradient-rect`)
-      .attr("width", this._d3ContainerWidth)
-      .attr("height", this._d3ContainerHeight)
+      .attr("width", Math.max(0, this._d3ContainerWidth))
+      .attr("height", Math.max(0, this._d3ContainerHeight))
       .attr("clip-path", `url(#${this.element.id}-clip-below-trendline)`)
       .style("fill", `url(#${this.element.id}-trendline-gradient)`);
   }
@@ -493,13 +493,13 @@ export default class extends Controller {
   }
 
   get _d3ContainerWidth() {
-    return (
+    return Math.max(0,
       this._d3InitialContainerWidth - this._margin.left - this._margin.right
     );
   }
 
   get _d3ContainerHeight() {
-    return (
+    return Math.max(0,
       this._d3InitialContainerHeight - this._margin.top - this._margin.bottom
     );
   }
