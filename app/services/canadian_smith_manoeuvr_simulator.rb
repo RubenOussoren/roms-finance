@@ -40,6 +40,18 @@ class CanadianSmithManoeuvrSimulator
 
   private
 
+    # Mutable running state for the month-by-month simulation loop.
+    #
+    # Balance fields:      primary_balance, rental_balance, heloc_balance, heloc_credit_limit
+    # Original snapshot:   original_primary_balance (for readvanceable ratio cap)
+    # Current rates:       current_primary_rate, current_rental_rate (updated on renewal)
+    # Monthly payments:    primary_payment, rental_payment (recalculated on renewal)
+    # Cumulative trackers: cumulative_tax_benefit, cumulative_heloc_interest,
+    #                      cumulative_strategy_mortgage_interest, cumulative_baseline_mortgage_interest,
+    #                      cumulative_principal_paid
+    # Annual tracking:     annual_prepayment_total, current_year (reset each Jan)
+    # Auto-stop:           strategy_stopped, stop_reason
+    # Baseline reference:  baseline_entries_hash (month_number → baseline entry for comparison)
     SimulationState = Struct.new(
       :primary_balance, :rental_balance, :heloc_balance, :heloc_credit_limit,
       :original_primary_balance, :current_primary_rate, :current_rental_rate,
@@ -200,6 +212,8 @@ class CanadianSmithManoeuvrSimulator
         tax_benefit: tax_benefit, cumulative_net_benefit: cumulative_net_benefit }
     end
 
+    # Maps simulation state + computed values into a DebtOptimizationLedgerEntry.
+    # Long due to the 31 named parameters on the model — pure data mapping, no branching.
     def build_ledger_entry(state, month, calendar_month, payments, heloc_draw, cash_flow, tax_metrics)
       new_heloc_balance = state.heloc_balance + heloc_draw[:actual_draw] + cash_flow[:heloc_interest] - cash_flow[:heloc_payment]
       new_primary_balance = [ state.primary_balance - payments[:primary_principal] - cash_flow[:prepayment], 0 ].max

@@ -1,5 +1,9 @@
 # Backfill initial_balance for existing loans where NULL.
 # Uses the earliest valuation entry amount as the original loan balance.
+#
+# Business context: Milestone#earliest_known_balance now reads Loan#original_balance,
+# which prefers the initial_balance column. Without this backfill, existing loans
+# would report nil for their starting balance, breaking milestone progress tracking.
 class PopulateLoanInitialBalance < ActiveRecord::Migration[7.2]
   def up
     execute <<~SQL

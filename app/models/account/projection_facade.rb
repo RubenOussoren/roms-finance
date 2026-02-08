@@ -1,5 +1,15 @@
-# Service object encapsulating projection and milestone logic for an Account.
-# Extracted from the Projectable concern to reduce Account's concern count.
+# Facade encapsulating all projection and milestone logic for an Account.
+#
+# Extracted from the Projectable concern to reduce Account's concern count
+# (11 → 9). Account delegates projection-related methods here via a lazy-
+# initialized private accessor, following the same pattern as
+# OpeningBalanceManager, CurrentBalanceManager, and ReconciliationManager.
+#
+# Responsibilities:
+#   - Adaptive projections (deterministic + analytical uncertainty bands)
+#   - Forecast accuracy measurement against actuals
+#   - Milestone progress tracking and projected-date estimation
+#   - Chart-ready data assembly (historical + projected series)
 class Account::ProjectionFacade
   attr_reader :account
 
@@ -22,6 +32,8 @@ class Account::ProjectionFacade
     calculator.project(months: months)
   end
 
+  # Compares historical projections against actual balances to measure
+  # prediction quality. Returns nil if no projections have corresponding actuals.
   def forecast_accuracy(period: :all)
     projections_with_actuals = account.projections.with_actuals
 
@@ -57,11 +69,16 @@ class Account::ProjectionFacade
     account.milestones.each { |m| m.update_progress!(account.balance) }
   end
 
+  # Regenerates forward-looking projection records and updates milestone
+  # projected dates. Typically called after balance changes or assumption edits.
   def generate_projections!(months: 120)
     Account::Projection.generate_for_account(account, months: months)
     update_milestone_projections!
   end
 
+  # Recalculates the projected achievement date for each pending/in-progress
+  # milestone by querying future projection records. Loans use
+  # LoanPayoffCalculator for payoff-type milestones.
   def update_milestone_projections!
     account.milestones.where(status: %w[pending in_progress]).find_each do |milestone|
       projected_date = if milestone.reduction_milestone? && account.respond_to?(:accountable) && account.accountable.is_a?(Loan)
@@ -84,6 +101,8 @@ class Account::ProjectionFacade
     end
   end
 
+  # Assembles a hash of historical balance data and projected percentile bands
+  # (p10–p90) suitable for rendering a D3 projection chart on the frontend.
   def projection_chart_data(years: 10, assumption: nil)
     assumption ||= default_projection_assumption
 
