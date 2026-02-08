@@ -150,7 +150,8 @@ end
 
   test "calls Transaction::Search totals method with correct search parameters" do
     family = families(:empty)
-    sign_in users(:empty)
+    user = users(:empty)
+    sign_in user
     account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
 
     create_transaction(account: account, amount: 100)
@@ -162,7 +163,7 @@ end
       income_money: Money.new(0, "USD")
     )
 
-    Transaction::Search.expects(:new).with(family, filters: {}).returns(search)
+    Transaction::Search.expects(:new).with(family, filters: {}, viewer: user).returns(search)
     search.expects(:totals).once.returns(totals)
 
     get transactions_url
@@ -171,7 +172,8 @@ end
 
   test "calls Transaction::Search totals method with filtered search parameters" do
     family = families(:empty)
-    sign_in users(:empty)
+    user = users(:empty)
+    sign_in user
     account = family.accounts.create! name: "Test", balance: 0, currency: "USD", accountable: Depository.new
     category = family.categories.create! name: "Food", color: "#ff0000"
 
@@ -184,7 +186,7 @@ end
       income_money: Money.new(0, "USD")
     )
 
-    Transaction::Search.expects(:new).with(family, filters: { "categories" => [ "Food" ], "types" => [ "expense" ] }).returns(search)
+    Transaction::Search.expects(:new).with(family, filters: { "categories" => [ "Food" ], "types" => [ "expense" ] }, viewer: user).returns(search)
     search.expects(:totals).once.returns(totals)
 
     get transactions_url(q: { categories: [ "Food" ], types: [ "expense" ] })

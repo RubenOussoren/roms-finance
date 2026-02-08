@@ -10,10 +10,12 @@ class Assistant::Function::GetAccounts < Assistant::Function
   end
 
   def call(params = {})
+    balance_only_ids = family.accounts.balance_only_for(user).pluck(:id).to_set
+
     {
       as_of_date: Date.current,
-      accounts: family.accounts.includes(:balances).map do |account|
-        {
+      accounts: accessible_accounts.includes(:balances).map do |account|
+        data = {
           name: account.name,
           balance: account.balance,
           currency: account.currency,
@@ -21,10 +23,15 @@ class Assistant::Function::GetAccounts < Assistant::Function
           classification: account.classification,
           type: account.accountable_type,
           start_date: account.start_date,
-          is_plaid_linked: account.plaid_account_id.present?,
-          status: account.status,
-          historical_balances: historical_balances(account)
+          status: account.status
         }
+
+        unless balance_only_ids.include?(account.id)
+          data[:is_plaid_linked] = account.plaid_account_id.present?
+          data[:historical_balances] = historical_balances(account)
+        end
+
+        data
       end
     }
   end

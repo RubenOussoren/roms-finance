@@ -64,7 +64,7 @@ class ProjectionSettingsController < ApplicationController
   private
 
     def set_account
-      @account = Current.family.accounts.find(params[:account_id])
+      @account = scoped_accounts.find(params[:account_id])
     end
 
     def get_or_create_account_assumption

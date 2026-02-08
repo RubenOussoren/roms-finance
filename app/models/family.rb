@@ -64,6 +64,10 @@ class Family < ApplicationRecord
     @balance_sheet ||= BalanceSheet.new(self)
   end
 
+  def balance_sheet_for(user, scope: :household)
+    BalanceSheet.new(self, viewer: user, scope: scope)
+  end
+
   def income_statement
     @income_statement ||= IncomeStatement.new(self)
   end
@@ -115,6 +119,10 @@ class Family < ApplicationRecord
       ts = entries.maximum(:updated_at)
       ts.present? ? ts.to_i : 0
     end
+  end
+
+  def multi_user?
+    users.count > 1
   end
 
   def self_hoster?

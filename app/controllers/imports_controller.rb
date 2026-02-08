@@ -20,7 +20,7 @@ class ImportsController < ApplicationController
   end
 
   def create
-    account = Current.family.accounts.find_by(id: params.dig(:import, :account_id))
+    account = full_access_accounts.find_by(id: params.dig(:import, :account_id))
     import = Current.family.imports.create!(
       type: import_params[:type],
       account: account,

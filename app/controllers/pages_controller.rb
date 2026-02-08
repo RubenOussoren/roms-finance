@@ -4,8 +4,10 @@ class PagesController < ApplicationController
   skip_authentication only: :redis_configuration_error
 
   def dashboard
-    @balance_sheet = Current.family.balance_sheet
-    @accounts = Current.family.accounts.visible.with_attached_logo.includes(:projection_assumption)
+    @scope = valid_scope_param
+    @balance_sheet = Current.family.balance_sheet_for(Current.user, scope: @scope)
+    @show_scope_toggle = Current.family.multi_user?
+    @accounts = Current.family.accounts.accessible_by(Current.user).visible.with_attached_logo.includes(:projection_assumption)
 
     period_param = params[:cashflow_period]
     @cashflow_period = if period_param.present?
@@ -19,8 +21,9 @@ class PagesController < ApplicationController
     end
 
     family_currency = Current.family.currency
-    income_totals = Current.family.income_statement.income_totals(period: @cashflow_period)
-    expense_totals = Current.family.income_statement.expense_totals(period: @cashflow_period)
+    income_statement = IncomeStatement.new(Current.family, viewer: Current.user)
+    income_totals = income_statement.income_totals(period: @cashflow_period)
+    expense_totals = income_statement.expense_totals(period: @cashflow_period)
 
     @cashflow_sankey_data = build_cashflow_sankey_data(income_totals, expense_totals, family_currency)
 
@@ -53,6 +56,11 @@ class PagesController < ApplicationController
   end
 
   private
+    def valid_scope_param
+      scope = params[:scope]
+      %w[personal household].include?(scope) ? scope.to_sym : :household
+    end
+
     def github_provider
       Provider::Registry.get_provider(:github)
     end

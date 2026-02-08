@@ -23,10 +23,12 @@ class MarketDataImporterTest < ActiveSupport::TestCase
 
   test "syncs required exchange rates" do
     family = Family.create!(name: "Smith", currency: "USD")
+    user = family.users.create!(email: "smith@test.com", password: "password123456", first_name: "Test", role: "admin")
     family.accounts.create!(name: "Chequing",
                             currency: "CAD",
                             balance: 100,
-                            accountable: Depository.new)
+                            accountable: Depository.new,
+                            created_by_user: user)
 
     # Seed stale rate so only the next missing day is fetched
     ExchangeRate.create!(from_currency: "CAD",

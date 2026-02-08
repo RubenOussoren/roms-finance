@@ -56,7 +56,7 @@ class Assistant::Function
     end
 
     def family_account_names
-      @family_account_names ||= family.accounts.visible.pluck(:name)
+      @family_account_names ||= accessible_accounts.pluck(:name)
     end
 
     def family_category_names
@@ -77,6 +77,14 @@ class Assistant::Function
 
     def family
       user.family
+    end
+
+    def accessible_accounts
+      family.accounts.visible.accessible_by(user)
+    end
+
+    def full_access_accounts
+      family.accounts.visible.full_access_for(user)
     end
 
     # To save tokens, we provide the AI metadata about the series and a flat array of

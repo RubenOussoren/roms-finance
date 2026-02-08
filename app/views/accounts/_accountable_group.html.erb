@@ -1,4 +1,4 @@
-<%# locals: (account_group:, mobile: false, all_tab: false, open: nil, **args) %>
+<%# locals: (account_group:, mobile: false, all_tab: false, open: nil, viewer: nil, **args) %>
 
 <div id="<%= account_group.dom_id(tab: all_tab ? :all : nil, mobile: mobile) %>">
   <% is_open = open.nil? ? account_group.accounts.any? { |account| page_active?(account_path(account)) } : open %>
@@ -23,29 +23,54 @@
 
     <div class="space-y-1">
       <% account_group.accounts.each do |account| %>
-        <%= link_to account_path(account),
-                  class: class_names(
-                    "block flex items-center gap-2 px-3 py-2 rounded-lg",
-                    page_active?(account_path(account)) ? "bg-container" : "hover:bg-surface-hover"
-                  ),
-                  title: account.name do %>
-          <%= render "accounts/logo", account: account, size: "sm", color: account_group.color %>
+        <% is_balance_only = viewer && account.balance_only_for?(viewer) %>
+        <% if is_balance_only %>
+          <div class="block flex items-center gap-2 px-3 py-2 rounded-lg opacity-60"
+               title="<%= account.name %> (balance only)">
+            <%= render "accounts/logo", account: account, size: "sm", color: account_group.color %>
 
-          <div class="min-w-0 grow">
-            <div class="flex items-center gap-2 mb-0.5">
-              <%= tag.p account.name, class: class_names("text-sm text-primary font-medium truncate", "animate-pulse" => account.syncing?) %>
-            </div>
-            <%= tag.p account.short_subtype_label, class: "text-sm text-secondary truncate" %>
-          </div>
-
-          <div class="ml-auto text-right grow h-10">
-            <%= tag.p format_money(account.balance_money), class: "text-sm font-medium text-primary whitespace-nowrap" %>
-            <%= turbo_frame_tag dom_id(account, :sparkline), src: sparkline_account_path(account), loading: "lazy", data: { controller: "turbo-frame-timeout", turbo_frame_timeout_timeout_value: 10000 } do %>
-              <div class="flex items-center w-8 h-4 ml-auto">
-                <div class="w-6 h-px bg-loader"></div>
+            <div class="min-w-0 grow">
+              <div class="flex items-center gap-2 mb-0.5">
+                <%= tag.p account.name, class: "text-sm text-secondary font-medium truncate" %>
+                <% if account.is_joint? %>
+                  <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">Joint</span>
+                <% end %>
               </div>
-            <% end %>
+              <%= tag.p account.short_subtype_label, class: "text-sm text-secondary truncate" %>
+            </div>
+
+            <div class="ml-auto text-right grow h-10">
+              <%= tag.p format_money(account.balance_money), class: "text-sm font-medium text-secondary whitespace-nowrap" %>
+            </div>
           </div>
+        <% else %>
+          <%= link_to account_path(account),
+                    class: class_names(
+                      "block flex items-center gap-2 px-3 py-2 rounded-lg",
+                      page_active?(account_path(account)) ? "bg-container" : "hover:bg-surface-hover"
+                    ),
+                    title: account.name do %>
+            <%= render "accounts/logo", account: account, size: "sm", color: account_group.color %>
+
+            <div class="min-w-0 grow">
+              <div class="flex items-center gap-2 mb-0.5">
+                <%= tag.p account.name, class: class_names("text-sm text-primary font-medium truncate", "animate-pulse" => account.syncing?) %>
+                <% if account.is_joint? %>
+                  <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">Joint</span>
+                <% end %>
+              </div>
+              <%= tag.p account.short_subtype_label, class: "text-sm text-secondary truncate" %>
+            </div>
+
+            <div class="ml-auto text-right grow h-10">
+              <%= tag.p format_money(account.balance_money), class: "text-sm font-medium text-primary whitespace-nowrap" %>
+              <%= turbo_frame_tag dom_id(account, :sparkline), src: sparkline_account_path(account), loading: "lazy", data: { controller: "turbo-frame-timeout", turbo_frame_timeout_timeout_value: 10000 } do %>
+                <div class="flex items-center w-8 h-4 ml-auto">
+                  <div class="w-6 h-px bg-loader"></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
         <% end %>
       <% end %>
     </div>

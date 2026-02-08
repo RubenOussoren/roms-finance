@@ -3,10 +3,12 @@ class BalanceSheet
 
   monetize :net_worth
 
-  attr_reader :family
+  attr_reader :family, :viewer, :scope
 
-  def initialize(family)
+  def initialize(family, viewer: nil, scope: :household)
     @family = family
+    @viewer = viewer
+    @scope = scope
   end
 
   def assets
@@ -55,10 +57,10 @@ class BalanceSheet
     end
 
     def account_totals
-      @account_totals ||= AccountTotals.new(family, sync_status_monitor: sync_status_monitor)
+      @account_totals ||= AccountTotals.new(family, viewer: viewer, scope: scope, sync_status_monitor: sync_status_monitor)
     end
 
     def net_worth_series_builder
-      @net_worth_series_builder ||= NetWorthSeriesBuilder.new(family)
+      @net_worth_series_builder ||= NetWorthSeriesBuilder.new(family, viewer: viewer, scope: scope)
     end
 end

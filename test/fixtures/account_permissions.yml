@@ -1,0 +1,2 @@
+# No default fixtures - absence of permission rows means full access (backward compatible)
+# Tests create specific permission rows as needed

@@ -176,6 +176,7 @@ Rails.application.routes.draw do
     resource :debt_repayment_settings, only: [ :update ] do
       delete :reset, on: :member
     end
+    resource :account_permissions, only: [ :edit, :update ]
   end
 
   # Convenience routes for polymorphic paths

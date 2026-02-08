@@ -5,6 +5,7 @@ class Transactions::BulkUpdatesController < ApplicationController
   def create
     updated = Current.family
                      .entries
+                     .where(account_id: full_access_accounts.select(:id))
                      .where(id: bulk_update_params[:entry_ids])
                      .bulk_update!(bulk_update_params)
 

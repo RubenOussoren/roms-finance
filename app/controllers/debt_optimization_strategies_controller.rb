@@ -21,7 +21,7 @@ class DebtOptimizationStrategiesController < ApplicationController
       currency: family.currency,
       simulation_months: 300
     )
-    @loan_accounts = family.accounts.where(accountable_type: "Loan")
+    @loan_accounts = scoped_accounts.where(accountable_type: "Loan")
   end
 
   def create
@@ -32,20 +32,20 @@ class DebtOptimizationStrategiesController < ApplicationController
       create_default_auto_stop_rules(@strategy)
       redirect_to debt_optimization_strategy_path(@strategy), notice: "Strategy created successfully"
     else
-      @loan_accounts = family.accounts.where(accountable_type: "Loan")
+      @loan_accounts = scoped_accounts.where(accountable_type: "Loan")
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    @loan_accounts = family.accounts.where(accountable_type: "Loan")
+    @loan_accounts = scoped_accounts.where(accountable_type: "Loan")
   end
 
   def update
     if @strategy.update(strategy_params)
       redirect_to debt_optimization_strategy_path(@strategy), notice: "Strategy updated successfully"
     else
-      @loan_accounts = family.accounts.where(accountable_type: "Loan")
+      @loan_accounts = scoped_accounts.where(accountable_type: "Loan")
       render :edit, status: :unprocessable_entity
     end
   end

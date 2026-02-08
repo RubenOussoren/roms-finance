@@ -11,7 +11,8 @@ class TransactionsController < ApplicationController
 
   def index
     @q = search_params
-    @search = Transaction::Search.new(Current.family, filters: @q)
+    @search = Transaction::Search.new(Current.family, filters: @q, viewer: Current.user)
+    @filter_accounts = full_access_accounts.visible.alphabetically
 
     base_scope = @search.transactions_scope
                        .reverse_chronological
@@ -54,7 +55,7 @@ class TransactionsController < ApplicationController
   end
 
   def create
-    account = Current.family.accounts.find(params.dig(:entry, :account_id))
+    account = full_access_accounts.find(params.dig(:entry, :account_id))
     @entry = account.entries.new(entry_params)
 
     if @entry.save

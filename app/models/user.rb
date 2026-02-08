@@ -8,6 +8,8 @@ class User < ApplicationRecord
   has_many :api_keys, dependent: :destroy
   has_many :mobile_devices, dependent: :destroy
   has_many :invitations, foreign_key: :inviter_id, dependent: :destroy
+  has_many :owned_accounts, class_name: "Account", foreign_key: :created_by_user_id, dependent: :nullify
+  has_many :account_permissions, dependent: :destroy
   has_many :impersonator_support_sessions, class_name: "ImpersonationSession", foreign_key: :impersonator_id, dependent: :destroy
   has_many :impersonated_support_sessions, class_name: "ImpersonationSession", foreign_key: :impersonated_id, dependent: :destroy
   accepts_nested_attributes_for :family, update_only: true
@@ -116,8 +118,19 @@ class User < ApplicationRecord
     if last_user_in_family?
       family.destroy
     else
+      reassign_owned_accounts
       destroy
     end
+  end
+
+  def reassign_owned_accounts
+    return if owned_accounts.none?
+
+    new_owner = family.users.where.not(id: id).find_by(role: "admin") ||
+                family.users.where.not(id: id).order(:created_at).first
+    return unless new_owner
+
+    owned_accounts.update_all(created_by_user_id: new_owner.id)
   end
 
   # MFA

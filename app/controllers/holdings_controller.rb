@@ -2,7 +2,7 @@ class HoldingsController < ApplicationController
   before_action :set_holding, only: %i[show destroy]
 
   def index
-    @account = Current.family.accounts.find(params[:account_id])
+    @account = full_access_accounts.find(params[:account_id])
   end
 
   def show
@@ -24,6 +24,8 @@ class HoldingsController < ApplicationController
 
   private
     def set_holding
-      @holding = Current.family.holdings.find(params[:id])
+      @holding = Current.family.holdings
+        .where(account_id: full_access_accounts.select(:id))
+        .find(params[:id])
     end
 end

@@ -298,4 +298,64 @@ class Transaction::SearchTest < ActiveSupport::TestCase
     assert_equal Money.new(0, "USD"), totals.expense_money
     assert_equal Money.new(0, "USD"), totals.income_money
   end
+
+  # --- Phase 3: Viewer filtering tests ---
+
+  test "viewer filtering excludes balance_only account transactions" do
+    viewer = users(:family_admin)
+    other_user = users(:family_member)
+
+    # Create account owned by other_user, set balance_only for viewer
+    other_account = @family.accounts.create!(
+      name: "Other Checking", currency: "USD", balance: 1000,
+      accountable: Depository.new, created_by_user: other_user
+    )
+    AccountPermission.create!(account: other_account, user: viewer, visibility: "balance_only")
+
+    # Create transactions on both accounts
+    create_transaction(account: @checking_account, amount: 100, kind: "standard")
+    create_transaction(account: other_account, amount: 200, kind: "standard")
+
+    # Without viewer: returns all
+    search_all = Transaction::Search.new(@family)
+    assert_equal 2, search_all.transactions_scope.count
+
+    # With viewer: excludes balance_only account transactions
+    search_viewer = Transaction::Search.new(@family, viewer: viewer)
+    assert_equal 1, search_viewer.transactions_scope.count
+  end
+
+  test "viewer filtering excludes hidden account transactions" do
+    viewer = users(:family_admin)
+    other_user = users(:family_member)
+
+    hidden_account = @family.accounts.create!(
+      name: "Hidden Account", currency: "USD", balance: 1000,
+      accountable: Depository.new, created_by_user: other_user
+    )
+    AccountPermission.create!(account: hidden_account, user: viewer, visibility: "hidden")
+
+    create_transaction(account: @checking_account, amount: 100, kind: "standard")
+    create_transaction(account: hidden_account, amount: 200, kind: "standard")
+
+    search_viewer = Transaction::Search.new(@family, viewer: viewer)
+    assert_equal 1, search_viewer.transactions_scope.count
+  end
+
+  test "no viewer returns all family transactions" do
+    create_transaction(account: @checking_account, amount: 100, kind: "standard")
+    create_transaction(account: @credit_card_account, amount: 200, kind: "standard")
+
+    search = Transaction::Search.new(@family)
+    assert_equal 2, search.transactions_scope.count
+  end
+
+  test "viewer cache key includes viewer id" do
+    viewer = users(:family_admin)
+
+    search_without = Transaction::Search.new(@family)
+    search_with = Transaction::Search.new(@family, viewer: viewer)
+
+    refute_equal search_without.cache_key_base, search_with.cache_key_base
+  end
 end

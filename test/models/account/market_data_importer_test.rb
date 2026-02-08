@@ -24,12 +24,14 @@ class Account::MarketDataImporterTest < ActiveSupport::TestCase
 
   test "syncs required exchange rates for a foreign-currency account" do
     family = Family.create!(name: "Smith", currency: "USD")
+    user = family.users.create!(email: "smith@test.com", password: "password123456", first_name: "Test", role: "admin")
 
     account = family.accounts.create!(
       name: "Chequing",
       currency: "CAD",
       balance: 100,
-      accountable: Depository.new
+      accountable: Depository.new,
+      created_by_user: user
     )
 
     # Seed a rate for the first required day so that the importer only needs the next day forward
@@ -57,12 +59,14 @@ class Account::MarketDataImporterTest < ActiveSupport::TestCase
 
   test "syncs security prices for securities traded by the account" do
     family = Family.create!(name: "Smith", currency: "USD")
+    user = family.users.create!(email: "smith2@test.com", password: "password123456", first_name: "Test", role: "admin")
 
     account = family.accounts.create!(
       name: "Brokerage",
       currency: "USD",
       balance: 0,
-      accountable: Investment.new
+      accountable: Investment.new,
+      created_by_user: user
     )
 
     security = Security.create!(ticker: "AAPL", exchange_operating_mic: "XNAS")

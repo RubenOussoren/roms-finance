@@ -26,7 +26,7 @@
 
       <%= render(
         "accounts/account_sidebar_tabs",
-        family: Current.family,
+        balance_sheet: sidebar_balance_sheet,
         active_tab: @account_group_tab,
         mobile: true
       ) %>
@@ -83,7 +83,7 @@
       <% else %>
         <div class="h-full flex flex-col">
           <div class="overflow-y-auto grow">
-            <%= render "accounts/account_sidebar_tabs", family: Current.family, active_tab: @account_group_tab %>
+            <%= render "accounts/account_sidebar_tabs", balance_sheet: sidebar_balance_sheet, active_tab: @account_group_tab %>
           </div>
 
           <% if Current.family.trialing? && !self_hosted? %>

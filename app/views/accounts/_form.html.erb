@@ -15,6 +15,13 @@
       <%= form.money_field :balance, label: t(".balance"), required: true, default_currency: Current.family.currency %>
     <% end %>
 
+    <% if Current.family.multi_user? %>
+      <div class="flex items-center gap-2">
+        <%= form.check_box :is_joint, class: "rounded border-secondary" %>
+        <%= form.label :is_joint, "Joint account (all family members get full access)", class: "text-sm text-primary" %>
+      </div>
+    <% end %>
+
     <%= yield form %>
   </div>
 

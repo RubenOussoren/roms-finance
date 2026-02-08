@@ -15,14 +15,18 @@ class AccountsController < ApplicationController
   end
 
   def show
+    @balance_only = @account.balance_only_for?(Current.user)
     @chart_view = params[:chart_view] || "balance"
-    @tab = params[:tab]
-    @q = params.fetch(:q, {}).permit(:search)
-    entries = @account.entries.search(@q).reverse_chronological
 
-    @pagy, @entries = pagy(entries, limit: params[:per_page] || "10")
+    unless @balance_only
+      @tab = params[:tab]
+      @q = params.fetch(:q, {}).permit(:search)
+      entries = @account.entries.search(@q).reverse_chronological
 
-    @activity_feed_data = Account::ActivityFeedData.new(@account, @entries)
+      @pagy, @entries = pagy(entries, limit: params[:per_page] || "10")
+
+      @activity_feed_data = Account::ActivityFeedData.new(@account, @entries)
+    end
   end
 
   def sync
@@ -68,6 +72,6 @@ class AccountsController < ApplicationController
     end
 
     def set_account
-      @account = family.accounts.find(params[:id])
+      @account = scoped_accounts.find(params[:id])
     end
 end

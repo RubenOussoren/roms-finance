@@ -101,12 +101,14 @@ class ProjectionSettingsControllerTest < ActionDispatch::IntegrationTest
 
   test "cannot access other family accounts" do
     other_family = Family.create!(name: "Other Family", currency: "USD", country: "US")
+    other_user = other_family.users.create!(email: "other@test.com", password: "password123456", first_name: "Other", role: "admin")
     other_account = Account.create!(
       family: other_family,
       name: "Other Investment",
       balance: 50000,
       currency: "USD",
-      accountable: Investment.create!
+      accountable: Investment.create!,
+      created_by_user: other_user
     )
 
     patch account_projection_settings_path(other_account), params: {

@@ -75,12 +75,12 @@ module AccountableResource
     end
 
     def set_account
-      @account = Current.family.accounts.find(params[:id])
+      @account = scoped_accounts.find(params[:id])
     end
 
     def account_params
       params.require(:account).permit(
-        :name, :balance, :subtype, :currency, :accountable_type, :return_to,
+        :name, :balance, :subtype, :currency, :accountable_type, :is_joint, :return_to,
         accountable_attributes: self.class.permitted_accountable_attributes
       )
     end

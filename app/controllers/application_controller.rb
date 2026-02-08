@@ -35,4 +35,21 @@ class ApplicationController < ActionController::Base
         port: request.optional_port
       }
     end
+
+    def scoped_accounts
+      Current.family.accounts.accessible_by(Current.user)
+    end
+
+    def full_access_accounts
+      Current.family.accounts.full_access_for(Current.user)
+    end
+
+    def sidebar_balance_sheet
+      @sidebar_balance_sheet ||= if Current.user && Current.family
+        Current.family.balance_sheet_for(Current.user, scope: :household)
+      else
+        Current.family&.balance_sheet
+      end
+    end
+    helper_method :sidebar_balance_sheet
 end

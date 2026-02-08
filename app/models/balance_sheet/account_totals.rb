@@ -1,6 +1,8 @@
 class BalanceSheet::AccountTotals
-  def initialize(family, sync_status_monitor:)
+  def initialize(family, viewer: nil, scope: :household, sync_status_monitor:)
     @family = family
+    @viewer = viewer
+    @scope = scope
     @sync_status_monitor = sync_status_monitor
   end
 
@@ -13,7 +15,7 @@ class BalanceSheet::AccountTotals
   end
 
   private
-    attr_reader :family, :sync_status_monitor
+    attr_reader :family, :viewer, :scope, :sync_status_monitor
 
     AccountRow = Data.define(:account, :converted_balance, :is_syncing) do
       def syncing? = is_syncing
@@ -24,7 +26,16 @@ class BalanceSheet::AccountTotals
     end
 
     def visible_accounts
-      @visible_accounts ||= family.accounts.visible.with_attached_logo
+      @visible_accounts ||= begin
+        base = family.accounts.visible.with_attached_logo
+        if viewer.nil?
+          base
+        elsif scope == :personal
+          base.owned_by(viewer)
+        else # :household
+          base.accessible_by(viewer)
+        end
+      end
     end
 
     def account_rows
@@ -38,8 +49,12 @@ class BalanceSheet::AccountTotals
     end
 
     def cache_key
+      key_parts = [ "balance_sheet_account_rows" ]
+      key_parts << "viewer_#{viewer.id}" if viewer
+      key_parts << scope.to_s if viewer
+
       family.build_cache_key(
-        "balance_sheet_account_rows",
+        key_parts.join("_"),
         invalidate_on_data_updates: true
       )
     end

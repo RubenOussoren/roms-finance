@@ -1,13 +1,15 @@
 class Account < ApplicationRecord
   include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable
-  include JurisdictionAware, DataQualityCheckable
+  include JurisdictionAware, DataQualityCheckable, AccountAccessible
 
   validates :name, :balance, :currency, presence: true
 
+  before_validation :assign_default_created_by_user, on: :create
   after_create :create_standard_milestones, if: :liability?
   after_commit :schedule_milestone_update, if: :saved_change_to_balance?
 
   belongs_to :family
+  belongs_to :created_by_user, class_name: "User"
   belongs_to :import, optional: true
 
   has_many :import_mappings, as: :mappable, dependent: :destroy, class_name: "Import::Mapping"
@@ -20,6 +22,7 @@ class Account < ApplicationRecord
   has_one :projection_assumption, dependent: :destroy
   has_many :projections, class_name: "Account::Projection", dependent: :destroy
   has_many :milestones, dependent: :destroy
+  has_many :account_permissions, dependent: :destroy
   has_many :strategies_as_primary, class_name: "DebtOptimizationStrategy", foreign_key: :primary_mortgage_id, dependent: :nullify
   has_many :strategies_as_heloc, class_name: "DebtOptimizationStrategy", foreign_key: :heloc_id, dependent: :nullify
   has_many :strategies_as_rental, class_name: "DebtOptimizationStrategy", foreign_key: :rental_mortgage_id, dependent: :nullify
@@ -67,6 +70,7 @@ class Account < ApplicationRecord
   class << self
     def create_and_sync(attributes)
       attributes[:accountable_attributes] ||= {} # Ensure accountable is created, even if empty
+      attributes[:created_by_user_id] ||= Current.user&.id
       account = new(attributes.merge(cash_balance: attributes[:balance]))
       initial_balance = attributes.dig(:accountable_attributes, :initial_balance)&.to_d
 
@@ -199,6 +203,11 @@ class Account < ApplicationRecord
 
     def projection_facade
       @projection_facade ||= Account::ProjectionFacade.new(self)
+    end
+
+    def assign_default_created_by_user
+      return if created_by_user_id.present?
+      self.created_by_user_id = Current.user&.id || family&.users&.order(:created_at)&.first&.id
     end
 
     def create_standard_milestones

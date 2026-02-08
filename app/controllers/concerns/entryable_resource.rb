@@ -42,6 +42,8 @@ module EntryableResource
     end
 
     def set_entry
-      @entry = Current.family.entries.find(params[:id])
+      @entry = Current.family.entries
+        .where(account_id: full_access_accounts.select(:id))
+        .find(params[:id])
     end
 end

@@ -21,30 +21,31 @@ class Assistant::Function::GetBalanceSheet < Assistant::Function
     observation_start_date = [ 5.years.ago.to_date, family.oldest_entry_date ].max
 
     period = Period.custom(start_date: observation_start_date, end_date: Date.current)
+    balance_sheet = family.balance_sheet(viewer: user)
 
     {
       as_of_date: Date.current,
       oldest_account_start_date: family.oldest_entry_date,
       currency: family.currency,
       net_worth: {
-        current: family.balance_sheet.net_worth_money.format,
+        current: balance_sheet.net_worth_money.format,
         monthly_history: historical_data(period)
       },
       assets: {
-        current: family.balance_sheet.assets.total_money.format,
+        current: balance_sheet.assets.total_money.format,
         monthly_history: historical_data(period, classification: "asset")
       },
       liabilities: {
-        current: family.balance_sheet.liabilities.total_money.format,
+        current: balance_sheet.liabilities.total_money.format,
         monthly_history: historical_data(period, classification: "liability")
       },
-      insights: insights_data
+      insights: insights_data(balance_sheet)
     }
   end
 
   private
     def historical_data(period, classification: nil)
-      scope = family.accounts.visible
+      scope = accessible_accounts
       scope = scope.where(classification: classification) if classification.present?
 
       if period.start_date == Date.current
@@ -64,9 +65,9 @@ class Assistant::Function::GetBalanceSheet < Assistant::Function
       end
     end
 
-    def insights_data
-      assets = family.balance_sheet.assets.total
-      liabilities = family.balance_sheet.liabilities.total
+    def insights_data(balance_sheet)
+      assets = balance_sheet.assets.total
+      liabilities = balance_sheet.liabilities.total
       ratio = liabilities.zero? ? 0 : (liabilities / assets.to_f)
 
       {

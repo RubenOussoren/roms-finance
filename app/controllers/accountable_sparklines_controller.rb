@@ -32,10 +32,10 @@ class AccountableSparklinesController < ApplicationController
     end
 
     def account_ids
-      family.accounts.visible.where(accountable_type: accountable.name).pluck(:id)
+      scoped_accounts.visible.where(accountable_type: accountable.name).pluck(:id)
     end
 
     def cache_key
-      family.build_cache_key("#{@accountable.name}_sparkline", invalidate_on_data_updates: true)
+      family.build_cache_key("#{@accountable.name}_sparkline_u#{Current.user.id}", invalidate_on_data_updates: true)
     end
 end

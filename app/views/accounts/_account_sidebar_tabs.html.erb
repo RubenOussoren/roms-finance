@@ -1,7 +1,7 @@
-<%# locals: (family:, active_tab:, mobile: false) %>
+<%# locals: (balance_sheet:, active_tab:, mobile: false) %>
 
 <div id="account-sidebar-tabs">
-  <% if family.missing_data_provider? %>
+  <% if balance_sheet.family.missing_data_provider? %>
     <details class="group bg-yellow-tint-10 rounded-lg p-2 text-yellow-600 mb-3 text-xs">
       <summary class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
@@ -41,8 +41,8 @@
         ) %>
 
         <div>
-          <% family.balance_sheet.assets.account_groups.each do |group| %>
-            <%= render "accounts/accountable_group", account_group: group, mobile: mobile %>
+          <% balance_sheet.assets.account_groups.each do |group| %>
+            <%= render "accounts/accountable_group", account_group: group, mobile: mobile, viewer: balance_sheet.viewer %>
           <% end %>
         </div>
       </div>
@@ -61,8 +61,8 @@
           ) %>
 
         <div>
-          <% family.balance_sheet.liabilities.account_groups.each do |group| %>
-            <%= render "accounts/accountable_group", account_group: group, mobile: mobile %>
+          <% balance_sheet.liabilities.account_groups.each do |group| %>
+            <%= render "accounts/accountable_group", account_group: group, mobile: mobile, viewer: balance_sheet.viewer %>
           <% end %>
         </div>
       </div>
@@ -81,8 +81,8 @@
           ) %>
 
         <div>
-          <% family.balance_sheet.account_groups.each do |group| %>
-            <%= render "accounts/accountable_group", account_group: group, mobile: mobile, all_tab: true %>
+          <% balance_sheet.account_groups.each do |group| %>
+            <%= render "accounts/accountable_group", account_group: group, mobile: mobile, all_tab: true, viewer: balance_sheet.viewer %>
           <% end %>
         </div>
       </div>

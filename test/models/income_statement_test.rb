@@ -5,14 +5,15 @@ class IncomeStatementTest < ActiveSupport::TestCase
 
   setup do
     @family = families(:empty)
+    @user = users(:empty)
 
     @income_category = @family.categories.create! name: "Income", classification: "income"
     @food_category = @family.categories.create! name: "Food", classification: "expense"
     @groceries_category = @family.categories.create! name: "Groceries", classification: "expense", parent: @food_category
 
-    @checking_account = @family.accounts.create! name: "Checking", currency: @family.currency, balance: 5000, accountable: Depository.new
-    @credit_card_account = @family.accounts.create! name: "Credit Card", currency: @family.currency, balance: 1000, accountable: CreditCard.new
-    @loan_account = @family.accounts.create! name: "Mortgage", currency: @family.currency, balance: 50000, accountable: Loan.new
+    @checking_account = @family.accounts.create! name: "Checking", currency: @family.currency, balance: 5000, accountable: Depository.new, created_by_user: @user
+    @credit_card_account = @family.accounts.create! name: "Credit Card", currency: @family.currency, balance: 1000, accountable: CreditCard.new, created_by_user: @user
+    @loan_account = @family.accounts.create! name: "Mortgage", currency: @family.currency, balance: 50000, accountable: Loan.new, created_by_user: @user
 
     create_transaction(account: @checking_account, amount: -1000, category: @income_category)
     create_transaction(account: @checking_account, amount: 200, category: @groceries_category)
@@ -283,5 +284,36 @@ class IncomeStatementTest < ActiveSupport::TestCase
     # Should still include uncategorized transaction in totals
     assert_equal 5, totals.transactions_count
     assert_equal Money.new(1050, @family.currency), totals.expense_money # 900 + 150
+  end
+
+  # --- Phase 3: Viewer filtering tests ---
+
+  test "viewer filtering excludes balance_only account transactions from totals" do
+    other_user = @family.users.create!(
+      first_name: "Other", last_name: "User",
+      email: "other_income_test@test.com", password: "password123"
+    )
+
+    other_account = @family.accounts.create!(
+      name: "Other Checking", currency: @family.currency, balance: 1000,
+      accountable: Depository.new, created_by_user: other_user
+    )
+    AccountPermission.create!(account: other_account, user: @user, visibility: "balance_only")
+
+    # Add a transaction to the balance_only account
+    create_transaction(account: other_account, amount: 500, category: @groceries_category)
+
+    # Without viewer: includes all transactions
+    totals_all = IncomeStatement.new(@family).totals
+    assert_equal 5, totals_all.transactions_count
+
+    # With viewer: excludes balance_only account transactions
+    totals_viewer = IncomeStatement.new(@family, viewer: @user).totals
+    assert_equal 4, totals_viewer.transactions_count
+  end
+
+  test "income statement without viewer returns all transactions" do
+    income_statement = IncomeStatement.new(@family)
+    assert_equal 4, income_statement.totals.transactions_count
   end
 end

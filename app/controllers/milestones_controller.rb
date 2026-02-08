@@ -96,11 +96,11 @@ class MilestonesController < ApplicationController
   private
 
     def set_account
-      @account = Current.family.accounts.find(params[:account_id])
+      @account = scoped_accounts.find(params[:account_id])
     end
 
     def set_milestone
-      @milestone = Milestone.joins(:account).where(accounts: { family: Current.family }).find(params[:id])
+      @milestone = Milestone.joins(:account).where(accounts: { id: scoped_accounts.select(:id) }).find(params[:id])
     end
 
     def milestone_params

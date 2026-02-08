@@ -15,10 +15,11 @@ class Transaction::Search
   attribute :tags, array: true
   attribute :active_accounts_only, :boolean, default: true
 
-  attr_reader :family
+  attr_reader :family, :viewer
 
-  def initialize(family, filters: {})
+  def initialize(family, filters: {}, viewer: nil)
     @family = family
+    @viewer = viewer
     super(filters)
   end
 
@@ -26,6 +27,10 @@ class Transaction::Search
     @transactions_scope ||= begin
       # This already joins entries + accounts. To avoid expensive double-joins, don't join them again (causes full table scan)
       query = family.transactions
+
+      if viewer
+        query = query.where(entries: { account_id: family.accounts.full_access_for(viewer).select(:id) })
+      end
 
       query = apply_active_accounts_filter(query, active_accounts_only)
       query = apply_category_filter(query, categories)
@@ -71,9 +76,10 @@ class Transaction::Search
   def cache_key_base
     [
       family.id,
+      viewer&.id,
       Digest::SHA256.hexdigest(attributes.sort.to_h.to_json), # cached by filters
       family.entries_cache_version
-    ].join("/")
+    ].compact.join("/")
   end
 
   private

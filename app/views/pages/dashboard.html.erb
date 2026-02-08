@@ -26,6 +26,17 @@
 
 <div class="w-full space-y-6 pb-24">
   <% if Current.family.accounts.any? %>
+    <% if @show_scope_toggle %>
+      <div class="flex gap-1 p-1 bg-surface-inset rounded-lg w-fit">
+        <%= link_to "Household", root_path(scope: :household, period: @period&.key, cashflow_period: @cashflow_period&.key),
+            class: class_names("px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              @scope == :household ? "bg-container shadow-border-xs text-primary" : "text-secondary hover:text-primary") %>
+        <%= link_to "Personal", root_path(scope: :personal, period: @period&.key, cashflow_period: @cashflow_period&.key),
+            class: class_names("px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              @scope == :personal ? "bg-container shadow-border-xs text-primary" : "text-secondary hover:text-primary") %>
+      </div>
+    <% end %>
+
     <section class="bg-container py-4 rounded-xl shadow-border-xs">
       <%= render partial: "pages/dashboard/net_worth_chart", locals: {
         balance_sheet: @balance_sheet,

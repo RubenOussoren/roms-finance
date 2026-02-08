@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_07_150000) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -18,6 +18,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_150000) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "account_status", ["ok", "syncing", "error"]
+
+  create_table "account_permissions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "account_id", null: false
+    t.uuid "user_id", null: false
+    t.string "visibility", default: "full", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "user_id"], name: "index_account_permissions_on_account_id_and_user_id", unique: true
+    t.index ["account_id"], name: "index_account_permissions_on_account_id"
+    t.index ["user_id", "visibility"], name: "index_account_permissions_on_user_id_and_visibility"
+    t.index ["user_id"], name: "index_account_permissions_on_user_id"
+  end
 
   create_table "account_projections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
@@ -54,10 +66,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_150000) do
     t.decimal "cash_balance", precision: 19, scale: 4, default: "0.0"
     t.jsonb "locked_attributes", default: {}
     t.string "status", default: "active"
+    t.uuid "created_by_user_id", null: false
+    t.boolean "is_joint", default: false, null: false
     t.index ["accountable_id", "accountable_type"], name: "index_accounts_on_accountable_id_and_accountable_type"
     t.index ["accountable_type"], name: "index_accounts_on_accountable_type"
     t.index ["currency"], name: "index_accounts_on_currency"
     t.index ["family_id", "accountable_type"], name: "index_accounts_on_family_id_and_accountable_type"
+    t.index ["family_id", "created_by_user_id"], name: "index_accounts_on_family_id_and_created_by_user_id"
     t.index ["family_id", "id"], name: "index_accounts_on_family_id_and_id"
     t.index ["family_id", "status"], name: "index_accounts_on_family_id_and_status"
     t.index ["family_id"], name: "index_accounts_on_family_id"
@@ -1013,11 +1028,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_07_150000) do
     t.jsonb "locked_attributes", default: {}
   end
 
+  add_foreign_key "account_permissions", "accounts"
+  add_foreign_key "account_permissions", "users"
   add_foreign_key "account_projections", "accounts"
   add_foreign_key "account_projections", "projection_assumptions"
   add_foreign_key "accounts", "families"
   add_foreign_key "accounts", "imports"
   add_foreign_key "accounts", "plaid_accounts"
+  add_foreign_key "accounts", "users", column: "created_by_user_id"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "api_keys", "users"

@@ -22,7 +22,7 @@ class ProjectionsController < ApplicationController
       # Single query with proper eager loading instead of N+1
       # Exclude achieved milestones and order by target_amount to show nearest goals first
       @milestones = Milestone.joins(:account)
-                             .where(accounts: { family_id: @family.id })
+                             .where(accounts: { id: scoped_accounts.select(:id) })
                              .where.not(status: "achieved")
                              .includes(:account)
                              .order(:target_amount)
@@ -31,14 +31,14 @@ class ProjectionsController < ApplicationController
     end
 
     def prepare_investments_data
-      @investment_accounts = @family.accounts
+      @investment_accounts = scoped_accounts
         .where(accountable_type: %w[Investment Crypto])
         .active
         .includes(:milestones)
     end
 
     def prepare_debts_data
-      @loan_accounts = @family.accounts
+      @loan_accounts = scoped_accounts
         .where(accountable_type: "Loan")
         .active
         .includes(:accountable, :milestones, :projection_assumption)

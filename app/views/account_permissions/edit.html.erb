@@ -1,0 +1,56 @@
+<%= turbo_frame_tag "modal" do %>
+  <%= render DS::Dialog.new do |dialog| %>
+    <% dialog.with_header(title: "Privacy Settings") %>
+    <% dialog.with_body do %>
+      <div class="space-y-4">
+        <p class="text-sm text-secondary">Control who can see "<%= @account.name %>"</p>
+
+        <% if @account.is_joint? %>
+          <%= render DS::Alert.new(
+            message: "This is a joint account. All family members always have full access to joint accounts.",
+            variant: :info
+          ) %>
+        <% end %>
+
+        <%= form_with url: account_account_permissions_path(@account), method: :patch, class: "space-y-4" do |f| %>
+          <div class="space-y-3">
+            <% @family_members.each do |member| %>
+              <div class="flex items-center justify-between gap-4 p-3 rounded-lg border border-primary bg-container">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-medium shrink-0">
+                    <%= member.display_name.first.upcase %>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-primary truncate"><%= member.display_name %></p>
+                    <p class="text-xs text-secondary truncate"><%= member.email %></p>
+                  </div>
+                </div>
+
+                <% current_visibility = @account.is_joint? ? "full" : (@permissions[member.id]&.visibility || "full") %>
+                <select name="permissions[<%= member.id %>]"
+                        class="rounded-md border border-secondary bg-container px-3 py-1.5 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        <%= "disabled" if @account.is_joint? %>>
+                  <option value="full" <%= "selected" if current_visibility == "full" %>>Full access</option>
+                  <option value="balance_only" <%= "selected" if current_visibility == "balance_only" %>>Balance only</option>
+                  <option value="hidden" <%= "selected" if current_visibility == "hidden" %>>Hidden</option>
+                </select>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="text-xs text-secondary space-y-1">
+            <p><strong>Full access</strong> -- Can see balance, transactions, and holdings</p>
+            <p><strong>Balance only</strong> -- Can see balance but not transactions or holdings</p>
+            <p><strong>Hidden</strong> -- Cannot see this account at all</p>
+          </div>
+
+          <% unless @account.is_joint? %>
+            <div class="flex justify-end pt-2">
+              <%= f.submit "Save settings", class: "btn btn--primary" %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

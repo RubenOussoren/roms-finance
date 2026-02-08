@@ -3,14 +3,15 @@ class IncomeStatement
 
   monetize :median_expense, :median_income
 
-  attr_reader :family
+  attr_reader :family, :viewer
 
-  def initialize(family)
+  def initialize(family, viewer: nil)
     @family = family
+    @viewer = viewer
   end
 
   def totals(transactions_scope: nil)
-    transactions_scope ||= family.transactions.visible
+    transactions_scope ||= scoped_transactions
 
     result = totals_query(transactions_scope: transactions_scope)
 
@@ -61,8 +62,17 @@ class IncomeStatement
       @categories ||= family.categories.all.to_a
     end
 
+    def scoped_transactions
+      base = family.transactions.visible
+      if viewer
+        base.where(entries: { account_id: family.accounts.full_access_for(viewer).select(:id) })
+      else
+        base
+      end
+    end
+
     def build_period_total(classification:, period:)
-      totals = totals_query(transactions_scope: family.transactions.visible.in_period(period)).select { |t| t.classification == classification }
+      totals = totals_query(transactions_scope: scoped_transactions.in_period(period)).select { |t| t.classification == classification }
       classification_total = totals.sum(&:total)
 
       uncategorized_category = family.categories.uncategorized

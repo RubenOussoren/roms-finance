@@ -132,10 +132,11 @@ class Assistant::Function::GetTransactions < Assistant::Function
   end
 
   def call(params = {})
-    search_params = params.except("order", "page")
+    search_params = params.except("order", "page", "page_size")
 
     search = Transaction::Search.new(family, filters: search_params)
-    transactions_query = search.transactions_scope
+    full_access_ids = full_access_accounts.select(:id)
+    transactions_query = search.transactions_scope.joins(:entry).where(entries: { account_id: full_access_ids })
     pagy_query = params["order"] == "asc" ? transactions_query.chronological : transactions_query.reverse_chronological
 
     # By default, we give a small page size to force the AI to use filters effectively and save on tokens

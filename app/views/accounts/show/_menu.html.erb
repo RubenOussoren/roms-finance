@@ -3,6 +3,10 @@
 <%= render DS::Menu.new(testid: "account-menu") do |menu| %>
   <% menu.with_item(variant: "link", text: "Edit", href: edit_account_path(account), icon: "pencil-line", data: { turbo_frame: :modal }) %>
 
+  <% if Current.family.multi_user? && account.owned_by?(Current.user) %>
+    <% menu.with_item(variant: "link", text: "Privacy settings", href: edit_account_account_permissions_path(account), icon: "shield", data: { turbo_frame: :modal }) %>
+  <% end %>
+
   <% unless account.crypto? %>
     <% menu.with_item(
       variant: "link",

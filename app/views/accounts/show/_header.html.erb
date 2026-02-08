@@ -1,6 +1,13 @@
 <%# locals: (account:, title:, subtitle: nil) %>
 
 <header class="space-y-4">
+  <% if account.is_joint? && !account.owned_by?(Current.user) %>
+    <%= render DS::Alert.new(
+      message: "#{account.created_by_user.display_name} linked this joint account. Both members have full access.",
+      variant: :info
+    ) %>
+  <% end %>
+
   <div class="flex items-center gap-4">
     <div class="flex items-center gap-3 overflow-hidden">
       <%= render "accounts/logo", account: account %>
@@ -9,6 +16,9 @@
         <div class="truncate">
           <div class="flex items-center gap-3">
             <h2 class="font-medium text-xl truncate <%= "animate-pulse" if account.syncing? %>"><%= title %></h2>
+            <% if account.is_joint? %>
+              <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">Joint</span>
+            <% end %>
             <% if account.draft? %>
               <%= render DS::Link.new(
                   text: "Complete setup",

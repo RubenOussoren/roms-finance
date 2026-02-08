@@ -10,6 +10,21 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
+  test "dashboard with scope=personal" do
+    get root_path(scope: :personal)
+    assert_response :ok
+  end
+
+  test "dashboard with scope=household" do
+    get root_path(scope: :household)
+    assert_response :ok
+  end
+
+  test "dashboard ignores invalid scope param" do
+    get root_path(scope: :invalid)
+    assert_response :ok
+  end
+
   test "changelog" do
     VCR.use_cassette("git_repository_provider/fetch_latest_release_notes") do
       get changelog_path
