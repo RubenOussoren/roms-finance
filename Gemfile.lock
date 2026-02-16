@@ -585,8 +585,7 @@ GEM
     unicode-emoji (4.0.4)
     uri (1.0.3)
     useragent (0.16.11)
-    vcr (6.3.1)
-      base64
+    vcr (6.4.0)
     vernier (1.8.0)
     view_component (3.23.2)
       activesupport (>= 5.2.0, < 8.1)
