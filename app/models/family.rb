@@ -1,5 +1,5 @@
 class Family < ApplicationRecord
-  include PlaidConnectable, Syncable, AutoTransferMatchable, Subscribeable
+  include PlaidConnectable, SnapTradeConnectable, Syncable, AutoTransferMatchable, Subscribeable
   include JurisdictionAware, PagCompliant, DataQualityCheckable
 
   DATE_FORMATS = [

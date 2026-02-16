@@ -22,6 +22,10 @@ class Provider::Registry
       region.to_sym == :us ? plaid_us : plaid_eu
     end
 
+    def snaptrade_provider
+      snaptrade
+    end
+
     private
       def stripe
         secret_key = ENV["STRIPE_SECRET_KEY"]
@@ -54,6 +58,17 @@ class Provider::Registry
         return nil unless config.present?
 
         Provider::Plaid.new(config, region: :eu)
+      end
+
+      def snaptrade
+        config = Rails.application.config.snaptrade
+
+        return nil unless config.present?
+
+        Provider::SnapTrade.new(
+          client_id: config[:client_id],
+          consumer_key: config[:consumer_key]
+        )
       end
 
       def github

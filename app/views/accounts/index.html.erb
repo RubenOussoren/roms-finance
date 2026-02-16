@@ -21,12 +21,16 @@
   </div>
 </header>
 
-<% if @manual_accounts.empty? && @plaid_items.empty? %>
+<% if @manual_accounts.empty? && @plaid_items.empty? && @snaptrade_connections.empty? %>
   <%= render "empty" %>
 <% else %>
   <div class="space-y-2">
     <% if @plaid_items.any? %>
       <%= render @plaid_items.sort_by(&:created_at) %>
+    <% end %>
+
+    <% if @snaptrade_connections.any? %>
+      <%= render partial: "snaptrade_connections/snaptrade_connection", collection: @snaptrade_connections.sort_by(&:created_at), as: :snaptrade_connection %>
     <% end %>
 
     <% if @manual_accounts.any? %>

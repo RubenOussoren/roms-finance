@@ -68,6 +68,7 @@ module AccountableResource
     def set_link_options
       @show_us_link = Current.family.can_connect_plaid_us?
       @show_eu_link = Current.family.can_connect_plaid_eu?
+      @show_snaptrade_link = Current.family.can_connect_snaptrade?
     end
 
     def accountable_type

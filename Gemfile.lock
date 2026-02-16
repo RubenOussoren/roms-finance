@@ -551,6 +551,9 @@ GEM
     skylight (6.0.4)
       activesupport (>= 5.2.0)
     smart_properties (1.17.0)
+    snaptrade (2.0.162)
+      faraday (>= 1.0.1, < 3.0)
+      faraday-multipart (~> 1.0, >= 1.0.4)
     sorbet-runtime (0.5.12163)
     stackprof (0.2.27)
     stimulus-rails (1.3.4)
@@ -681,6 +684,7 @@ DEPENDENCIES
   sidekiq-cron
   simplecov
   skylight
+  snaptrade (~> 2.0)
   stackprof
   stimulus-rails
   stripe

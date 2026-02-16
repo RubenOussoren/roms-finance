@@ -1,0 +1,6 @@
+one:
+  family: dylan_family
+  authorization_id: "auth_mock_1"
+  brokerage_name: "Wealthsimple"
+  brokerage_slug: "WEALTHSIMPLE"
+  status: good

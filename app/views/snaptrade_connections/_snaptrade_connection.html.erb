@@ -1,0 +1,88 @@
+<%# locals: (snaptrade_connection:) %>
+
+<%= tag.div id: dom_id(snaptrade_connection) do %>
+  <details open class="group bg-container p-4 shadow-border-xs rounded-xl">
+    <summary class="flex items-center justify-between gap-2 focus-visible:outline-hidden">
+      <div class="flex items-center gap-2">
+        <%= icon "chevron-right", class: "group-open:transform group-open:rotate-90" %>
+
+        <div class="flex items-center justify-center h-8 w-8 bg-green-600/10 rounded-full">
+          <div class="flex items-center justify-center">
+            <%= tag.p (snaptrade_connection.brokerage_name || "Brokerage").first.upcase, class: "text-green-600 text-xs font-medium" %>
+          </div>
+        </div>
+
+        <div class="pl-1 text-sm">
+          <div class="flex items-center gap-2">
+            <%= tag.p snaptrade_connection.brokerage_name || "Connected Brokerage", class: "font-medium text-primary" %>
+            <% if snaptrade_connection.scheduled_for_deletion? %>
+              <p class="text-destructive text-sm animate-pulse">(deletion in progress...)</p>
+            <% end %>
+          </div>
+          <% if snaptrade_connection.syncing? %>
+            <div class="text-secondary flex items-center gap-1">
+              <%= icon "loader", size: "sm", class: "animate-pulse" %>
+              <span>Syncing...</span>
+            </div>
+          <% elsif snaptrade_connection.requires_update? %>
+            <div class="text-warning flex items-center gap-1">
+              <%= icon "alert-triangle", size: "sm", color: "warning" %>
+              <span>Requires reconnection</span>
+            </div>
+          <% elsif snaptrade_connection.sync_error.present? %>
+            <div class="text-secondary flex items-center gap-1">
+              <%= icon "alert-circle", size: "sm", color: "destructive" %>
+              <span class="text-destructive">Sync error</span>
+            </div>
+          <% else %>
+            <p class="text-secondary">
+              <%= snaptrade_connection.last_synced_at ? "Synced #{time_ago_in_words(snaptrade_connection.last_synced_at)} ago" : "Never synced" %>
+            </p>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <% if snaptrade_connection.requires_update? %>
+          <%= render DS::Link.new(
+            text: "Reconnect",
+            icon: "refresh-cw",
+            variant: "secondary",
+            href: new_snaptrade_connection_path,
+            frame: "_top"
+          ) %>
+        <% elsif Rails.env.development? %>
+          <%= icon(
+            "refresh-cw",
+            as_button: true,
+            href: sync_snaptrade_connection_path(snaptrade_connection)
+          ) %>
+        <% end %>
+
+        <%= render DS::Menu.new do |menu| %>
+          <% menu.with_item(
+            variant: "button",
+            text: "Delete",
+            icon: "trash-2",
+            href: snaptrade_connection_path(snaptrade_connection),
+            method: :delete,
+            confirm: CustomConfirm.for_resource_deletion(snaptrade_connection.brokerage_name || "brokerage connection", high_severity: true)
+          ) %>
+        <% end %>
+      </div>
+    </summary>
+
+    <% unless snaptrade_connection.scheduled_for_deletion? %>
+      <div class="space-y-4 mt-4">
+        <% if snaptrade_connection.accounts.any? %>
+          <%= render "accounts/index/account_groups", accounts: snaptrade_connection.accounts %>
+        <% else %>
+          <div class="p-4 flex flex-col gap-3 items-center justify-center">
+            <p class="text-primary font-medium text-sm">No accounts yet</p>
+            <p class="text-secondary text-sm">Accounts will appear after the first sync completes.</p>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </details>
+<% end %>

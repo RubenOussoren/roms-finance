@@ -269,10 +269,20 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :snaptrade_connections, only: %i[new destroy] do
+    member do
+      post :sync
+    end
+    collection do
+      get :callback
+    end
+  end
+
   namespace :webhooks do
     post "plaid"
     post "plaid_eu"
     post "stripe"
+    post "snaptrade"
   end
 
   get "redis-configuration-error", to: "pages#redis_configuration_error"

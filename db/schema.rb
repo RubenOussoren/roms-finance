@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_16_100004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -68,6 +68,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
     t.string "status", default: "active"
     t.uuid "created_by_user_id", null: false
     t.boolean "is_joint", default: false, null: false
+    t.uuid "snaptrade_account_id"
     t.index ["accountable_id", "accountable_type"], name: "index_accounts_on_accountable_id_and_accountable_type"
     t.index ["accountable_type"], name: "index_accounts_on_accountable_type"
     t.index ["currency"], name: "index_accounts_on_currency"
@@ -78,6 +79,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
     t.index ["family_id"], name: "index_accounts_on_family_id"
     t.index ["import_id"], name: "index_accounts_on_import_id"
     t.index ["plaid_account_id"], name: "index_accounts_on_plaid_account_id"
+    t.index ["snaptrade_account_id"], name: "index_accounts_on_snaptrade_account_id"
     t.index ["status"], name: "index_accounts_on_status"
   end
 
@@ -385,6 +387,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
     t.boolean "auto_sync_on_login", default: true, null: false
     t.datetime "latest_sync_activity_at", default: -> { "CURRENT_TIMESTAMP" }
     t.datetime "latest_sync_completed_at", default: -> { "CURRENT_TIMESTAMP" }
+    t.string "snaptrade_user_id"
+    t.string "snaptrade_user_secret"
   end
 
   create_table "family_exports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -876,6 +880,38 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
     t.index ["var"], name: "index_settings_on_var", unique: true
   end
 
+  create_table "snaptrade_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "snaptrade_connection_id", null: false
+    t.string "snaptrade_account_id", null: false
+    t.string "snaptrade_type"
+    t.string "snaptrade_number"
+    t.string "name", null: false
+    t.string "currency", null: false
+    t.decimal "current_balance", precision: 19, scale: 4
+    t.jsonb "raw_payload", default: {}
+    t.jsonb "raw_positions_payload", default: {}
+    t.jsonb "raw_balances_payload", default: {}
+    t.jsonb "raw_activities_payload", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["snaptrade_account_id"], name: "index_snaptrade_accounts_on_snaptrade_account_id", unique: true
+    t.index ["snaptrade_connection_id"], name: "index_snaptrade_accounts_on_snaptrade_connection_id"
+  end
+
+  create_table "snaptrade_connections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.string "authorization_id", null: false
+    t.string "brokerage_name"
+    t.string "brokerage_slug"
+    t.string "status", default: "good", null: false
+    t.boolean "scheduled_for_deletion", default: false
+    t.jsonb "raw_payload", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["authorization_id"], name: "index_snaptrade_connections_on_authorization_id", unique: true
+    t.index ["family_id"], name: "index_snaptrade_connections_on_family_id"
+  end
+
   create_table "subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "family_id", null: false
     t.string "status", null: false
@@ -1035,6 +1071,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
   add_foreign_key "accounts", "families"
   add_foreign_key "accounts", "imports"
   add_foreign_key "accounts", "plaid_accounts"
+  add_foreign_key "accounts", "snaptrade_accounts"
   add_foreign_key "accounts", "users", column: "created_by_user_id"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
@@ -1085,6 +1122,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_08_100003) do
   add_foreign_key "security_prices", "securities"
   add_foreign_key "sessions", "impersonation_sessions", column: "active_impersonator_session_id"
   add_foreign_key "sessions", "users"
+  add_foreign_key "snaptrade_accounts", "snaptrade_connections"
+  add_foreign_key "snaptrade_connections", "families"
   add_foreign_key "subscriptions", "families"
   add_foreign_key "syncs", "syncs", column: "parent_id"
   add_foreign_key "taggings", "tags"

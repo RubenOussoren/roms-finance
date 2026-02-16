@@ -5,6 +5,7 @@ class AccountsController < ApplicationController
   def index
     @manual_accounts = family.accounts.manual.alphabetically
     @plaid_items = family.plaid_items.ordered
+    @snaptrade_connections = family.snaptrade_connections.ordered
 
     render layout: "settings"
   end

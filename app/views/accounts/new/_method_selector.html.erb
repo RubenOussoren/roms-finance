@@ -1,4 +1,4 @@
-<%# locals: (path:, accountable_type:, show_us_link: true, show_eu_link: true) %>
+<%# locals: (path:, accountable_type:, show_us_link: true, show_eu_link: true, show_snaptrade_link: false) %>
 
 <%= render layout: "accounts/new/container", locals: { title: t(".title"), back_path: new_account_path } do %>
   <div class="text-sm">
@@ -30,6 +30,18 @@
           <%= icon("link-2") %>
         </span>
         <%= t("accounts.new.method_selector.connected_entry_eu") %>
+      <% end %>
+    <% end %>
+
+    <%# SnapTrade (Canadian Brokerage) Link %>
+    <% if show_snaptrade_link %>
+      <%= link_to new_snaptrade_connection_path,
+                  class: "text-primary flex items-center gap-4 w-full text-center focus:outline-hidden focus:bg-gray-50 border border-transparent focus:border focus:border-gray-200 px-2 hover:bg-gray-50 rounded-lg p-2",
+                  data: { turbo_frame: "_top" } do %>
+        <span class="flex w-8 h-8 shrink-0 grow-0 items-center justify-center rounded-lg bg-green-600/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]">
+          <%= icon("building-2") %>
+        </span>
+        Connect Canadian Brokerage
       <% end %>
     <% end %>
   </div>

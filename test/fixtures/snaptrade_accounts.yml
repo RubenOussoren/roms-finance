@@ -1,0 +1,7 @@
+one:
+  snaptrade_connection: one
+  snaptrade_account_id: "st_acc_mock_1"
+  snaptrade_type: "TFSA"
+  name: "Wealthsimple TFSA"
+  currency: CAD
+  current_balance: 25000

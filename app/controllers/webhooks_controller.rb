@@ -34,6 +34,22 @@ class WebhooksController < ApplicationController
     render json: { error: "Invalid webhook: #{error.message}" }, status: :bad_request
   end
 
+  def snaptrade
+    webhook_body = request.body.read
+    signature_header = request.headers["X-Signature"] || request.headers["SnapTrade-Signature"]
+
+    provider = Provider::Registry.snaptrade_provider
+
+    provider.validate_webhook!(signature_header, webhook_body) if signature_header.present?
+
+    SnapTradeConnection::WebhookProcessor.new(webhook_body).process
+
+    render json: { received: true }, status: :ok
+  rescue => error
+    Sentry.capture_exception(error)
+    render json: { error: "Invalid webhook: #{error.message}" }, status: :bad_request
+  end
+
   def stripe
     stripe_provider = Provider::Registry.get_provider(:stripe)
 
