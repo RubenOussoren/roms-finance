@@ -17,8 +17,19 @@ module Syncable
         sync = self.syncs.incomplete.first
 
         if sync
-          Rails.logger.info("There is an existing sync, expanding window if needed (#{sync.id})")
-          sync.expand_window_if_needed(window_start_date, window_end_date)
+          if sync.created_at < Sync::VISIBLE_FOR.ago
+            Rails.logger.warn("Marking stale sync #{sync.id} (created #{sync.created_at}) and creating new sync")
+            sync.mark_stale!
+            sync = self.syncs.create!(
+              parent: parent_sync,
+              window_start_date: window_start_date,
+              window_end_date: window_end_date
+            )
+            SyncJob.perform_later(sync)
+          else
+            Rails.logger.info("There is an existing sync, expanding window if needed (#{sync.id})")
+            sync.expand_window_if_needed(window_start_date, window_end_date)
+          end
         else
           sync = self.syncs.create!(
             parent: parent_sync,
