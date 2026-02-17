@@ -1,8 +1,0 @@
-# app/views/api/v1/{{resource}}/{{action}}.json.jbuilder
-
-json.{{singular}} do
-  json.id @{{singular}}.id
-  {{ATTRIBUTES}}
-  json.created_at @{{singular}}.created_at
-  json.updated_at @{{singular}}.updated_at
-end

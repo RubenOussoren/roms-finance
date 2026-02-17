@@ -127,36 +127,82 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert new_user.family.present?
   end
 
-  test "should require invite code when enabled" do
-    # Mock invite code requirement
-    Api::V1::AuthController.any_instance.stubs(:invite_code_required?).returns(true)
+  test "API signup returns 403 when invite-only is on" do
+    with_self_hosting do
+      Setting.require_invite_for_signup = true
 
-    assert_no_difference("User.count") do
+      assert_no_difference("User.count") do
+        post "/api/v1/auth/signup", params: {
+          user: {
+            email: "newuser@example.com",
+            password: "SecurePass123!",
+            first_name: "New",
+            last_name: "User"
+          },
+          device: @device_info
+        }
+      end
+
+      assert_response :forbidden
+      response_data = JSON.parse(response.body)
+      assert_equal "Registration is by invitation only.", response_data["error"]
+    ensure
+      Setting.require_invite_for_signup = false
+    end
+  end
+
+  test "API signup allowed for first user even with invite-only on" do
+    with_self_hosting do
+      Setting.require_invite_for_signup = true
+      User.stubs(:count).returns(0)
+
       post "/api/v1/auth/signup", params: {
         user: {
-          email: "newuser@example.com",
+          email: "firstadmin@example.com",
           password: "SecurePass123!",
-          first_name: "New",
-          last_name: "User"
+          first_name: "First",
+          last_name: "Admin"
         },
         device: @device_info
       }
-    end
 
-    assert_response :forbidden
-    response_data = JSON.parse(response.body)
-    assert_equal "Invite code is required", response_data["error"]
+      assert_response :created
+      assert User.find_by(email: "firstadmin@example.com").present?
+    ensure
+      Setting.require_invite_for_signup = false
+    end
   end
 
-  test "should signup with valid invite code when required" do
-    # Create a valid invite code
-    invite_code = InviteCode.create!
+  test "should require invite code when enabled" do
+    with_self_hosting do
+      Setting.require_invite_for_signup = true
 
-    # Mock invite code requirement
-    Api::V1::AuthController.any_instance.stubs(:invite_code_required?).returns(true)
+      assert_no_difference("User.count") do
+        post "/api/v1/auth/signup", params: {
+          user: {
+            email: "newuser@example.com",
+            password: "SecurePass123!",
+            first_name: "New",
+            last_name: "User"
+          },
+          device: @device_info
+        }
+      end
 
-    assert_difference("User.count", 1) do
-      assert_difference("InviteCode.count", -1) do
+      assert_response :forbidden
+      response_data = JSON.parse(response.body)
+      assert_equal "Registration is by invitation only.", response_data["error"]
+    ensure
+      Setting.require_invite_for_signup = false
+    end
+  end
+
+  test "API signup succeeds with valid invite code when invite-only is on" do
+    with_self_hosting do
+      Setting.require_invite_for_signup = true
+      invite_code = InviteCode.create!
+
+      assert_difference("User.count", 1) do
         post "/api/v1/auth/signup", params: {
           user: {
             email: "newuser@example.com",
@@ -168,15 +214,40 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
           invite_code: invite_code.token
         }
       end
-    end
 
-    assert_response :created
+      assert_response :created
+      assert_not InviteCode.exists?(id: invite_code.id), "invite code should be consumed after signup"
+    ensure
+      Setting.require_invite_for_signup = false
+    end
   end
 
-  test "should reject invalid invite code" do
-    # Mock invite code requirement
-    Api::V1::AuthController.any_instance.stubs(:invite_code_required?).returns(false)
+  test "API fails with invalid invite code when invite-only is on" do
+    with_self_hosting do
+      Setting.require_invite_for_signup = true
 
+      assert_no_difference("User.count") do
+        post "/api/v1/auth/signup", params: {
+          user: {
+            email: "newuser@example.com",
+            password: "SecurePass123!",
+            first_name: "New",
+            last_name: "User"
+          },
+          device: @device_info,
+          invite_code: "invalid_code"
+        }
+      end
+
+      assert_response :forbidden
+      response_data = JSON.parse(response.body)
+      assert_equal "Registration is by invitation only.", response_data["error"]
+    ensure
+      Setting.require_invite_for_signup = false
+    end
+  end
+
+  test "should reject invalid invite code even when invite-only is off" do
     assert_no_difference("User.count") do
       post "/api/v1/auth/signup", params: {
         user: {

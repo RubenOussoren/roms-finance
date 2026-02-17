@@ -42,7 +42,7 @@ The technical content across all three layers (docs, rules, skills) is **strong 
 | CLAUDE.md | **EXCELLENT** | — |
 | README.md | **NEEDS WORK** | Wrong directory, stale credentials, missing features |
 | CONTRIBUTING.md | **NEEDS WORK** | Still says "Maybe" throughout, upstream links |
-| docs/DOCS_GUIDE.md | **EXCELLENT** | — |
+| docs/DEVELOPER_GUIDE.md | **EXCELLENT** | — |
 | docs/FEATURE_ROADMAP.md | **EXCELLENT** | Minor staleness risk in dollar amounts |
 | docs/api/chats.md | **GOOD** | Stale model names, missing auth setup |
 | docs/architecture/design-vision.md | **GOOD** | Stale status table, tries to be two docs |
@@ -202,7 +202,7 @@ REGENERATE_GOLDEN_MASTERS=true bin/rails test test/calculators/"
 - D-21: FEATURE_ROADMAP.md CPP/OAS dollar amounts will stale annually — add update note
 - D-22: FEATURE_ROADMAP.md "Zillow/HouseSigma" integration is aspirational — mark as future
 - D-23: CONTRIBUTING.md "early days" language undersells project maturity
-- D-24: DOCS_GUIDE.md missing CONTRIBUTING.md row in "Where Things Go" table
+- D-24: DEVELOPER_GUIDE.md missing CONTRIBUTING.md row in "Where Things Go" table
 - D-25: golden-masters.md self-reference says "BASELINE.md" (old name)
 
 ---

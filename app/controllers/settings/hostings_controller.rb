@@ -3,7 +3,7 @@ class Settings::HostingsController < ApplicationController
 
   guard_feature unless: -> { self_hosted? }
 
-  before_action :ensure_admin, only: :clear_cache
+  before_action :ensure_admin, only: [ :update, :clear_cache ]
 
   def show
     synth_provider = Provider::Registry.get_provider(:synth)

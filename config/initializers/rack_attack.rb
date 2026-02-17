@@ -32,6 +32,16 @@ class Rack::Attack
     request.ip if request.path.start_with?("/api/")
   end
 
+  # 5 registration POST attempts per minute per IP
+  throttle("registration/ip", limit: 5, period: 1.minute) do |request|
+    request.ip if request.path == "/registration" && request.post?
+  end
+
+  # 10 registration page loads per minute per IP
+  throttle("registration/page", limit: 10, period: 1.minute) do |request|
+    request.ip if request.path == "/registration/new" && request.get?
+  end
+
   # Block requests that appear to be malicious
   blocklist("block malicious requests") do |request|
     # Block requests with suspicious user agents

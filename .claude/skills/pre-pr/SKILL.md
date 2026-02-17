@@ -1,6 +1,6 @@
 ---
 name: pre-pr
-description: Run all pre-pull request checks (tests, linters, security analysis)
+description: Run all pre-pull request checks (tests, linters, security analysis, dependency audits)
 ---
 
 # Pre-Pull Request Checks
@@ -31,9 +31,19 @@ bundle exec erb_lint ./app/**/*.erb -a
 bin/brakeman --no-pager
 ```
 
+### 5. Run JS Dependency Audit (Required)
+```bash
+bin/importmap audit
+```
+
+### 6. Run JS/TS Linting (Required)
+```bash
+npm run lint
+```
+
 ## Instructions
 
-1. Run all four checks above sequentially
+1. Run all six checks above sequentially
 2. Report the status of each check (pass/fail)
 3. If any check fails, report which check failed and show the relevant error output
 4. Only report "Ready for PR" if ALL checks pass
@@ -42,6 +52,8 @@ bin/brakeman --no-pager
    - Rubocop: ✅/❌ (number of offenses)
    - ERB Lint: ✅/❌ (number of issues)
    - Brakeman: ✅/❌ (number of warnings)
+   - Importmap Audit: ✅/❌ (any vulnerable packages)
+   - JS/TS Lint: ✅/❌ (any issues)
 
 ## Important Notes
 

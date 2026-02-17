@@ -68,6 +68,17 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
     assert_not Balance.exists?(account_balance.id)
   end
 
+  test "non-admin member cannot update hosting settings" do
+    with_self_hosting do
+      sign_in users(:family_member)
+
+      patch settings_hosting_url, params: { setting: { require_invite_for_signup: false } }
+
+      assert_redirected_to settings_hosting_url
+      assert_equal I18n.t("settings.hostings.not_authorized"), flash[:alert]
+    end
+  end
+
   test "can clear data only when admin" do
     with_self_hosting do
       sign_in users(:family_member)

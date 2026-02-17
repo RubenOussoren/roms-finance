@@ -1,8 +1,8 @@
-# Documentation Guide
+# Developer Guide
 
-This guide explains how documentation is organized in ROMS Finance and where new content should go.
+This guide explains how documentation is organized in ROMS Finance, where new content should go, and how to use the AI skills workflow effectively.
 
-## Structure
+## Documentation Structure
 
 ```
 Root/
@@ -11,7 +11,7 @@ Root/
 ├── CONTRIBUTING.md        # How to contribute (upstream Maybe Finance guide)
 │
 docs/
-├── DOCS_GUIDE.md          # This file — explains the doc structure
+├── DEVELOPER_GUIDE.md     # This file — doc structure + skills workflow
 ├── FEATURE_ROADMAP.md     # Forward-looking feature specs (F1–F10)
 ├── architecture/
 │   └── design-vision.md   # Historical design reference for investment + debt features
@@ -64,30 +64,72 @@ Six rules, each with a clear scope:
 
 ### Claude Skills (`.claude/skills/`)
 
-Twenty skills available as slash commands:
+Eleven skills available as slash commands:
 
 | Skill | Command | Description |
 |---|---|---|
 | commit | `/commit` | Create a git commit with proper message and Co-Authored-By attribution |
 | pr | `/pr` | Create a pull request with structured summary and test plan |
-| branch | `/branch` | Create, list, or clean up git branches |
-| pre-pr | `/pre-pr` | Run all pre-PR checks: tests, linting (Rubocop + Biome), security (Brakeman) |
-| db | `/db` | Database management — setup, reset, migrate, or check status |
+| pre-pr | `/pre-pr` | Full CI gate: tests, linting (Rubocop + ERB + Biome), security (Brakeman), dependency audits |
 | test | `/test` | Run tests: all unit tests, system tests, or specific file/line |
-| lint | `/lint` | Run all linters with auto-fix (Rubocop, ERB, Biome) |
 | setup | `/setup` | Full project setup with environment verification |
+| db | `/db` | Database management — setup, reset, migrate, or check status |
 | review | `/review` | Code review for N+1 queries, design tokens, auth, security, conventions |
 | phase-review | `/phase-review` | Structured post-phase review with pass/fail verdicts across 5 dimensions |
 | pag-check | `/pag-check` | Verify PAG 2025 compliance for financial projections |
-| component | `/component` | Generate ViewComponent with template, optional Stimulus, and preview |
-| stimulus | `/stimulus` | Generate Stimulus controller (global or component-scoped) |
-| api-endpoint | `/api-endpoint` | Generate API v1 endpoint with controller, views, routes, and tests |
-| calculator | `/calculator` | Generate financial calculator (pure function, PAG-aware) |
-| simulator | `/simulator` | Generate financial simulator with state tracking and comparisons |
-| provider | `/provider` | Generate data provider for third-party service integration |
-| import | `/import` | Generate CSV import handler with field mapping and validation |
-| sync | `/sync` | Generate Sidekiq background sync job with retry logic |
-| oauth | `/oauth` | Configure Doorkeeper OAuth scopes, applications, and test tokens |
+| calculator | `/calculator` | Generate financial calculator (pure function, PAG-aware, JurisdictionAware) |
+| simulator | `/simulator` | Generate debt simulator with AbstractDebtSimulator inheritance + mortgage math |
+
+## Skills Workflow
+
+### Workflow Stages
+
+```
+Setup ──────→ Development Loop ──────→ Pre-PR Gate ──────→ PR
+/setup         /test, /review          /pre-pr            /pr, /commit
+/db            /calculator              /phase-review
+               /simulator              /pag-check
+```
+
+### Decision Trees
+
+**"Run tests?"**
+- Quick feedback on current changes → `/test`
+- Full CI validation before opening PR → `/pre-pr` (runs tests + all linters + security + audits)
+
+**"Review code?"**
+- Per-commit convention check → `/review`
+- End-of-phase quality gate with pass/fail verdicts → `/phase-review`
+
+**"Financial code?"**
+- New calculator → `/calculator` (scaffolds with PagCompliant, JurisdictionAware, Result struct)
+- New debt simulator → `/simulator` (scaffolds with AbstractDebtSimulator inheritance)
+- Verify PAG compliance → `/pag-check`
+
+**"First time?"**
+- Clone → `/setup` → `/db`
+
+### Common Scenarios
+
+| Scenario | Skill sequence |
+|---|---|
+| I just cloned the repo | `/setup` → `/db` |
+| Adding a feature | `/test` → `/review` → `/commit` → `/pre-pr` → `/pr` |
+| New financial calculator | `/calculator` → `/pag-check` → `/pre-pr` |
+| New debt simulator | `/simulator` → `/pag-check` → `/pre-pr` |
+| Phase complete | `/phase-review` |
+| Quick linting + security | `/pre-pr` (linting is part of the pre-PR gate) |
+
+### CI ↔ Skill Parity
+
+| CI Check | Skill | Command |
+|---|---|---|
+| `bin/rails test` | `/test` | Unit + integration tests |
+| `bin/rubocop -f github -a` | `/pre-pr` | Ruby linting with auto-fix |
+| `bundle exec erb_lint ./app/**/*.erb -a` | `/pre-pr` | ERB linting with auto-fix |
+| `bin/brakeman --no-pager` | `/pre-pr` | Security analysis |
+| `bin/importmap audit` | `/pre-pr` | JS dependency audit |
+| `npm run lint` | `/pre-pr` | JS/TS linting |
 
 ## Maintenance Principles
 

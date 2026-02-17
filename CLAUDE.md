@@ -136,12 +136,11 @@ For detailed patterns, refer to:
 
 Skills are slash commands (e.g. `/commit`, `/test`) that trigger predefined workflows. Use them in the AI chat to run common tasks.
 
-**Workflow skills**: `/commit`, `/pr`, `/branch`, `/pre-pr`
-**Dev environment**: `/db`, `/test`, `/lint`, `/setup`
+**Workflow**: `/commit`, `/pr`, `/pre-pr`, `/test`, `/setup`, `/db`
 **Code review**: `/review`, `/phase-review`, `/pag-check`
-**Scaffolding**: `/component`, `/stimulus`, `/api-endpoint`, `/calculator`, `/simulator`, `/provider`, `/import`, `/sync`, `/oauth`
+**Domain scaffolding**: `/calculator`, `/simulator`
 
-See `docs/DOCS_GUIDE.md` for full descriptions of each skill.
+See `docs/DEVELOPER_GUIDE.md` for workflow stages, decision trees, and CI parity.
 
 ## MCP Tools Available
 

@@ -8,16 +8,14 @@ module Api
       skip_before_action :log_api_access
 
       def signup
-        # Check if invite code is required
-        if invite_code_required? && params[:invite_code].blank?
-          render json: { error: "Invite code is required" }, status: :forbidden
-          return
-        end
-
-        # Validate invite code if provided
-        if params[:invite_code].present? && !InviteCode.exists?(token: params[:invite_code]&.downcase)
-          render json: { error: "Invalid invite code" }, status: :forbidden
-          return
+        unless self_hosted_first_login?
+          if invite_code_required? && !valid_invite_code_in_params?
+            render json: { error: "Registration is by invitation only." }, status: :forbidden
+            return
+          elsif params[:invite_code].present? && !valid_invite_code_in_params?
+            render json: { error: "Invalid invite code" }, status: :forbidden
+            return
+          end
         end
 
         # Validate password

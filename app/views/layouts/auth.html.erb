@@ -10,7 +10,8 @@
             <h2 class="text-3xl font-medium text-primary text-center">
               <%= content_for?(:header_title) ? yield(:header_title).html_safe : t(".your_account") %>
             </h2>
-            <% if (controller_name == "sessions" && action_name == "new") || (controller_name == "registrations" && action_name == "new") %>
+            <% show_signup = self_hosted_first_login? || !invite_code_required? || params[:invitation].present? || valid_invite_code_in_params? %>
+            <% if show_signup && ((controller_name == "sessions" && action_name == "new") || (controller_name == "registrations" && action_name == "new")) %>
               <div class="space-y-3 md:hidden w-full my-4">
                 <div class="bg-surface-inset rounded-lg p-1 flex">
                   <%= link_to new_session_path,
@@ -24,7 +25,7 @@
                 </div>
               </div>
             <% end %>
-            <% if controller_name == "sessions" %>
+            <% if controller_name == "sessions" && show_signup %>
               <p class="text-sm text-center hidden md:block">
                 <%= tag.span t(".no_account"), class: "text-secondary" %> <%= link_to t(".sign_up"), new_registration_path, class: "font-medium text-primary hover:underline transition" %>
               </p>

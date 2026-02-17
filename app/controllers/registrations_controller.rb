@@ -3,8 +3,9 @@ class RegistrationsController < ApplicationController
 
   layout "auth"
 
-  before_action :set_user, only: :create
   before_action :set_invitation
+  before_action :require_registration_access
+  before_action :set_user, only: :create
   before_action :claim_invite_code, only: :create, if: :invite_code_required?
   before_action :validate_password_requirements, only: :create
 
@@ -33,6 +34,15 @@ class RegistrationsController < ApplicationController
   end
 
   private
+
+    def require_registration_access
+      return if self_hosted_first_login?
+      return if @invitation.present?
+      return if valid_invite_code_in_params?
+      return unless invite_code_required?
+
+      redirect_to new_session_path, alert: "Registration is by invitation only."
+    end
 
     def set_invitation
       token = params[:invitation]
