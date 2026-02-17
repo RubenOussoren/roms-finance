@@ -478,15 +478,19 @@ end
 
 #### Multi-Provider System
 
-**Current State (Investment Dashboard)**:
+**Current Account Connectivity Providers:**
+- **Plaid** (`Provider::Plaid`): Banking accounts — chequing, savings, credit cards, loans. US + EU regions. OAuth flow via Plaid Link with account selection/review step before import. `PlaidItem` → `PlaidAccount` → `Account`.
+- **SnapTrade** (`Provider::SnapTrade`): Investment brokerage accounts — TFSA, RRSP, non-registered. Canadian brokerages (Wealthsimple, Questrade, etc.). OAuth flow with account selection/review step before import. `SnapTradeConnection` → `SnapTradeAccount` → `Account`.
+- Provider routing: `AccountableResource#set_link_options` routes Investment/Crypto to SnapTrade; banking types to Plaid.
+
+**Market Data Providers:**
+- Synth (primary provider for self-hosted)
+- Manual entry (always available)
+
+**Original Design Vision (aspirational)**:
 - Yahoo Finance (stocks, ETFs)
 - CoinGecko (cryptocurrencies)
 - Alpha Vantage (fallback)
-- Manual entry (always available)
-
-**Current State (Maybe Finance)**:
-- Synth (primary provider for self-hosted)
-- Plaid (bank connectivity)
 
 **Integration Strategy**:
 ```ruby
@@ -2060,9 +2064,11 @@ This design achieves **80% Canadian focus** while maintaining **100% architectur
 
 ---
 
-**Document Version**: 2.2
-**Last Updated**: 2026-01-21
+**Document Version**: 2.4
+**Last Updated**: 2026-02-16
 **Major Changes**:
+- v2.4: Symmetrized Plaid/SnapTrade provider descriptions — both now have account selection/review flow
+- v2.3: Updated Part 1.3 with SnapTrade brokerage integration and provider routing
 - v2.2: **Phase 3 Complete** - Canadian Modified Smith Manoeuvre fully implemented
 - v2.2: Added debt optimization models, simulators, UI components, and tests (61 new tests)
 - v2.2: Updated implementation status table with Phase 3 completion

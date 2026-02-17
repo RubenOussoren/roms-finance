@@ -7,6 +7,8 @@ ROMS Finance is a personal finance app that can be [self hosted with Docker](doc
 - **Investment projections** with Monte Carlo confidence bands and PAG 2025 compliance
 - **Canadian debt optimization** (Smith Manoeuvre simulator with CRA audit trail)
 - **Multi-account tracking** for chequing, savings, investments, crypto, loans, and properties
+- **Brokerage connectivity** via SnapTrade (Wealthsimple, Questrade, and other Canadian brokerages)
+- **Banking connectivity** via Plaid (chequing, savings, credit cards, loans — US and EU)
 - **Tax-aware calculations** with federal + provincial Canadian tax brackets
 
 ## Local Development Setup
@@ -29,6 +31,10 @@ cp .env.local.example .env.local
 bin/setup
 bin/dev
 ```
+
+Edit `.env.local` to configure data providers (optional):
+- **Plaid**: Set `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` for banking connections
+- **SnapTrade**: Set `SNAPTRADE_CLIENT_ID`, `SNAPTRADE_CONSUMER_KEY` for brokerage connections
 
 And visit http://localhost:3000 to see the app. Seeds create a realistic
 Canadian family with 20 accounts, 37 months of transactions, investment

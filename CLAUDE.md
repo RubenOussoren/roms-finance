@@ -65,6 +65,8 @@ The `investment-dashboard/` directory is a Python prototype for reference only. 
 - **User** → has many **Accounts** → has many **Transactions**
 - **Account** types: checking, savings, credit cards, investments, crypto, loans, properties
 - **Investment accounts** → have **Holdings** → track **Securities** via **Trades**
+- **PlaidItem** → has many **PlaidAccounts** → each linked to an **Account** (banking connectivity)
+- **SnapTradeConnection** → has many **SnapTradeAccounts** → each linked to an **Account** (brokerage connectivity)
 
 ### Frontend Architecture
 - **Hotwire Stack**: Turbo + Stimulus for reactive UI
@@ -80,6 +82,12 @@ Sidekiq handles async tasks: account syncing, import processing, AI chat respons
 - Providers configured via `Provider::Registry`
 - Domain models use `Provided` concerns for data fetching
 - Inherit from `Provider` base class and return `with_provider_response`
+
+### Account Connectivity Providers
+- **Plaid** (`Provider::Plaid`): Banking accounts (chequing, savings, credit cards, loans). US + EU regions. OAuth flow via Plaid Link with account selection/review before import. `PlaidItem` → `PlaidAccount` → `Account`.
+- **SnapTrade** (`Provider::SnapTrade`): Canadian investment/crypto brokerage accounts. `SnapTradeConnection` → `SnapTradeAccount` → `Account`. OAuth flow with account selection before import.
+- Provider routing: `AccountableResource#set_link_options` routes brokerage types (Investment, Crypto) to SnapTrade; banking types to Plaid.
+- Both providers use `Syncable` concern and `selected_for_import` gating on discovered accounts.
 
 ## Project Conventions
 

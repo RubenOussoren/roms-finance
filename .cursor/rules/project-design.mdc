@@ -90,21 +90,38 @@ A [transfer.rb](mdc:app/models/transfer.rb) represents movement of money between
 
 ---
 
-## Plaid Items and Syncs
+## Account Connectivity Providers
 
-### Plaid Items
+### Plaid Items (Banking)
 
-A [plaid_item.rb](mdc:app/models/plaid_item.rb) represents a "connection" maintained by Plaid in the "managed" mode. An Item has 1+ [plaid_account.rb](mdc:app/models/plaid_account.rb) records, each associated 1:1 with an internal [account.rb](mdc:app/models/account.rb).
+A [plaid_item.rb](mdc:app/models/plaid_item.rb) represents a "connection" maintained by Plaid. An Item has 1+ [plaid_account.rb](mdc:app/models/plaid_account.rb) records, each associated 1:1 with an internal [account.rb](mdc:app/models/account.rb).
 
-All Plaid metadata is stored on PlaidItem and PlaidAccount; "normalized" data lives on internal Maybe domain models.
+Plaid handles banking account types: chequing, savings, credit cards, loans. Supports US and EU regions.
+
+**Account selection flow**: After Plaid Link OAuth, discovered accounts are shown on a review page. Users select which accounts to import (`selected_for_import` flag) and optionally rename them (`custom_name`). Only selected accounts are synced.
+
+All Plaid metadata is stored on PlaidItem and PlaidAccount; "normalized" data lives on internal domain models.
+
+### SnapTrade Connections (Brokerage)
+
+A [snaptrade_connection.rb](mdc:app/models/snaptrade_connection.rb) represents a brokerage connection via SnapTrade. A connection has 1+ [snaptrade_account.rb](mdc:app/models/snaptrade_account.rb) records, each linked 1:1 to an internal [account.rb](mdc:app/models/account.rb).
+
+SnapTrade handles investment brokerage types: Investment, Crypto. Primarily used for Canadian brokerages (Wealthsimple, Questrade, etc.).
+
+**Account selection flow**: After OAuth, discovered accounts are shown on a review page. Users select which accounts to import (`selected_for_import` flag) and optionally rename them (`custom_name`). Only selected accounts are synced.
+
+**Connection lifecycle**: On destroy, `remove_connection` is called on SnapTrade API, and if no connections remain, the family's SnapTrade user is deregistered.
+
+**Provider routing**: [accountable_resource.rb](mdc:app/controllers/concerns/accountable_resource.rb) `set_link_options` routes brokerage types (Investment, Crypto) to SnapTrade; banking types to Plaid.
 
 ### Sync Architecture ([syncable.rb](mdc:app/models/concerns/syncable.rb))
 
 "Syncables" — models that can have data synced in the background:
 
 - **Account sync** — syncs holdings, balances, enhances transaction metadata. Orchestrated by `sync_data`. Triggered every time an Entry is updated.
-- **PlaidItem sync** — ETL operation: (1) fetch from Plaid API, (2) load to PlaidAccount records, (3) transform/load to internal Account and Entry models.
-- **Family sync** — orchestrator that loops through PlaidItems and Accounts. Runs once daily via [auto_sync.rb](mdc:app/controllers/concerns/auto_sync.rb).
+- **PlaidItem sync** — ETL operation: (1) fetch from Plaid API, (2) load to PlaidAccount records (only `selected_for_import` ones), (3) transform/load to internal Account and Entry models.
+- **SnapTradeConnection sync** — ETL operation: (1) fetch from SnapTrade API, (2) load to SnapTradeAccount records (only `selected_for_import` ones), (3) process positions and activities into Holdings and Entries.
+- **Family sync** — orchestrator that loops through PlaidItems, SnapTradeConnections, and Accounts. Runs once daily via [auto_sync.rb](mdc:app/controllers/concerns/auto_sync.rb).
 
 Each sync creates a [sync.rb](mdc:app/models/sync.rb) record tracking status, errors, and audit data.
 
