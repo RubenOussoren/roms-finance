@@ -76,6 +76,12 @@
       <div class="space-y-4 mt-4">
         <% if snaptrade_connection.accounts.any? %>
           <%= render "accounts/index/account_groups", accounts: snaptrade_connection.accounts %>
+        <% elsif snaptrade_connection.snaptrade_accounts.any? %>
+          <div class="p-4 flex flex-col gap-3 items-center justify-center">
+            <p class="text-primary font-medium text-sm"><%= snaptrade_connection.snaptrade_accounts.count %> account(s) discovered</p>
+            <p class="text-secondary text-sm">Review and select which accounts to import.</p>
+            <%= link_to "Review & Import", snaptrade_connection_path(snaptrade_connection), class: "text-sm font-medium text-primary hover:underline" %>
+          </div>
         <% else %>
           <div class="p-4 flex flex-col gap-3 items-center justify-center">
             <p class="text-primary font-medium text-sm">No accounts yet</p>

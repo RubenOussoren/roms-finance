@@ -1,0 +1,16 @@
+<%= turbo_stream_from @snaptrade_connection %>
+
+<div class="mx-auto max-w-2xl space-y-4 p-4">
+  <div class="space-y-1">
+    <h1 class="text-xl font-medium text-primary">Review Discovered Accounts</h1>
+    <p class="text-sm text-secondary">
+      <%= @snaptrade_connection.brokerage_name || "Brokerage" %> connection
+    </p>
+  </div>
+
+  <%= turbo_frame_tag dom_id(@snaptrade_connection, :accounts) do %>
+    <%= render "snaptrade_connections/accounts_review",
+               snaptrade_connection: @snaptrade_connection,
+               snaptrade_accounts: @snaptrade_accounts %>
+  <% end %>
+</div>

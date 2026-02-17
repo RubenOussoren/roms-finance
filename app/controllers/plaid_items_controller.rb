@@ -7,7 +7,6 @@ class PlaidItemsController < ApplicationController
 
     @link_token = Current.family.get_link_token(
       webhooks_url: webhooks_url,
-      redirect_url: accounts_url,
       accountable_type: params[:accountable_type] || "Depository",
       region: region
     )
@@ -17,8 +16,7 @@ class PlaidItemsController < ApplicationController
     webhooks_url = @plaid_item.plaid_region == "eu" ? plaid_eu_webhooks_url : plaid_us_webhooks_url
 
     @link_token = @plaid_item.get_update_link_token(
-      webhooks_url: webhooks_url,
-      redirect_url: accounts_url,
+      webhooks_url: webhooks_url
     )
   end
 

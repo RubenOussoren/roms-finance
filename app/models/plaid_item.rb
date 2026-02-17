@@ -22,10 +22,9 @@ class PlaidItem < ApplicationRecord
   scope :ordered, -> { order(created_at: :desc) }
   scope :needs_update, -> { where(status: :requires_update) }
 
-  def get_update_link_token(webhooks_url:, redirect_url:)
+  def get_update_link_token(webhooks_url:)
     family.get_link_token(
       webhooks_url: webhooks_url,
-      redirect_url: redirect_url,
       region: plaid_region,
       access_token: access_token
     )

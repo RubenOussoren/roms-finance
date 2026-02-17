@@ -118,7 +118,8 @@ class Account < ApplicationRecord
   end
 
   def current_holdings
-    holdings.where(currency: currency)
+    holdings.includes(:security)
+            .where(currency: currency)
             .where.not(qty: 0)
             .where(
               id: holdings.select("DISTINCT ON (security_id) id")

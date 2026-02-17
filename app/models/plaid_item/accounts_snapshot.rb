@@ -88,6 +88,9 @@ class PlaidItem::AccountsSnapshot
     def investments_data
       return nil unless can_fetch_investments?
       @investments_data ||= plaid_provider.get_item_investments(plaid_item.access_token)
+    rescue Plaid::ApiError => e
+      Rails.logger.warn("[Plaid] Failed to fetch investments for item #{plaid_item.id}: #{e.message}")
+      nil
     end
 
     def can_fetch_liabilities?
@@ -101,5 +104,8 @@ class PlaidItem::AccountsSnapshot
     def liabilities_data
       return nil unless can_fetch_liabilities?
       @liabilities_data ||= plaid_provider.get_item_liabilities(plaid_item.access_token)
+    rescue Plaid::ApiError => e
+      Rails.logger.warn("[Plaid] Failed to fetch liabilities for item #{plaid_item.id}: #{e.message}")
+      nil
     end
 end

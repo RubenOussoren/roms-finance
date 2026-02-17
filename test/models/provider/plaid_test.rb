@@ -4,9 +4,6 @@ class Provider::PlaidTest < ActiveSupport::TestCase
   setup do
     skip "Plaid not configured" unless Rails.application.config.plaid.present?
 
-    # Do not change, this is whitelisted in the Plaid Dashboard for local dev
-    @redirect_url = "http://localhost:3000/accounts"
-
     # A specialization of Plaid client with sandbox-only extensions
     @plaid = Provider::PlaidSandbox.new
   end
@@ -15,8 +12,7 @@ class Provider::PlaidTest < ActiveSupport::TestCase
     VCR.use_cassette("plaid/link_token") do
       link_token = @plaid.get_link_token(
         user_id: "test-user-id",
-        webhooks_url: "https://example.com/webhooks",
-        redirect_url: @redirect_url
+        webhooks_url: "https://example.com/webhooks"
       )
 
       assert_match /link-sandbox-.*/, link_token.link_token

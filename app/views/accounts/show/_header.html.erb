@@ -42,7 +42,13 @@
             "refresh-cw",
             as_button: true,
             size: "sm",
-            href: account.linked? ? sync_plaid_item_path(account.plaid_account.plaid_item) : sync_account_path(account),
+            href: if account.plaid_account_id.present?
+                    sync_plaid_item_path(account.plaid_account.plaid_item)
+                  elsif account.snaptrade_account_id.present?
+                    sync_snaptrade_connection_path(account.snaptrade_account.snaptrade_connection)
+                  else
+                    sync_account_path(account)
+                  end,
             disabled: account.syncing?,
             frame: :_top
           ) %>

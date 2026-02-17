@@ -269,9 +269,10 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :snaptrade_connections, only: %i[new destroy] do
+  resources :snaptrade_connections, only: %i[new show destroy] do
     member do
       post :sync
+      patch :import_accounts
     end
     collection do
       get :callback

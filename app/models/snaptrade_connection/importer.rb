@@ -42,13 +42,19 @@ class SnapTradeConnection::Importer
 
       raise Provider::SnapTrade::Error.new("Failed to fetch accounts") unless accounts_response.success?
 
-      SnapTradeConnection.transaction do
-        accounts_response.data.each do |raw_account|
-          # Only process accounts belonging to this connection's authorization
-          next unless raw_account.try(:brokerage_authorization)&.try(:id)&.to_s == snaptrade_connection.authorization_id
+      raw_accounts = Array(accounts_response.data)
+      Rails.logger.info("[SnapTrade] Fetched #{raw_accounts.size} account(s) for user #{user_id}")
 
-          account_id = raw_account.try(:id)&.to_s
+      SnapTradeConnection.transaction do
+        raw_accounts.each do |raw_account|
+          # brokerage_authorization is a flat UUID string in SDK v2.x (not a nested object)
+          auth_id = raw_account.try(:brokerage_authorization) || raw_account.try(:[], "brokerage_authorization")
+          next unless auth_id.to_s == snaptrade_connection.authorization_id
+
+          account_id = (raw_account.try(:id) || raw_account.try(:[], "id")).to_s
           next if account_id.blank?
+
+          Rails.logger.info("[SnapTrade] Processing account #{account_id} (auth: #{auth_id})")
 
           snaptrade_account = snaptrade_connection.snaptrade_accounts.find_or_initialize_by(
             snaptrade_account_id: account_id
@@ -96,6 +102,23 @@ class SnapTradeConnection::Importer
         start_date: 2.years.ago.to_date,
         end_date: Date.current
       )
-      response.success? ? response.data : []
+      return [] unless response.success?
+
+      raw = response.data
+      return [] if raw.blank?
+
+      # SDK v2 returns a paginated envelope object — convert to plain hash first
+      if raw.respond_to?(:to_hash) && !raw.is_a?(Hash) && !raw.is_a?(Array)
+        raw = raw.to_hash.deep_stringify_keys
+      end
+
+      # Unwrap {"data" => [...], "pagination" => {...}}
+      if raw.is_a?(Hash) && raw.key?("data")
+        raw = raw["data"]
+      end
+
+      data = Array(raw)
+      Rails.logger.info("[SnapTrade] Fetched #{data.size} activities for account #{account_id}")
+      data
     end
 end

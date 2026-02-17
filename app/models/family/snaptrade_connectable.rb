@@ -28,13 +28,12 @@ module Family::SnapTradeConnectable
   end
 
   # Gets a redirect URL to the SnapTrade connection portal
-  def snaptrade_connection_url(redirect_uri:, broker: nil, reconnect: nil)
+  def snaptrade_connection_url(broker: nil, reconnect: nil)
     ensure_snaptrade_user!
 
     response = snaptrade_provider.login_user(
       user_id: snaptrade_user_id,
       user_secret: snaptrade_user_secret,
-      custom_redirect: redirect_uri,
       broker: broker,
       reconnect: reconnect
     )
@@ -72,6 +71,16 @@ module Family::SnapTradeConnectable
     snaptrade_connection
   end
 
+  def deregister_snaptrade_user_if_no_connections!
+    return unless snaptrade_user_id.present?
+
+    with_lock do
+      return unless snaptrade_connections.reload.none?
+
+      deregister_snaptrade_user!
+    end
+  end
+
   private
     def snaptrade_provider
       Provider::Registry.snaptrade_provider
@@ -79,14 +88,30 @@ module Family::SnapTradeConnectable
 
     def extract_brokerage_name(data)
       return nil unless data
-      data.try(:brokerage, :name) ||
-        data.dig("brokerage", "name") rescue
-        data.try(:name) || "Unknown Brokerage"
+
+      brokerage = data.try(:brokerage)
+      name = if brokerage
+        brokerage.try(:name) || (brokerage.is_a?(Hash) && (brokerage["name"] || brokerage[:name]))
+      end
+      name || data.dig("brokerage", "name") || "Unknown Brokerage"
+    end
+
+    def deregister_snaptrade_user!
+      if snaptrade_provider
+        response = snaptrade_provider.delete_user(user_id: snaptrade_user_id)
+        Rails.logger.warn("SnapTrade delete_user failed: #{response.error&.message}") unless response.success?
+      end
+    ensure
+      update!(snaptrade_user_id: nil, snaptrade_user_secret: nil)
     end
 
     def extract_brokerage_slug(data)
       return nil unless data
-      data.try(:brokerage, :slug) ||
-        data.dig("brokerage", "slug") rescue nil
+
+      brokerage = data.try(:brokerage)
+      slug = if brokerage
+        brokerage.try(:slug) || (brokerage.is_a?(Hash) && (brokerage["slug"] || brokerage[:slug]))
+      end
+      slug || data.dig("brokerage", "slug")
     end
 end

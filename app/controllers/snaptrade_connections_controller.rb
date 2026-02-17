@@ -1,16 +1,18 @@
 class SnapTradeConnectionsController < ApplicationController
-  before_action :set_snaptrade_connection, only: %i[destroy sync]
+  before_action :set_snaptrade_connection, only: %i[show destroy sync import_accounts]
 
   def new
-    redirect_uri = callback_snaptrade_connections_url
-
     begin
-      portal_url = Current.family.snaptrade_connection_url(redirect_uri: redirect_uri)
-      redirect_to portal_url, allow_other_host: true
+      @portal_url = Current.family.snaptrade_connection_url
     rescue => e
       Rails.logger.error("SnapTrade connection error: #{e.message}")
       redirect_to accounts_path, alert: "Unable to connect brokerage. Please try again."
     end
+  end
+
+  def show
+    @snaptrade_connection.refresh_brokerage_name!
+    @snaptrade_accounts = @snaptrade_connection.snaptrade_accounts.order(:created_at)
   end
 
   def callback
@@ -22,8 +24,8 @@ class SnapTradeConnectionsController < ApplicationController
     end
 
     begin
-      Current.family.create_snaptrade_connection!(authorization_id: authorization_id)
-      redirect_to accounts_path, notice: "Brokerage connected successfully. Syncing accounts..."
+      connection = Current.family.create_snaptrade_connection!(authorization_id: authorization_id)
+      redirect_to snaptrade_connection_path(connection), notice: "Brokerage connected successfully. Discovering accounts..."
     rescue => e
       Rails.logger.error("SnapTrade callback error: #{e.message}")
       redirect_to accounts_path, alert: "Failed to complete brokerage connection."
@@ -41,8 +43,37 @@ class SnapTradeConnectionsController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { redirect_back_or_to accounts_path }
+      format.html { redirect_back_or_to snaptrade_connection_path(@snaptrade_connection) }
       format.json { head :ok }
+    end
+  end
+
+  def import_accounts
+    raw = params[:snaptrade_accounts]
+    entries = case raw
+    when ActionController::Parameters
+              raw.values.map { |v| v.permit(:id, :selected, :custom_name) }
+    when Array
+              params.permit(snaptrade_accounts: [ :id, :selected, :custom_name ])[:snaptrade_accounts] || []
+    else
+              []
+    end
+
+    SnapTradeAccount.transaction do
+      entries.each do |acct|
+        snaptrade_account = @snaptrade_connection.snaptrade_accounts.find(acct[:id])
+        snaptrade_account.update!(
+          selected_for_import: acct[:selected] == "1",
+          custom_name: acct[:custom_name].presence
+        )
+      end
+    end
+
+    if @snaptrade_connection.snaptrade_accounts.selected.any?
+      @snaptrade_connection.sync_later unless @snaptrade_connection.syncing?
+      redirect_to accounts_path, notice: "Importing selected accounts..."
+    else
+      redirect_to snaptrade_connection_path(@snaptrade_connection), alert: "No accounts selected for import."
     end
   end
 

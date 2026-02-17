@@ -1,14 +1,27 @@
 class PlaidItem::Importer
+  TRANSIENT_ERROR_CODES = %w[INTERNAL_SERVER_ERROR RATE_LIMIT_EXCEEDED].freeze
+  MAX_RETRIES = 2
+
   def initialize(plaid_item, plaid_provider:)
     @plaid_item = plaid_item
     @plaid_provider = plaid_provider
   end
 
   def import
-    fetch_and_import_item_data
-    fetch_and_import_accounts_data
-  rescue Plaid::ApiError => e
-    handle_plaid_error(e)
+    retries = 0
+    begin
+      fetch_and_import_item_data
+      fetch_and_import_accounts_data
+    rescue Plaid::ApiError => e
+      error_body = JSON.parse(e.response_body) rescue {}
+      if TRANSIENT_ERROR_CODES.include?(error_body["error_code"]) && retries < MAX_RETRIES
+        retries += 1
+        plaid_item.plaid_accounts.reset
+        sleep(2**retries)
+        retry
+      end
+      handle_plaid_error(e)
+    end
   end
 
   private

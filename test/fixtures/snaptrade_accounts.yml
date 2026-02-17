@@ -5,3 +5,13 @@ one:
   name: "Wealthsimple TFSA"
   currency: CAD
   current_balance: 25000
+  selected_for_import: true
+
+two:
+  snaptrade_connection: one
+  snaptrade_account_id: "st_acc_mock_2"
+  snaptrade_type: "RRSP"
+  name: "Wealthsimple RRSP"
+  currency: CAD
+  current_balance: 50000
+  selected_for_import: false

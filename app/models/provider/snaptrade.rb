@@ -2,10 +2,10 @@ class Provider::SnapTrade < Provider
   class Error < Provider::Error; end
 
   def initialize(client_id:, consumer_key:)
-    configuration = SnapTrade::Configuration.new
+    configuration = ::SnapTrade::Configuration.new
     configuration.client_id = client_id
     configuration.consumer_key = consumer_key
-    @client = SnapTrade::Client.new(configuration)
+    @client = ::SnapTrade::Client.new(configuration)
   end
 
   def register_user(user_id:)
@@ -14,11 +14,10 @@ class Provider::SnapTrade < Provider
     end
   end
 
-  def login_user(user_id:, user_secret:, custom_redirect:, broker: nil, reconnect: nil)
+  def login_user(user_id:, user_secret:, broker: nil, reconnect: nil)
     params = {
       user_id: user_id,
       user_secret: user_secret,
-      custom_redirect: custom_redirect,
       connection_type: "read",
       connection_portal_version: "v4"
     }

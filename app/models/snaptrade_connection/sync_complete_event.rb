@@ -17,6 +17,14 @@ class SnapTradeConnection::SyncCompleteEvent
       locals: { snaptrade_connection: snaptrade_connection }
     )
 
+    # Update the review page frame when discovery sync completes
+    snaptrade_connection.broadcast_replace_to(
+      snaptrade_connection,
+      target: "#{ActionView::RecordIdentifier.dom_id(snaptrade_connection, :accounts)}",
+      partial: "snaptrade_connections/accounts_review",
+      locals: { snaptrade_connection: snaptrade_connection, snaptrade_accounts: snaptrade_connection.snaptrade_accounts.order(:created_at) }
+    )
+
     snaptrade_connection.family.broadcast_sync_complete
   end
 end

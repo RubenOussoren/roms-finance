@@ -42,16 +42,17 @@ class Provider::Plaid
     raise JWT::VerificationError, "Invalid webhook body hash" unless ActiveSupport::SecurityUtils.secure_compare(expected_hash, actual_hash)
   end
 
-  def get_link_token(user_id:, webhooks_url:, redirect_url:, accountable_type: nil, access_token: nil)
+  def get_link_token(user_id:, webhooks_url:, accountable_type: nil, access_token: nil)
     request_params = {
       user: { client_user_id: user_id },
-      client_name: "Maybe Finance",
+      client_name: "ROMS Finance",
       country_codes: country_codes,
       language: "en",
       webhook: webhooks_url,
-      redirect_uri: redirect_url,
       transactions: { days_requested: MAX_HISTORY_DAYS }
     }
+
+    request_params[:redirect_uri] = ENV["PLAID_REDIRECT_URI"] if ENV["PLAID_REDIRECT_URI"].present?
 
     if access_token.present?
       request_params[:access_token] = access_token

@@ -14,6 +14,30 @@ class Holding < ApplicationRecord
 
   delegate :ticker, to: :security
 
+  attr_writer :preloaded_avg_cost
+
+  def self.preload_avg_costs(holdings, account)
+    return {} if holdings.empty?
+
+    security_ids = holdings.map(&:security_id).uniq
+    max_date = holdings.map(&:date).max
+
+    account.trades
+      .with_entry
+      .joins(ActiveRecord::Base.sanitize_sql_array([
+        "LEFT JOIN exchange_rates ON (
+          exchange_rates.date = entries.date AND
+          exchange_rates.from_currency = trades.currency AND
+          exchange_rates.to_currency = ?
+        )", account.currency
+      ]))
+      .where(security_id: security_ids)
+      .where("trades.qty > 0 AND entries.date <= ?", max_date)
+      .group(:security_id)
+      .average("trades.price * COALESCE(exchange_rates.rate, 1)")
+      .transform_values { |v| v&.to_d }
+  end
+
   def name
     security.name || ticker
   end
@@ -27,7 +51,11 @@ class Holding < ApplicationRecord
 
   # Basic approximation of cost-basis
   def avg_cost
-    avg_cost = account.trades
+    if instance_variable_defined?(:@preloaded_avg_cost)
+      return Money.new(@preloaded_avg_cost || price, currency)
+    end
+
+    avg = account.trades
       .with_entry
       .joins(ActiveRecord::Base.sanitize_sql_array([
         "LEFT JOIN exchange_rates ON (
@@ -40,7 +68,7 @@ class Holding < ApplicationRecord
       .where("trades.qty > 0 AND entries.date <= ?", date)
       .average("trades.price * COALESCE(exchange_rates.rate, 1)")
 
-    Money.new(avg_cost || price, currency)
+    Money.new(avg || price, currency)
   end
 
   def trend

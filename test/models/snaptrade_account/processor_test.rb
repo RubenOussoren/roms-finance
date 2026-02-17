@@ -41,29 +41,59 @@ class SnapTradeAccount::ProcessorTest < ActiveSupport::TestCase
     assert_equal @snaptrade_account.id, account.snaptrade_account_id
   end
 
-  test "continues processing if positions fail" do
+  test "continues processing if positions fail in production" do
     SnapTradeAccount::PositionsProcessor.any_instance
       .stubs(:process).raises(StandardError.new("positions error"))
 
     Sentry.expects(:capture_exception).at_least_once
 
-    assert_nothing_raised do
-      @processor.process
+    Rails.env.stub(:development?, false) do
+      Rails.env.stub(:test?, false) do
+        assert_nothing_raised do
+          @processor.process
+        end
+      end
     end
 
     assert_not_nil @snaptrade_account.reload.account
   end
 
-  test "continues processing if activities fail" do
+  test "re-raises position errors in dev/test" do
+    SnapTradeAccount::PositionsProcessor.any_instance
+      .stubs(:process).raises(StandardError.new("positions error"))
+
+    Sentry.expects(:capture_exception).at_least_once
+
+    assert_raises(StandardError, "positions error") do
+      @processor.process
+    end
+  end
+
+  test "continues processing if activities fail in production" do
     SnapTradeAccount::ActivitiesProcessor.any_instance
       .stubs(:process).raises(StandardError.new("activities error"))
 
     Sentry.expects(:capture_exception).at_least_once
 
-    assert_nothing_raised do
-      @processor.process
+    Rails.env.stub(:development?, false) do
+      Rails.env.stub(:test?, false) do
+        assert_nothing_raised do
+          @processor.process
+        end
+      end
     end
 
     assert_not_nil @snaptrade_account.reload.account
+  end
+
+  test "re-raises activity errors in dev/test" do
+    SnapTradeAccount::ActivitiesProcessor.any_instance
+      .stubs(:process).raises(StandardError.new("activities error"))
+
+    Sentry.expects(:capture_exception).at_least_once
+
+    assert_raises(StandardError, "activities error") do
+      @processor.process
+    end
   end
 end

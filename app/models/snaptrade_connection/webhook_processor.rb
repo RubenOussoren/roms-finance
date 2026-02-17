@@ -18,8 +18,8 @@ class SnapTradeConnection::WebhookProcessor
         handle_missing_connection
       end
     when "CONNECTION_DELETED"
-      if snaptrade_connection
-        snaptrade_connection.update!(status: :disabled)
+      if snaptrade_connection && !snaptrade_connection.scheduled_for_deletion?
+        snaptrade_connection.destroy_later
       end
     when "CONNECTION_ERROR"
       if snaptrade_connection

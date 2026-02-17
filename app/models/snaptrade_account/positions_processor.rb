@@ -55,23 +55,50 @@ class SnapTradeAccount::PositionsProcessor
     def positions
       raw = snaptrade_account.raw_positions_payload
       return [] if raw.blank?
-      raw.is_a?(Array) ? raw : [ raw ]
+      # SDK v2 may return {"data" => [...], "pagination" => {...}} — unwrap
+      raw = raw["data"] if raw.is_a?(Hash) && raw.key?("data")
+      return [] if raw.blank?
+      items = raw.is_a?(Array) ? raw : [ raw ]
+      # Handle legacy stored format: [{"data" => [...], "pagination" => {...}}]
+      if items.size == 1 && items.first.is_a?(Hash) && items.first.key?("data")
+        items = Array(items.first["data"])
+      end
+      items
     end
 
     def extract_symbol(position)
-      position.dig("symbol", "symbol") ||
+      # SDK v2: position.symbol is PositionSymbol wrapping UniversalSymbol
+      position.dig("symbol", "symbol", "symbol") ||
+        position.dig("symbol", "symbol", "raw_symbol") ||
+        # Flat format (activities-style or older SDK)
+        ticker_from_value(position.dig("symbol", "symbol")) ||
+        position.dig("symbol", "raw_symbol") ||
         position.dig("symbol", "description") ||
-        position["symbol"]&.to_s
+        nil
     end
 
     def extract_exchange(position)
-      position.dig("symbol", "exchange", "mic_code") ||
+      # SDK v2: nested under UniversalSymbol
+      position.dig("symbol", "symbol", "exchange", "mic_code") ||
+        position.dig("symbol", "symbol", "exchange", "code") ||
+        # Flat format
+        position.dig("symbol", "exchange", "mic_code") ||
         position.dig("symbol", "exchange", "code")
     end
 
     def extract_currency(position)
-      position.dig("symbol", "currency", "code") ||
+      # SDK v2: nested under UniversalSymbol
+      position.dig("symbol", "symbol", "currency", "code") ||
+        # Flat format
+        position.dig("symbol", "currency", "code") ||
+        # Top-level currency
+        position.dig("currency", "code") ||
         position["currency"]
+    end
+
+    def ticker_from_value(value)
+      return value if value.is_a?(String) && value.present?
+      value["symbol"] if value.is_a?(Hash)
     end
 
     def extract_field(position, *keys)

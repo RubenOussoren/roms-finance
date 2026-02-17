@@ -5,18 +5,29 @@ class SnapTradeAccount::ActivitiesProcessor
   end
 
   def process
+    Rails.logger.info("[SnapTrade] Processing #{activities.size} activities for account #{snaptrade_account.snaptrade_account_id}")
+    processed = 0
+    skipped = 0
+
     activities.each do |activity|
       activity_type = (activity["type"] || "").upcase
       external_id = activity["id"]&.to_s
 
-      next if external_id.blank?
+      if external_id.blank?
+        Rails.logger.warn("[SnapTrade] Skipping activity with blank ID: type=#{activity_type}")
+        skipped += 1
+        next
+      end
 
       if trade_activity?(activity_type)
         process_trade_activity(activity, external_id)
       else
         process_cash_activity(activity, external_id)
       end
+      processed += 1
     end
+
+    Rails.logger.info("[SnapTrade] Activities complete: #{processed} processed, #{skipped} skipped")
   end
 
   private
@@ -32,7 +43,15 @@ class SnapTradeAccount::ActivitiesProcessor
     def activities
       raw = snaptrade_account.raw_activities_payload
       return [] if raw.blank?
-      raw.is_a?(Array) ? raw : [ raw ]
+      # SDK v2 activities endpoint returns {"data" => [...], "pagination" => {...}}
+      raw = raw["data"] if raw.is_a?(Hash) && raw.key?("data")
+      return [] if raw.blank?
+      items = raw.is_a?(Array) ? raw : [ raw ]
+      # Handle legacy stored format: [{"data" => [...], "pagination" => {...}}]
+      if items.size == 1 && items.first.is_a?(Hash) && items.first.key?("data")
+        items = Array(items.first["data"])
+      end
+      items
     end
 
     def trade_activity?(type)
@@ -41,7 +60,10 @@ class SnapTradeAccount::ActivitiesProcessor
 
     def process_trade_activity(activity, external_id)
       symbol = extract_symbol(activity)
-      return if symbol.blank?
+      if symbol.blank?
+        Rails.logger.warn("[SnapTrade] Skipping trade activity #{external_id}: blank symbol")
+        return
+      end
 
       security = security_resolver.resolve(
         symbol: symbol,
@@ -49,7 +71,10 @@ class SnapTradeAccount::ActivitiesProcessor
         currency: extract_currency(activity)
       )
 
-      return unless security.present?
+      unless security.present?
+        Rails.logger.warn("[SnapTrade] Skipping trade activity #{external_id}: could not resolve security for symbol=#{symbol}")
+        return
+      end
 
       entry = account.entries.find_or_initialize_by(plaid_id: external_id) do |e|
         e.entryable = Trade.new
@@ -60,6 +85,7 @@ class SnapTradeAccount::ActivitiesProcessor
       currency = extract_currency(activity) || snaptrade_account.currency
 
       entry.assign_attributes(
+        name: activity["description"] || "#{activity["type"]} #{symbol}",
         amount: qty * price,
         currency: currency,
         date: parse_date(activity)
@@ -72,13 +98,8 @@ class SnapTradeAccount::ActivitiesProcessor
         currency: currency
       )
 
-      entry.enrich_attribute(
-        :name,
-        activity["description"] || "#{activity["type"]} #{symbol}",
-        source: "snaptrade"
-      )
-
       entry.save!
+      Rails.logger.info("[SnapTrade] Saved trade entry #{external_id}: #{activity["type"]} #{qty} #{symbol} @ #{price}")
     end
 
     def process_cash_activity(activity, external_id)
@@ -90,23 +111,22 @@ class SnapTradeAccount::ActivitiesProcessor
       currency = extract_currency(activity) || snaptrade_account.currency
 
       entry.assign_attributes(
+        name: activity["description"] || activity["type"],
         amount: amount,
         currency: currency,
         date: parse_date(activity)
       )
 
-      entry.enrich_attribute(
-        :name,
-        activity["description"] || activity["type"],
-        source: "snaptrade"
-      )
-
       entry.save!
+      Rails.logger.info("[SnapTrade] Saved cash entry #{external_id}: #{activity["type"]} #{amount} #{currency}")
     end
 
     def extract_symbol(activity)
-      activity.dig("symbol", "symbol") ||
-        activity["symbol"]&.to_s
+      value = activity.dig("symbol", "symbol")
+      return value if value.is_a?(String) && value.present?
+      # Fallback: if symbol is a Hash (unexpected wrapping)
+      return value["symbol"] if value.is_a?(Hash)
+      activity["symbol"]&.to_s.presence
     end
 
     def extract_exchange(activity)

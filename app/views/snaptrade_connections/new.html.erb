@@ -1,0 +1,12 @@
+<div class="flex flex-col items-center justify-center min-h-screen bg-surface"
+     data-controller="snaptrade-connect"
+     data-snaptrade-connect-callback-url-value="<%= callback_snaptrade_connections_path %>">
+  <div class="w-full max-w-lg h-[680px] rounded-xl overflow-hidden shadow-border-xs">
+    <iframe src="<%= @portal_url %>"
+            class="w-full h-full border-0"
+            allow="camera"
+            data-snaptrade-connect-target="iframe">
+    </iframe>
+  </div>
+  <a href="<%= accounts_path %>" class="mt-4 text-sm text-secondary hover:text-primary">Cancel</a>
+</div>
