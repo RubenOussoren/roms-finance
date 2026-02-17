@@ -32,7 +32,7 @@ bmo_cc       = accounts["BMO Credit Card"]
 primary_mtg  = accounts["Primary Mortgage"]
 rental_mtg   = accounts["Rental Mortgage"]
 
-unless [cibc_chk, scotia_chk, bmo_chk, primary_mtg].all?
+unless [ cibc_chk, scotia_chk, bmo_chk, primary_mtg ].all?
   puts "  Skipping transactions - required accounts not found"
   return
 end
@@ -158,7 +158,7 @@ puts "  Generating fixed expenses..."
   end
 
   # Property tax quarterly (~$800)
-  if date.day == 1 && [3, 6, 9, 12].include?(date.month)
+  if date.day == 1 && [ 3, 6, 9, 12 ].include?(date.month)
     create_txn!(bmo_chk, jitter(rng, 800, 0.05).round, "City of Toronto Property Tax", cat["Property Tax"], date + 14)
   end
 end
@@ -171,18 +171,18 @@ puts "  Generating variable expenses..."
 # Collect all days in the range for random selection
 all_days = (start_date..end_date).to_a
 
-grocery_stores = ["Loblaws", "Metro", "No Frills", "Sobeys", "Costco"]
-restaurants    = ["Tim Hortons", "Swiss Chalet", "Boston Pizza", "The Keg", "Harvey's", "Popeyes", "Sushi Shop"]
-gas_stations   = ["Petro-Canada", "Esso", "Shell", "Canadian Tire Gas"]
-shops          = ["Amazon.ca", "Canadian Tire", "Hudson's Bay", "Walmart.ca", "Home Depot", "Winners"]
-entertainment  = ["Netflix", "Spotify", "Cineplex", "Disney+", "Apple Music"]
+grocery_stores = [ "Loblaws", "Metro", "No Frills", "Sobeys", "Costco" ]
+restaurants    = [ "Tim Hortons", "Swiss Chalet", "Boston Pizza", "The Keg", "Harvey's", "Popeyes", "Sushi Shop" ]
+gas_stations   = [ "Petro-Canada", "Esso", "Shell", "Canadian Tire Gas" ]
+shops          = [ "Amazon.ca", "Canadian Tire", "Hudson's Bay", "Walmart.ca", "Home Depot", "Winners" ]
+entertainment  = [ "Netflix", "Spotify", "Cineplex", "Disney+", "Apple Music" ]
 
 # Groceries: 2-3x/week across personal checking + credit cards
 (all_days.length / 3).times do
   date = all_days.sample(random: rng)
   amount = rng.rand(45..180)
   store = grocery_stores.sample(random: rng)
-  account = [cibc_chk, cibc_cc, scotia_chk, scotia_cc, bmo_cc].sample(random: rng)
+  account = [ cibc_chk, cibc_cc, scotia_chk, scotia_cc, bmo_cc ].sample(random: rng)
   create_txn!(account, amount, store, cat["Groceries"], date)
 end
 
@@ -191,7 +191,7 @@ end
   date = all_days.sample(random: rng)
   amount = rng.rand(12..65)
   restaurant = restaurants.sample(random: rng)
-  account = [cibc_cc, scotia_cc, bmo_cc, cibc_chk, scotia_chk].sample(random: rng)
+  account = [ cibc_cc, scotia_cc, bmo_cc, cibc_chk, scotia_chk ].sample(random: rng)
   create_txn!(account, amount, restaurant, cat["Dining Out"], date)
 end
 
@@ -200,7 +200,7 @@ end
   date = all_days.sample(random: rng)
   amount = rng.rand(55..110)
   station = gas_stations.sample(random: rng)
-  account = [cibc_cc, scotia_cc, bmo_cc].sample(random: rng)
+  account = [ cibc_cc, scotia_cc, bmo_cc ].sample(random: rng)
   create_txn!(account, amount, station, cat["Transportation"], date)
 end
 
@@ -209,19 +209,19 @@ end
   date = all_days.sample(random: rng)
   amount = rng.rand(25..200)
   shop = shops.sample(random: rng)
-  account = [cibc_cc, scotia_cc, bmo_cc].sample(random: rng)
+  account = [ cibc_cc, scotia_cc, bmo_cc ].sample(random: rng)
   create_txn!(account, amount, shop, cat["Shopping"], date)
 end
 
 # Entertainment subscriptions: monthly per service
 entertainment.each do |service|
   amt = case service
-        when "Netflix" then 17
-        when "Spotify" then 11
-        when "Cineplex" then 0 # one-off below
-        when "Disney+" then 12
-        when "Apple Music" then 11
-        end
+  when "Netflix" then 17
+  when "Spotify" then 11
+  when "Cineplex" then 0 # one-off below
+  when "Disney+" then 12
+  when "Apple Music" then 11
+  end
   next if amt == 0
 
   (start_date..end_date).each do |date|
@@ -233,15 +233,15 @@ end
 # Cineplex visits: ~monthly
 (start_date..end_date).each do |date|
   next unless date.day == rng.rand(18..24) && rng.rand < 0.7
-  create_txn!([cibc_cc, scotia_cc].sample(random: rng), rng.rand(30..55), "Cineplex", cat["Entertainment"], date)
+  create_txn!([ cibc_cc, scotia_cc ].sample(random: rng), rng.rand(30..55), "Cineplex", cat["Entertainment"], date)
 end
 
 # Healthcare: occasional
 40.times do
   date = all_days.sample(random: rng)
   amount = rng.rand(25..150)
-  create_txn!([cibc_chk, scotia_chk].sample(random: rng), amount,
-              ["Shoppers Drug Mart", "Rexall", "Dr. Visit Copay"].sample(random: rng),
+  create_txn!([ cibc_chk, scotia_chk ].sample(random: rng), amount,
+              [ "Shoppers Drug Mart", "Rexall", "Dr. Visit Copay" ].sample(random: rng),
               cat["Healthcare"], date)
 end
 
@@ -249,8 +249,8 @@ end
 25.times do
   date = all_days.sample(random: rng)
   amount = rng.rand(30..90)
-  create_txn!([cibc_chk, cibc_cc].sample(random: rng), amount,
-              ["Hair Salon", "Barber", "Spa"].sample(random: rng),
+  create_txn!([ cibc_chk, cibc_cc ].sample(random: rng), amount,
+              [ "Hair Salon", "Barber", "Spa" ].sample(random: rng),
               cat["Personal Care"], date)
 end
 
@@ -260,9 +260,9 @@ end
 puts "  Generating credit card payoffs..."
 
 cc_pairs = [
-  [cibc_cc, cibc_chk],
-  [scotia_cc, scotia_chk],
-  [bmo_cc, bmo_chk]
+  [ cibc_cc, cibc_chk ],
+  [ scotia_cc, scotia_chk ],
+  [ bmo_cc, bmo_chk ]
 ]
 
 (start_date..end_date).each do |date|

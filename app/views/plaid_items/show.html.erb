@@ -1,0 +1,16 @@
+<%= turbo_stream_from @plaid_item %>
+
+<div class="mx-auto max-w-2xl space-y-4 p-4">
+  <div class="space-y-1">
+    <h1 class="text-xl font-medium text-primary">Review Discovered Accounts</h1>
+    <p class="text-sm text-secondary">
+      <%= @plaid_item.name %> connection
+    </p>
+  </div>
+
+  <%= turbo_frame_tag dom_id(@plaid_item, :accounts) do %>
+    <%= render "plaid_items/accounts_review",
+               plaid_item: @plaid_item,
+               plaid_accounts: @plaid_accounts %>
+  <% end %>
+</div>

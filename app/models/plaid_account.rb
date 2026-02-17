@@ -6,6 +6,12 @@ class PlaidAccount < ApplicationRecord
   validates :name, :plaid_type, :currency, presence: true
   validate :has_balance
 
+  scope :selected, -> { where(selected_for_import: true) }
+
+  def display_name
+    custom_name.presence || name
+  end
+
   def upsert_plaid_snapshot!(account_snapshot)
     assign_attributes(
       current_balance: account_snapshot.balances.current,

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_16_100005) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_16_100006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -707,6 +707,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_16_100005) do
     t.jsonb "raw_transactions_payload", default: {}
     t.jsonb "raw_investments_payload", default: {}
     t.jsonb "raw_liabilities_payload", default: {}
+    t.boolean "selected_for_import", default: false, null: false
+    t.string "custom_name"
     t.index ["plaid_id"], name: "index_plaid_accounts_on_plaid_id", unique: true
     t.index ["plaid_item_id"], name: "index_plaid_accounts_on_plaid_item_id"
   end

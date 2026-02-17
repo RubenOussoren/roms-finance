@@ -94,39 +94,28 @@
       "note": "Uses similar pattern to Rails internal form builder"
     },
     {
-      "warning_type": "Dynamic Render Path",
-      "warning_code": 15,
-      "fingerprint": "fb6f7abeabc405d6882ffd41dbe8016403ef39307a5c6b4cd7b18adfaf0c24bf",
-      "check_name": "Render",
-      "message": "Render path contains parameter value",
-      "file": "app/views/import/configurations/show.html.erb",
-      "line": 34,
-      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(partial => permitted_import_configuration_path(Current.family.imports.find(params[:import_id])), { :locals => ({ :import => Current.family.imports.find(params[:import_id]) }) })",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Import::ConfigurationsController",
-          "method": "show",
-          "line": 7,
-          "file": "app/controllers/import/configurations_controller.rb",
-          "rendered": {
-            "name": "import/configurations/show",
-            "file": "app/views/import/configurations/show.html.erb"
-          }
-        }
-      ],
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "0247d6146ae4a9538d16dec3262f3406c4fbd6346b9e6d63a04f41e76fc7dd1f",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/account_permissions_controller.rb",
+      "line": 43,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:permissions).permit!",
+      "render_path": null,
       "location": {
-        "type": "template",
-        "template": "import/configurations/show"
+        "type": "method",
+        "class": "AccountPermissionsController",
+        "method": "permissions_params"
       },
-      "user_input": "params[:import_id]",
-      "confidence": "Weak",
+      "user_input": null,
+      "confidence": "Medium",
       "cwe_id": [
-        22
+        915
       ],
-      "note": ""
+      "note": "Dynamic permission keys per account — structure validated in controller"
     }
   ],
-  "brakeman_version": "7.1.0"
+  "brakeman_version": "8.0.2"
 }

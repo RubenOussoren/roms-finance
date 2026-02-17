@@ -10,7 +10,7 @@ export default class extends Controller {
 
   toggleAll() {
     const checked = this.selectAllTarget.checked
-    this._enabledRows.forEach((cb) => (cb.checked = checked))
+    this._enabledRows.forEach((cb) => { cb.checked = checked })
     this._updateState()
   }
 

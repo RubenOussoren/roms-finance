@@ -1,12 +1,24 @@
-<div class="flex flex-col items-center justify-center min-h-screen bg-surface"
-     data-controller="snaptrade-connect"
-     data-snaptrade-connect-callback-url-value="<%= callback_snaptrade_connections_path %>">
-  <div class="w-full max-w-lg h-[680px] rounded-xl overflow-hidden shadow-border-xs">
-    <iframe src="<%= @portal_url %>"
-            class="w-full h-full border-0"
-            allow="camera"
-            data-snaptrade-connect-target="iframe">
-    </iframe>
-  </div>
-  <a href="<%= accounts_path %>" class="mt-4 text-sm text-secondary hover:text-primary">Cancel</a>
-</div>
+<%= turbo_frame_tag "modal" do %>
+  <%= render DS::Dialog.new(width: :lg) do |dialog| %>
+    <% dialog.with_header(title: "Connect Brokerage") %>
+    <% dialog.with_body do %>
+      <% if @error.present? %>
+        <div class="p-8 flex flex-col items-center gap-3">
+          <%= icon "alert-circle", size: "md", class: "text-destructive" %>
+          <p class="text-primary font-medium"><%= @error %></p>
+          <%= link_to "Back to accounts", accounts_path, class: "text-sm text-secondary hover:text-primary" %>
+        </div>
+      <% else %>
+        <div class="h-[600px]"
+             data-controller="snaptrade-connect"
+             data-snaptrade-connect-callback-url-value="<%= callback_snaptrade_connections_path %>">
+          <iframe src="<%= @portal_url %>"
+                  class="w-full h-full border-0 rounded-b-xl"
+                  allow="camera"
+                  data-snaptrade-connect-target="iframe">
+          </iframe>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

@@ -89,7 +89,7 @@ end
 # ============================================================================
 puts "  Updating milestone progress..."
 
-[primary_mortgage, rental_mortgage].each do |mortgage|
+[ primary_mortgage, rental_mortgage ].each do |mortgage|
   initial = mortgage.accountable.initial_balance
   next unless initial&.positive?
 

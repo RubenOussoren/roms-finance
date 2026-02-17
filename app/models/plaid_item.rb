@@ -53,7 +53,7 @@ class PlaidItem < ApplicationRecord
   # Generally, this should only be called within a "sync", but can be called
   # manually to "re-sync" the already fetched data
   def process_accounts
-    plaid_accounts.each do |plaid_account|
+    plaid_accounts.selected.each do |plaid_account|
       PlaidAccount::Processor.new(plaid_account).process
     end
   end

@@ -9,15 +9,19 @@ class PlaidItem::Syncer
     # Loads item metadata, accounts, transactions, and other data to our DB
     plaid_item.import_latest_plaid_data
 
-    # Processes the raw Plaid data and updates internal domain objects
-    plaid_item.process_accounts
+    if plaid_item.plaid_accounts.selected.any?
+      # Processes the raw Plaid data and updates internal domain objects
+      plaid_item.process_accounts
 
-    # All data is synced, so we can now run an account sync to calculate historical balances and more
-    plaid_item.schedule_account_syncs(
-      parent_sync: sync,
-      window_start_date: sync.window_start_date,
-      window_end_date: sync.window_end_date
-    )
+      # All data is synced, so we can now run an account sync to calculate historical balances and more
+      plaid_item.schedule_account_syncs(
+        parent_sync: sync,
+        window_start_date: sync.window_start_date,
+        window_end_date: sync.window_end_date
+      )
+    else
+      Rails.logger.info("[Plaid] No selected accounts for item #{plaid_item.id}, skipping processing")
+    end
   end
 
   def perform_post_sync

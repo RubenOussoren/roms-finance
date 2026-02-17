@@ -7,3 +7,4 @@ one:
   plaid_id: "acc_mock_1"
   plaid_type: depository
   plaid_subtype: checking
+  selected_for_import: true

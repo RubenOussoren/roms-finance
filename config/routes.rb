@@ -263,9 +263,10 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :plaid_items, only: %i[new edit create destroy] do
+  resources :plaid_items, only: %i[new edit show create destroy] do
     member do
       post :sync
+      patch :import_accounts
     end
   end
 

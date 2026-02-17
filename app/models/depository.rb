@@ -11,7 +11,7 @@ class Depository < ApplicationRecord
     "high_interest_savings" => { short: "HISA", long: "High-Interest Savings Account" },
     # US
     "hsa" => { short: "HSA", long: "Health Savings Account (HSA)" },
-    "cd" => { short: "CD", long: "Certificate of Deposit" },
+    "cd" => { short: "CD", long: "Certificate of Deposit" }
   }.freeze
 
   class << self

@@ -23,7 +23,7 @@ class SnapTradeConnectionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='snaptrade-connect']"
   end
 
-  test "new redirects to accounts on failure" do
+  test "new renders error in modal on failure" do
     family = families(:dylan_family)
     family.update!(snaptrade_user_id: nil, snaptrade_user_secret: nil)
 
@@ -32,7 +32,8 @@ class SnapTradeConnectionsControllerTest < ActionDispatch::IntegrationTest
     )
 
     get new_snaptrade_connection_path
-    assert_redirected_to accounts_path
+    assert_response :success
+    assert_select "p", text: "Unable to connect brokerage. Please try again."
   end
 
   test "callback creates connection and redirects to review page" do

@@ -45,14 +45,14 @@ securities_data.each do |sec_data|
   # Generate daily prices with random walk + drift
   price = sec_data[:base_price]
   daily_drift = sec_data[:drift] / 252.0
-  daily_vol = sec_data[:ticker].in?(["BTC", "ETH"]) ? 0.03 : 0.012
+  daily_vol = sec_data[:ticker].in?([ "BTC", "ETH" ]) ? 0.03 : 0.012
 
   (price_start..Date.current).each do |date|
     next if date.saturday? || date.sunday?
 
     shock = daily_vol * (rng.rand * 2 - 1)
     price = price * (1 + daily_drift + shock)
-    price = [price, 0.01].max
+    price = [ price, 0.01 ].max
 
     Security::Price.create!(
       security: security,
@@ -191,10 +191,10 @@ end
 if ws_crypto
   # $700 BTC + $300 ETH spread over a few purchases
   [
-    [Date.new(2025, 6, 15), btc, 500],
-    [Date.new(2025, 8, 10), btc, 200],
-    [Date.new(2025, 7, 1),  eth, 200],
-    [Date.new(2025, 9, 15), eth, 100]
+    [ Date.new(2025, 6, 15), btc, 500 ],
+    [ Date.new(2025, 8, 10), btc, 200 ],
+    [ Date.new(2025, 7, 1),  eth, 200 ],
+    [ Date.new(2025, 9, 15), eth, 100 ]
   ].each do |date, security, amount|
     price = price_on(security, date)
     qty = (amount.to_f / price).round(6)

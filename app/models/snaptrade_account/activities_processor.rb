@@ -35,6 +35,7 @@ class SnapTradeAccount::ActivitiesProcessor
 
     TRADE_TYPES = %w[BUY SELL].freeze
     CASH_TYPES = %w[DIVIDEND INTEREST CONTRIBUTION WITHDRAWAL FEE TRANSFER DEPOSIT].freeze
+    INFLOW_TYPES = %w[DEPOSIT CONTRIBUTION DIVIDEND INTEREST].freeze
 
     def account
       snaptrade_account.account
@@ -107,7 +108,8 @@ class SnapTradeAccount::ActivitiesProcessor
         e.entryable = Transaction.new
       end
 
-      amount = (activity["amount"] || 0).to_d
+      raw_amount = (activity["amount"] || 0).to_d
+      amount = signed_cash_amount(raw_amount, activity)
       currency = extract_currency(activity) || snaptrade_account.currency
 
       entry.assign_attributes(
@@ -119,6 +121,12 @@ class SnapTradeAccount::ActivitiesProcessor
 
       entry.save!
       Rails.logger.info("[SnapTrade] Saved cash entry #{external_id}: #{activity["type"]} #{amount} #{currency}")
+    end
+
+    # App convention: negative = inflow (money in), positive = outflow (money out)
+    def signed_cash_amount(raw_amount, activity)
+      type = (activity["type"] || "").upcase
+      INFLOW_TYPES.include?(type) ? -raw_amount.abs : raw_amount.abs
     end
 
     def extract_symbol(activity)

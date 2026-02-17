@@ -1,5 +1,5 @@
 class PlaidItemsController < ApplicationController
-  before_action :set_plaid_item, only: %i[edit destroy sync]
+  before_action :set_plaid_item, only: %i[show edit destroy sync import_accounts]
 
   def new
     region = params[:region] == "eu" ? :eu : :us
@@ -12,6 +12,10 @@ class PlaidItemsController < ApplicationController
     )
   end
 
+  def show
+    @plaid_accounts = @plaid_item.plaid_accounts.order(:created_at)
+  end
+
   def edit
     webhooks_url = @plaid_item.plaid_region == "eu" ? plaid_eu_webhooks_url : plaid_us_webhooks_url
 
@@ -21,13 +25,13 @@ class PlaidItemsController < ApplicationController
   end
 
   def create
-    Current.family.create_plaid_item!(
+    plaid_item = Current.family.create_plaid_item!(
       public_token: plaid_item_params[:public_token],
       item_name: item_name,
       region: plaid_item_params[:region]
     )
 
-    redirect_to accounts_path, notice: t(".success")
+    redirect_to plaid_item_path(plaid_item), notice: t(".success")
   end
 
   def destroy
@@ -43,6 +47,35 @@ class PlaidItemsController < ApplicationController
     respond_to do |format|
       format.html { redirect_back_or_to accounts_path }
       format.json { head :ok }
+    end
+  end
+
+  def import_accounts
+    raw = params[:plaid_accounts]
+    entries = case raw
+    when ActionController::Parameters
+      raw.values.map { |v| v.permit(:id, :selected, :custom_name) }
+    when Array
+      params.permit(plaid_accounts: [ :id, :selected, :custom_name ])[:plaid_accounts] || []
+    else
+      []
+    end
+
+    PlaidAccount.transaction do
+      entries.each do |acct|
+        plaid_account = @plaid_item.plaid_accounts.find(acct[:id])
+        plaid_account.update!(
+          selected_for_import: acct[:selected] == "1",
+          custom_name: acct[:custom_name].presence
+        )
+      end
+    end
+
+    if @plaid_item.plaid_accounts.selected.any?
+      @plaid_item.sync_later unless @plaid_item.syncing?
+      redirect_to accounts_path, notice: "Importing selected accounts..."
+    else
+      redirect_to plaid_item_path(@plaid_item), alert: "No accounts selected for import."
     end
   end
 

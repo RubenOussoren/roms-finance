@@ -80,6 +80,12 @@
       <div class="space-y-4 mt-4">
         <% if plaid_item.accounts.any? %>
           <%= render "accounts/index/account_groups", accounts: plaid_item.accounts %>
+        <% elsif plaid_item.plaid_accounts.any? %>
+          <div class="p-4 flex flex-col gap-3 items-center justify-center">
+            <p class="text-primary font-medium text-sm"><%= plaid_item.plaid_accounts.count %> account(s) discovered</p>
+            <p class="text-secondary text-sm">Review and select which accounts to import.</p>
+            <%= link_to "Review & Import", plaid_item_path(plaid_item), class: "text-sm font-medium text-primary hover:underline" %>
+          </div>
         <% else %>
           <div class="p-4 flex flex-col gap-3 items-center justify-center">
             <p class="text-primary font-medium text-sm"><%= t(".no_accounts_title") %></p>

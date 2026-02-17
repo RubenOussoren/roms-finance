@@ -2,12 +2,10 @@ class SnapTradeConnectionsController < ApplicationController
   before_action :set_snaptrade_connection, only: %i[show destroy sync import_accounts]
 
   def new
-    begin
-      @portal_url = Current.family.snaptrade_connection_url
-    rescue => e
-      Rails.logger.error("SnapTrade connection error: #{e.message}")
-      redirect_to accounts_path, alert: "Unable to connect brokerage. Please try again."
-    end
+    @portal_url = Current.family.snaptrade_connection_url
+  rescue => e
+    Rails.logger.error("SnapTrade connection error: #{e.message}")
+    @error = "Unable to connect brokerage. Please try again."
   end
 
   def show
@@ -52,11 +50,11 @@ class SnapTradeConnectionsController < ApplicationController
     raw = params[:snaptrade_accounts]
     entries = case raw
     when ActionController::Parameters
-              raw.values.map { |v| v.permit(:id, :selected, :custom_name) }
+      raw.values.map { |v| v.permit(:id, :selected, :custom_name) }
     when Array
-              params.permit(snaptrade_accounts: [ :id, :selected, :custom_name ])[:snaptrade_accounts] || []
+      params.permit(snaptrade_accounts: [ :id, :selected, :custom_name ])[:snaptrade_accounts] || []
     else
-              []
+      []
     end
 
     SnapTradeAccount.transaction do

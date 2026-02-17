@@ -165,7 +165,7 @@ ws_tfsa_wife = create_account!(
 )
 
 # Husband gets balance_only for wife's personal accounts
-[cibc_checking, cibc_savings, cibc_cc, manulife_rrsp, ws_rrsp_wife, ws_tfsa_wife].each do |acct|
+[ cibc_checking, cibc_savings, cibc_cc, manulife_rrsp, ws_rrsp_wife, ws_tfsa_wife ].each do |acct|
   AccountPermission.create!(account: acct, user: husband, visibility: "balance_only")
 end
 
@@ -210,7 +210,7 @@ ws_crypto = create_account!(
 )
 
 # Wife gets balance_only for husband's personal accounts
-[scotia_checking, scotia_savings, scotia_cc, ws_rrsp_husband, ws_tfsa_husband, ws_crypto].each do |acct|
+[ scotia_checking, scotia_savings, scotia_cc, ws_rrsp_husband, ws_tfsa_husband, ws_crypto ].each do |acct|
   AccountPermission.create!(account: acct, user: wife, visibility: "balance_only")
 end
 

@@ -17,6 +17,14 @@ class PlaidItem::SyncCompleteEvent
       locals: { plaid_item: plaid_item }
     )
 
+    # Update the review page frame when discovery sync completes
+    plaid_item.broadcast_replace_to(
+      plaid_item,
+      target: "#{ActionView::RecordIdentifier.dom_id(plaid_item, :accounts)}",
+      partial: "plaid_items/accounts_review",
+      locals: { plaid_item: plaid_item, plaid_accounts: plaid_item.plaid_accounts.order(:created_at) }
+    )
+
     plaid_item.family.broadcast_sync_complete
   end
 end

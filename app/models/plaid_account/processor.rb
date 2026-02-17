@@ -37,7 +37,7 @@ class PlaidAccount::Processor
         # Name and subtype are the only attributes a user can override for Plaid accounts
         account.enrich_attributes(
           {
-            name: plaid_account.name,
+            name: plaid_account.display_name,
             subtype: map_subtype(plaid_account.plaid_type, plaid_account.plaid_subtype)
           },
           source: "plaid"

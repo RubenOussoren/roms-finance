@@ -43,7 +43,7 @@ class UI::Projections::DebtSettingsInline < ApplicationComponent
   end
 
   def month_options
-    (1..12).map { |m| [Date::MONTHNAMES[m], m] }
+    (1..12).map { |m| [ Date::MONTHNAMES[m], m ] }
   end
 
   def loan_lump_sum?

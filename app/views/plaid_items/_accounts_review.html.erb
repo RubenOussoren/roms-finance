@@ -1,13 +1,13 @@
-<%# locals: (snaptrade_connection:, snaptrade_accounts:) %>
+<%# locals: (plaid_item:, plaid_accounts:) %>
 
-<% if snaptrade_connection.syncing? && snaptrade_accounts.empty? %>
+<% if plaid_item.syncing? && plaid_accounts.empty? %>
   <div class="bg-container rounded-xl shadow-border-xs p-8 flex flex-col items-center gap-3">
     <%= icon "loader", size: "md", class: "animate-spin text-secondary" %>
     <p class="text-primary font-medium">Discovering accounts...</p>
     <p class="text-secondary text-sm">This may take a moment. The page will update automatically.</p>
   </div>
-<% elsif snaptrade_accounts.any? %>
-  <%= form_with url: import_accounts_snaptrade_connection_path(snaptrade_connection),
+<% elsif plaid_accounts.any? %>
+  <%= form_with url: import_accounts_plaid_item_path(plaid_item),
                 method: :patch,
                 data: { controller: "account-select" },
                 class: "space-y-4" do |f| %>
@@ -29,31 +29,31 @@
 
       <%# Account rows %>
       <div class="bg-container rounded-lg shadow-border-xs divide-y divide-primary">
-        <% snaptrade_accounts.each_with_index do |snaptrade_account, index| %>
-          <% imported = snaptrade_account.account.present? %>
+        <% plaid_accounts.each_with_index do |plaid_account, index| %>
+          <% imported = plaid_account.account.present? %>
 
           <div class="grid grid-cols-12 items-center px-4 py-3">
-            <input type="hidden" name="snaptrade_accounts[<%= index %>][id]" value="<%= snaptrade_account.id %>">
+            <input type="hidden" name="plaid_accounts[<%= index %>][id]" value="<%= plaid_account.id %>">
 
             <%# Checkbox + Name (col-span-5) %>
             <div class="col-span-5 flex items-center gap-2 min-w-0">
               <% if imported %>
-                <input type="hidden" name="snaptrade_accounts[<%= index %>][selected]" value="1">
+                <input type="hidden" name="plaid_accounts[<%= index %>][selected]" value="1">
               <% end %>
               <input type="checkbox"
-                     name="snaptrade_accounts[<%= index %>][selected]"
+                     name="plaid_accounts[<%= index %>][selected]"
                      value="1"
                      class="checkbox checkbox--light shrink-0"
-                     <%= "checked" if snaptrade_account.selected_for_import? || !imported %>
+                     <%= "checked" if plaid_account.selected_for_import? || !imported %>
                      <%= "disabled" if imported %>
                      data-account-select-target="row"
                      data-action="account-select#toggleRow">
 
               <div class="flex items-center gap-2 min-w-0">
                 <input type="text"
-                       name="snaptrade_accounts[<%= index %>][custom_name]"
-                       value="<%= snaptrade_account.custom_name.presence || snaptrade_account.name %>"
-                       placeholder="<%= snaptrade_account.name %>"
+                       name="plaid_accounts[<%= index %>][custom_name]"
+                       value="<%= plaid_account.custom_name.presence || plaid_account.name %>"
+                       placeholder="<%= plaid_account.name %>"
                        class="form-field__input text-sm py-1 min-w-0"
                        autocomplete="off"
                        <%= "disabled" if imported %>>
@@ -69,23 +69,23 @@
 
             <%# Type (col-span-2) %>
             <div class="col-span-2 justify-self-end">
-              <% if snaptrade_account.snaptrade_type.present? %>
+              <% if plaid_account.plaid_type.present? %>
                 <span class="inline-flex items-center gap-1 text-xs text-secondary bg-container-inset rounded-full px-2 py-0.5">
-                  <%= snaptrade_account.snaptrade_type %>
+                  <%= plaid_account.plaid_type %>
                 </span>
               <% end %>
             </div>
 
             <%# Currency (col-span-2) %>
             <p class="col-span-2 justify-self-end text-sm text-secondary">
-              <%= snaptrade_account.display_currency %>
+              <%= plaid_account.currency %>
             </p>
 
             <%# Balance (col-span-3) %>
             <p class="col-span-3 justify-self-end text-sm font-medium text-primary">
-              <% if snaptrade_account.current_balance.present? && snaptrade_account.current_balance > 0 %>
-                <%= number_to_currency(snaptrade_account.current_balance,
-                      unit: snaptrade_account.display_currency == "CAD" ? "$" : snaptrade_account.display_currency + " ") %>
+              <% balance = plaid_account.current_balance || plaid_account.available_balance %>
+              <% if balance.present? && balance > 0 %>
+                <%= number_to_currency(balance, unit: plaid_account.currency == "CAD" ? "$" : plaid_account.currency + " ") %>
               <% else %>
                 &mdash;
               <% end %>
@@ -114,7 +114,7 @@
     <p class="text-secondary text-sm">No accounts were discovered for this connection.</p>
     <div class="flex items-center gap-3 mt-2">
       <%= link_to "Back to accounts", accounts_path, class: "text-sm text-secondary hover:text-primary" %>
-      <%= link_to "Retry sync", sync_snaptrade_connection_path(snaptrade_connection), data: { turbo_method: :post }, class: "text-sm text-primary font-medium hover:underline" %>
+      <%= link_to "Retry sync", sync_plaid_item_path(plaid_item), data: { turbo_method: :post }, class: "text-sm text-primary font-medium hover:underline" %>
     </div>
   </div>
 <% end %>

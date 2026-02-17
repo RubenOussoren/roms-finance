@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Turbo } from "@hotwired/turbo-rails"
 
 export default class extends Controller {
   static values = { callbackUrl: String }
@@ -16,11 +17,11 @@ export default class extends Controller {
     const data = event.data
 
     if (data?.status === "SUCCESS" && data.authorizationId) {
-      window.location.href = `${this.callbackUrlValue}?authorizationId=${encodeURIComponent(data.authorizationId)}`
+      Turbo.visit(`${this.callbackUrlValue}?authorizationId=${encodeURIComponent(data.authorizationId)}`)
     } else if (data?.status === "ERROR") {
-      window.location.href = "/accounts"
+      Turbo.visit("/accounts")
     } else if (data === "CLOSE_MODAL" || data === "CLOSED") {
-      window.location.href = "/accounts"
+      Turbo.visit("/accounts")
     }
   }
 }

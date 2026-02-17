@@ -26,8 +26,62 @@ class PlaidItemsControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
+    plaid_item = PlaidItem.order(:created_at).last
     assert_equal "Account linked successfully.  Please wait for accounts to sync.", flash[:notice]
+    assert_redirected_to plaid_item_path(plaid_item)
+  end
+
+  test "show" do
+    plaid_item = plaid_items(:one)
+
+    get plaid_item_url(plaid_item)
+
+    assert_response :success
+    assert_select "h1", text: "Review Discovered Accounts"
+  end
+
+  test "show displays plaid accounts" do
+    plaid_item = plaid_items(:one)
+    plaid_account = plaid_accounts(:one)
+
+    get plaid_item_url(plaid_item)
+
+    assert_response :success
+    assert_select "input[value=?]", plaid_account.name
+  end
+
+  test "import_accounts selects accounts and triggers sync" do
+    plaid_item = plaid_items(:one)
+    plaid_account = plaid_accounts(:one)
+
+    PlaidItem.any_instance.expects(:sync_later).once
+
+    patch import_accounts_plaid_item_url(plaid_item), params: {
+      plaid_accounts: {
+        "0" => { id: plaid_account.id, selected: "1", custom_name: "My Chequing" }
+      }
+    }
+
+    plaid_account.reload
+    assert plaid_account.selected_for_import?
+    assert_equal "My Chequing", plaid_account.custom_name
     assert_redirected_to accounts_path
+  end
+
+  test "import_accounts with no selection redirects back" do
+    plaid_item = plaid_items(:one)
+    plaid_account = plaid_accounts(:one)
+
+    patch import_accounts_plaid_item_url(plaid_item), params: {
+      plaid_accounts: {
+        "0" => { id: plaid_account.id, selected: "0", custom_name: "" }
+      }
+    }
+
+    plaid_account.reload
+    assert_not plaid_account.selected_for_import?
+    assert_redirected_to plaid_item_path(plaid_item)
+    assert_equal "No accounts selected for import.", flash[:alert]
   end
 
   test "destroy" do
