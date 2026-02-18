@@ -8,7 +8,7 @@ http_interactions:
       string: ''
     headers:
       User-Agent:
-      - Faraday v2.13.1
+      - Faraday v2.13.2
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -18,10 +18,99 @@ http_interactions:
       code: 200
       message: OK
     headers:
+      Date:
+      - Wed, 18 Feb 2026 21:20:03 GMT
       Content-Type:
       - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Allow:
+      - GET, HEAD, OPTIONS
+      Cross-Origin-Opener-Policy:
+      - same-origin
+      Nel:
+      - '{"report_to":"heroku-nel","response_headers":["Via"],"max_age":3600,"success_fraction":0.01,"failure_fraction":0.1}'
+      Referrer-Policy:
+      - same-origin
+      Report-To:
+      - '{"group":"heroku-nel","endpoints":[{"url":"https://nel.heroku.com/reports?s=SZeGVujtVoLkXtU95SKTB1tMubIE0x%2FITBx4GJidAqc%3D\u0026sid=1b10b0ff-8a76-4548-befa-353fc6c6c045\u0026ts=1771449603"}],"max_age":3600}'
+      Reporting-Endpoints:
+      - heroku-nel="https://nel.heroku.com/reports?s=SZeGVujtVoLkXtU95SKTB1tMubIE0x%2FITBx4GJidAqc%3D&sid=1b10b0ff-8a76-4548-befa-353fc6c6c045&ts=1771449603"
+      Vary:
+      - Cookie, Origin
+      Via:
+      - 2.0 heroku-router
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - DENY
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9d0090f56cbdf80a-YYZ
     body:
-      encoding: UTF-8
-      string: '{"Symbol":"AAPL","AssetType":"Common Stock","Name":"Apple Inc.","Description":"Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide.","CIK":"320193","Exchange":"NASDAQ","Currency":"USD","Country":"USA","Sector":"TECHNOLOGY","Industry":"ELECTRONIC COMPUTERS","Address":"ONE APPLE PARK WAY, CUPERTINO, CA, US","OfficialSite":"https://www.apple.com","FiscalYearEnd":"September","LatestQuarter":"2024-06-29","MarketCapitalization":"3400000000000","EBITDA":"130000000000","PERatio":"33.5","PEGRatio":"2.1","BookValue":"4.5","DividendPerShare":"0.96","DividendYield":"0.0044","EPS":"6.57","RevenuePerShareTTM":"24.5","ProfitMargin":"0.264","OperatingMarginTTM":"0.305","ReturnOnAssetsTTM":"0.287","ReturnOnEquityTTM":"1.45","RevenueTTM":"383000000000","GrossProfitTTM":"170000000000","DilutedEPSTTM":"6.57","QuarterlyEarningsGrowthYOY":"0.11","QuarterlyRevenueGrowthYOY":"0.05","AnalystTargetPrice":"235","AnalystRatingStrongBuy":"12","AnalystRatingBuy":"20","AnalystRatingHold":"8","AnalystRatingSell":"2","AnalystRatingStrongSell":"0","TrailingPE":"33.5","ForwardPE":"28.1","PriceToSalesRatioTTM":"8.9","PriceToBookRatio":"48.5","EVToRevenue":"8.6","EVToEBITDA":"25.3","Beta":"1.24","52WeekHigh":"237.23","52WeekLow":"164.08","50DayMovingAverage":"218.5","200DayMovingAverage":"195.3","SharesOutstanding":"15400000000","DividendDate":"2024-08-15","ExDividendDate":"2024-08-12"}'
-  recorded_at: Fri, 16 May 2025 13:01:38 GMT
+      encoding: ASCII-8BIT
+      string: |-
+        {
+            "Symbol": "AAPL",
+            "AssetType": "Common Stock",
+            "Name": "Apple Inc",
+            "Description": "Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services. Apple is the world's largest technology company by revenue (totalling $274.5 billion in 2020) and, since January 2021, the world's most valuable company. As of 2021, Apple is the world's fourth-largest PC vendor by unit sales, and fourth-largest smartphone manufacturer. It is one of the Big Five American information technology companies, along with Amazon, Google, Microsoft, and Facebook.",
+            "CIK": "320193",
+            "Exchange": "NASDAQ",
+            "Currency": "USD",
+            "Country": "USA",
+            "Sector": "TECHNOLOGY",
+            "Industry": "CONSUMER ELECTRONICS",
+            "Address": "ONE APPLE PARK WAY, CUPERTINO, CA, UNITED STATES, 95014",
+            "OfficialSite": "https://www.apple.com",
+            "FiscalYearEnd": "September",
+            "LatestQuarter": "2025-12-31",
+            "MarketCapitalization": "3878488637000",
+            "EBITDA": "152901992000",
+            "PERatio": "33.44",
+            "PEGRatio": "2.31",
+            "BookValue": "6.0",
+            "DividendPerShare": "1.03",
+            "DividendYield": "0.004",
+            "EPS": "7.89",
+            "RevenuePerShareTTM": "29.3",
+            "ProfitMargin": "0.27",
+            "OperatingMarginTTM": "0.354",
+            "ReturnOnAssetsTTM": "0.244",
+            "ReturnOnEquityTTM": "1.52",
+            "RevenueTTM": "435617006000",
+            "GrossProfitTTM": "206157005000",
+            "DilutedEPSTTM": "7.89",
+            "QuarterlyEarningsGrowthYOY": "0.183",
+            "QuarterlyRevenueGrowthYOY": "0.157",
+            "AnalystTargetPrice": "292.7",
+            "AnalystRatingStrongBuy": "6",
+            "AnalystRatingBuy": "23",
+            "AnalystRatingHold": "15",
+            "AnalystRatingSell": "1",
+            "AnalystRatingStrongSell": "2",
+            "TrailingPE": "33.44",
+            "ForwardPE": "30.21",
+            "PriceToSalesRatioTTM": "8.9",
+            "PriceToBookRatio": "42.58",
+            "EVToRevenue": "8.67",
+            "EVToEBITDA": "24.71",
+            "Beta": "1.107",
+            "52WeekHigh": "288.35",
+            "52WeekLow": "168.48",
+            "50DayMovingAverage": "267.48",
+            "200DayMovingAverage": "240.06",
+            "SharesOutstanding": "14681140000",
+            "SharesFloat": "14656182000",
+            "PercentInsiders": "1.704",
+            "PercentInstitutions": "65.499",
+            "DividendDate": "2026-02-12",
+            "ExDividendDate": "2026-02-09"
+        }
+  recorded_at: Wed, 18 Feb 2026 21:20:03 GMT
 recorded_with: VCR 6.3.1

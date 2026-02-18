@@ -77,7 +77,7 @@ This architecture **leverages the existing Provider pattern** already in Maybe F
 
 ```ruby
 # Existing pattern in Maybe Finance (app/models/provider/)
-Provider::Registry.get_provider(:market_data_provider)  # Market data (synth or alpha_vantage)
+Provider::Registry.get_provider(:market_data_provider)  # Market data (Alpha Vantage)
 Provider::Registry.get_provider(:plaid)  # Bank connectivity provider
 
 # Extended for jurisdictions 🔧
@@ -484,13 +484,8 @@ end
 - Provider routing: `AccountableResource#set_link_options` routes Investment/Crypto to SnapTrade; banking types to Plaid.
 
 **Market Data Providers:**
-- Synth (primary provider for self-hosted)
+- Alpha Vantage (sole provider — stock prices, exchange rates, TSX support)
 - Manual entry (always available)
-
-**Original Design Vision (aspirational)**:
-- Yahoo Finance (stocks, ETFs)
-- CoinGecko (cryptocurrencies)
-- Alpha Vantage (fallback)
 
 **Integration Strategy**:
 ```ruby
@@ -525,9 +520,9 @@ end
 # Intelligent routing
 class MarketDataOrchestrator
   PROVIDER_PRIORITY = {
-    stocks: [:yahoo_finance, :alpha_vantage, :synth],
-    crypto: [:coingecko, :yahoo_finance],
-    forex: [:synth]
+    stocks: [:alpha_vantage],
+    crypto: [:alpha_vantage],
+    forex: [:alpha_vantage]
   }.freeze
 
   def fetch_with_fallback(ticker:, data_type:)
@@ -1790,7 +1785,7 @@ strategy.available_strategies  # => [:heloc_arbitrage, :baseline]
 
 3. Implement provider extensions:
    - Add `MarketDataConcept` to Provider pattern
-   - Integrate Yahoo Finance or extend Synth provider
+   - Extend Alpha Vantage provider or add additional data sources
    - Add volatility and correlation fetching
 
 4. Write calculator tests

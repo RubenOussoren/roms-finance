@@ -4,7 +4,7 @@ class Provider::AlphaVantageTest < ActiveSupport::TestCase
   include ExchangeRateProviderInterfaceTest, SecurityProviderInterfaceTest
 
   setup do
-    @subject = @alpha_vantage = Provider::AlphaVantage.new(ENV["ALPHA_VANTAGE_API_KEY"])
+    @subject = @alpha_vantage = Provider::AlphaVantage.new(ENV["ALPHA_VANTAGE_API_KEY"] || "test_alpha_vantage_key")
   end
 
   test "health check" do

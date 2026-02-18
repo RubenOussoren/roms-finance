@@ -2,9 +2,7 @@
 class Setting < RailsSettings::Base
   cache_prefix { "v1" }
 
-  field :synth_api_key, type: :string, default: ENV["SYNTH_API_KEY"]
   field :alpha_vantage_api_key, type: :string, default: ENV["ALPHA_VANTAGE_API_KEY"]
-  field :market_data_provider, type: :string, default: ENV.fetch("MARKET_DATA_PROVIDER", "synth")
   field :openai_access_token, type: :string, default: ENV["OPENAI_ACCESS_TOKEN"]
 
   # Defaults to invite-only when INVITE_ONLY env var is unset (secure-by-default for self-hosted).

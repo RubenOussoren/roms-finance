@@ -44,8 +44,8 @@ x-rails-env: &rails_env
   CACHE_REDIS_URL: redis://redis:6379/2
   SIDEKIQ_WEB_USERNAME: ${SIDEKIQ_WEB_USERNAME:-roms}
   SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-roms}
-# Optional: Synth API key for stock prices and exchange rates. You can also set this in Settings > Self-Hosting after login.
-# SYNTH_API_KEY: ${SYNTH_API_KEY}
+# Market data — stock prices and exchange rates (Alpha Vantage). Set key in Settings > Self-Hosting or here.
+# ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
 # NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN}
 # Plaid — bank account connectivity (US & EU). Get credentials at https://dashboard.plaid.com

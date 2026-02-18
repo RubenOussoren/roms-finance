@@ -1,17 +1,20 @@
 # frozen_string_literal: true
 
 namespace :securities do
-  desc "Backfill exchange_operating_mic for securities using Synth API"
+  desc "Backfill exchange_operating_mic for securities using market data provider (requires ALPHA_VANTAGE_API_KEY)"
   task backfill_exchange_mic: :environment do
     puts "Starting exchange_operating_mic backfill..."
 
-    api_key = Rails.application.config.app_mode.self_hosted? ? Setting.synth_api_key : ENV["SYNTH_API_KEY"]
-    unless api_key.present?
-      puts "ERROR: No Synth API key found. Please set SYNTH_API_KEY env var or configure it in Settings for self-hosted mode."
+    provider = Provider::Registry.get_provider(:market_data_provider)
+    unless provider.present?
+      puts "ERROR: No market data provider configured. Please set ALPHA_VANTAGE_API_KEY env var or configure it in Settings for self-hosted mode."
       exit 1
     end
 
-    securities = Security.where(exchange_operating_mic: nil).where.not(ticker: nil)
+    delay = ENV.fetch("DELAY", "1.5").to_f
+    limit = ENV.fetch("LIMIT", "20").to_i
+
+    securities = Security.where(exchange_operating_mic: nil).where.not(ticker: nil).limit(limit)
     total = securities.count
     processed = 0
     errors = []
@@ -21,33 +24,26 @@ namespace :securities do
       print "\rProcessing #{processed}/#{total} (#{(processed.to_f/total * 100).round(1)}%)"
 
       begin
-        response = Faraday.get("https://api.synthfinance.com/tickers/#{security.ticker}") do |req|
-          req.params["country_code"] = security.country_code if security.country_code.present?
-          req.headers["Authorization"] = "Bearer #{api_key}"
-        end
+        response = provider.fetch_security_info(
+          symbol: security.ticker,
+          exchange_operating_mic: security.exchange_operating_mic
+        )
 
-        if response.success?
-          data = JSON.parse(response.body).dig("data")
-          exchange_data = data["exchange"]
-
-          # Update security with exchange info and other metadata
+        if response.success? && response.data.present?
+          info = response.data
           security.update!(
-            exchange_operating_mic: exchange_data["operating_mic_code"],
-            exchange_mic: exchange_data["mic_code"],
-            exchange_acronym: exchange_data["acronym"],
-            name: data["name"],
-            logo_url: data["logo_url"],
-            country_code: exchange_data["country_code"]
+            exchange_operating_mic: info.exchange_operating_mic,
+            name: info.name,
+            logo_url: info.logo_url
           )
         else
-          errors << "#{security.ticker}: HTTP #{response.status} - #{response.body}"
+          errors << "#{security.ticker}: provider returned no data"
         end
       rescue => e
         errors << "#{security.ticker}: #{e.message}"
       end
 
-      # Add a small delay to not overwhelm the API
-      sleep(0.1)
+      sleep(delay)
     end
 
     puts "\n\nBackfill complete!"

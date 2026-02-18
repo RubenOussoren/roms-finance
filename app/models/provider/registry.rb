@@ -36,14 +36,6 @@ class Provider::Registry
         Provider::Stripe.new(secret_key:, webhook_secret:)
       end
 
-      def synth
-        api_key = ENV.fetch("SYNTH_API_KEY", Setting.synth_api_key)
-
-        return nil unless api_key.present?
-
-        Provider::Synth.new(api_key)
-      end
-
       def alpha_vantage
         api_key = ENV.fetch("ALPHA_VANTAGE_API_KEY", Setting.alpha_vantage_api_key)
 
@@ -53,14 +45,7 @@ class Provider::Registry
       end
 
       def market_data_provider
-        provider_name = Setting.market_data_provider
-
-        case provider_name
-        when "alpha_vantage"
-          alpha_vantage
-        else
-          synth
-        end
+        alpha_vantage
       end
 
       def plaid_us
@@ -132,7 +117,7 @@ class Provider::Registry
       when :llm
         %i[openai]
       else
-        %i[synth plaid_us plaid_eu github openai]
+        %i[alpha_vantage plaid_us plaid_eu github openai]
       end
     end
 end

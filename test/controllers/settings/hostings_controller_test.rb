@@ -6,17 +6,6 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
 
   setup do
     sign_in users(:family_admin)
-
-    @provider = mock
-    Provider::Registry.stubs(:get_provider).with(:synth).returns(@provider)
-    @usage_response = provider_success_response(
-      OpenStruct.new(
-        used: 10,
-        limit: 100,
-        utilization: 10,
-        plan: "free",
-      )
-    )
   end
 
   test "cannot edit when self hosting is disabled" do
@@ -30,28 +19,9 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get edit when self hosting is enabled" do
-    Setting.stubs(:market_data_provider).returns("synth")
-    @provider.expects(:usage).returns(@usage_response)
-
     with_self_hosting do
       get settings_hosting_url
       assert_response :success
-    end
-  end
-
-  test "can update settings when self hosting is enabled" do
-    with_self_hosting do
-      patch settings_hosting_url, params: { setting: { synth_api_key: "1234567890" } }
-
-      assert_equal "1234567890", Setting.synth_api_key
-    end
-  end
-
-  test "can update market data provider" do
-    with_self_hosting do
-      patch settings_hosting_url, params: { setting: { market_data_provider: "alpha_vantage" } }
-
-      assert_equal "alpha_vantage", Setting.market_data_provider
     end
   end
 
