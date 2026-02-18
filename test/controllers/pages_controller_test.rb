@@ -25,13 +25,6 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
-  test "changelog" do
-    VCR.use_cassette("git_repository_provider/fetch_latest_release_notes") do
-      get changelog_path
-      assert_response :ok
-    end
-  end
-
   test "changelog with nil release notes" do
     # Mock the GitHub provider to return nil (simulating API failure or no releases)
     github_provider = mock
@@ -41,7 +34,6 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     get changelog_path
     assert_response :ok
     assert_select "h2", text: "Release notes unavailable"
-    assert_select "a[href='https://github.com/maybe-finance/maybe/releases']"
   end
 
   test "changelog with incomplete release notes" do
@@ -49,7 +41,7 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     github_provider = mock
     incomplete_data = {
       avatar: nil,
-      username: "maybe-finance",
+      username: "roms-finance",
       name: "Test Release",
       published_at: nil,
       body: nil

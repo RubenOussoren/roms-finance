@@ -8,14 +8,14 @@ It means so much that you're interested in contributing! Seriously. Thank you. T
 
 - Before contributing, familiarize yourself with our project conventions. You should read through [CLAUDE.md](CLAUDE.md), which documents our development guidelines and conventions.
 - While totally optional, consider using Cursor + VSCode or Claude Code as they will automatically apply our project conventions to your code via the `.cursor/rules` directory and `CLAUDE.md`.
-- Before contributing, please check if it already exists in [issues](https://github.com/maybe-finance/maybe/issues) or [PRs](https://github.com/maybe-finance/maybe/pulls)
+- Before contributing, please check if it already exists in existing issues or PRs
 - Given the speed at which we're moving on the codebase, we don't assign issues or "give" issues to anyone.
 - When multiple PRs are submitted for the same issue, we take the one that most succinctly & efficiently solves a given problem and stays within the scope of work.
 - Priority is generally given to previous committers as they've proven familiarity with the codebase and product.
 
 ## What should I contribute?
 
-Check out our [feature roadmap](docs/FEATURE_ROADMAP.md) and [open issues](https://github.com/maybe-finance/maybe/issues) to get a better idea of _what_ to contribute.
+Check out our [feature roadmap](docs/FEATURE_ROADMAP.md) and open issues to get a better idea of _what_ to contribute.
 
 In general, _full features_ that align with the project's vision (investment projections, Canadian debt optimization, multi-account tracking) are the most valuable contributions.
 
@@ -26,10 +26,7 @@ In general, _full features_ that align with the project's vision (investment pro
 To get setup for local development, you have two options:
 
 1. [Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers) with VSCode (see the `.devcontainer` folder)
-2. Local Development
-   - [Mac Setup Guide](https://github.com/maybe-finance/maybe/wiki/Mac-Dev-Setup-Guide)
-   - [Linux Setup Guide](https://github.com/maybe-finance/maybe/wiki/Linux-Dev-Setup-Guide)
-   - [Windows Setup Guide](https://github.com/maybe-finance/maybe/wiki/Windows-Dev-Setup-Guide)
+2. Local Development (see `bin/setup` for initial project setup)
 
 ### Making a Pull Request
 

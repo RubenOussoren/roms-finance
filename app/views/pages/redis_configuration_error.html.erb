@@ -26,17 +26,8 @@
 
         <!-- Primary CTA -->
         <div class="text-center space-y-4">
-          <%= render DS::Link.new(
-            text: "View Setup Guide",
-            href: "https://github.com/maybe-finance/maybe/blob/main/docs/hosting/docker.md",
-            variant: "primary",
-            size: "lg",
-            icon: "external-link",
-            full_width: true,
-            target: "_blank",
-            rel: "noopener noreferrer"
-          ) %>
-          <p class="text-sm text-muted">Follow our complete Docker setup guide to configure Redis</p>
+          <p class="text-sm text-primary font-medium">To configure Redis, set the <code class="bg-surface-inset px-1.5 py-0.5 rounded">REDIS_URL</code> environment variable in your Docker Compose or hosting configuration to point to your Redis instance (e.g. <code class="bg-surface-inset px-1.5 py-0.5 rounded">redis://redis:6379/1</code>).</p>
+          <p class="text-sm text-muted">Refer to your hosting provider's documentation for Docker setup instructions.</p>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-module Maybe
+module RomsFinance
   class << self
     def version
       Semver.new(semver)

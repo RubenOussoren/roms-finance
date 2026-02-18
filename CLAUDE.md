@@ -58,7 +58,7 @@ The `investment-dashboard/` directory is a Python prototype for reference only. 
 ## Architecture Overview
 
 ### Application Modes
-- **Managed**: Maybe team operates servers (`app_mode = "managed"`)
+- **Managed**: ROMS Finance team operates servers (`app_mode = "managed"`)
 - **Self Hosted**: Users host via Docker Compose (`app_mode = "self_hosted"`)
 
 ### Core Domain Model

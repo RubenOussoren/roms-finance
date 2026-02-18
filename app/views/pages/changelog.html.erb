@@ -14,7 +14,7 @@
           </div>
         <% end %>
         <div>
-          <a class="text-primary font-medium text-sm" href="https://github.com/<%= @release_notes[:username] %>"><%= "@#{@release_notes[:username]}" %></a>
+          <span class="text-primary font-medium text-sm"><%= @release_notes[:username] %></span>
           <div class="text-secondary text-sm"><%= @release_notes[:published_at]&.strftime("%B %d, %Y") || "Date unavailable" %></div>
         </div>
       </div>

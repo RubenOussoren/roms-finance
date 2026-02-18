@@ -1,5 +1,5 @@
 {
-  "name": "Maybe",
+  "name": "ROMS Finance",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",

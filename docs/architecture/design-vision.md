@@ -2036,7 +2036,7 @@ Add support for a new country without modifying core application code.
 
 ## Conclusion
 
-This document serves as the **authoritative design reference** for integrating sophisticated financial planning features into Maybe Finance. The key principles are:
+This document serves as the **authoritative design reference** for integrating sophisticated financial planning features into ROMS Finance. The key principles are:
 
 1. **Adaptive, not naive** 🌍 - Learn from actual history, don't assume perfection
 2. **Probabilistic, not deterministic** 🌍 - Show ranges, not false precision

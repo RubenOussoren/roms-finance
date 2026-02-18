@@ -7,7 +7,7 @@ alwaysApply: false
 
 # Testing Patterns
 
-This rule covers all testing conventions for the Maybe codebase — general Rails testing and financial-specific patterns.
+This rule covers all testing conventions for the ROMS Finance codebase — general Rails testing and financial-specific patterns.
 
 ---
 
