@@ -1,13 +1,5 @@
 #!/bin/bash -e
 
-EXAMPLE_KEY="a7523c3d0ae56415046ad8abae168d71074a79534a7062258f8d1d51ac2f76d3c3bc86d86b6b0b307df30d9a6a90a2066a3fa9e67c5e6f374dbd7dd4e0778e13"
-
-if [ "$SECRET_KEY_BASE" = "$EXAMPLE_KEY" ]; then
-  echo "WARNING: You are using the default SECRET_KEY_BASE from compose.example.yml."
-  echo "This is insecure for production use. Generate a new key with: openssl rand -hex 64"
-  echo "Set it via SECRET_KEY_BASE environment variable in your docker-compose.yml"
-fi
-
 # If running the rails server then create or migrate existing database
 if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]; then
   ./bin/rails db:prepare
