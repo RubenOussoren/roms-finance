@@ -82,6 +82,10 @@ Sidekiq handles async tasks: account syncing, import processing, AI chat respons
 - Providers configured via `Provider::Registry`
 - Domain models use `Provided` concerns for data fetching
 - Inherit from `Provider` base class and return `with_provider_response`
+- **Market data provider is configurable** via `Setting.market_data_provider` (`synth` or `alpha_vantage`)
+- `Provider::Synth` — default, general-purpose market data (abandoned parent project)
+- `Provider::AlphaVantage` — free alternative with TSX support, 25 calls/day limit
+- Env vars: `SYNTH_API_KEY`, `ALPHA_VANTAGE_API_KEY`, `MARKET_DATA_PROVIDER`
 
 ### Account Connectivity Providers
 - **Plaid** (`Provider::Plaid`): Banking accounts (chequing, savings, credit cards, loans). US + EU regions. OAuth flow via Plaid Link with account selection/review before import. `PlaidItem` → `PlaidAccount` → `Account`.

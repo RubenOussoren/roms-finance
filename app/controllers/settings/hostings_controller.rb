@@ -6,8 +6,10 @@ class Settings::HostingsController < ApplicationController
   before_action :ensure_admin, only: [ :update, :clear_cache ]
 
   def show
-    synth_provider = Provider::Registry.get_provider(:synth)
-    @synth_usage = synth_provider&.usage
+    if Setting.market_data_provider == "synth"
+      synth_provider = Provider::Registry.get_provider(:synth)
+      @synth_usage = synth_provider&.usage
+    end
   end
 
   def update
@@ -19,8 +21,17 @@ class Settings::HostingsController < ApplicationController
       Setting.require_email_confirmation = hosting_params[:require_email_confirmation]
     end
 
+    if hosting_params.key?(:market_data_provider)
+      value = hosting_params[:market_data_provider]
+      Setting.market_data_provider = value if %w[synth alpha_vantage].include?(value)
+    end
+
     if hosting_params.key?(:synth_api_key)
       Setting.synth_api_key = hosting_params[:synth_api_key]
+    end
+
+    if hosting_params.key?(:alpha_vantage_api_key)
+      Setting.alpha_vantage_api_key = hosting_params[:alpha_vantage_api_key]
     end
 
     redirect_to settings_hosting_path, notice: t(".success")
@@ -36,7 +47,13 @@ class Settings::HostingsController < ApplicationController
 
   private
     def hosting_params
-      params.require(:setting).permit(:require_invite_for_signup, :require_email_confirmation, :synth_api_key)
+      params.require(:setting).permit(
+        :require_invite_for_signup,
+        :require_email_confirmation,
+        :market_data_provider,
+        :synth_api_key,
+        :alpha_vantage_api_key
+      )
     end
 
     def ensure_admin

@@ -30,6 +30,7 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get edit when self hosting is enabled" do
+    Setting.stubs(:market_data_provider).returns("synth")
     @provider.expects(:usage).returns(@usage_response)
 
     with_self_hosting do
@@ -43,6 +44,22 @@ class Settings::HostingsControllerTest < ActionDispatch::IntegrationTest
       patch settings_hosting_url, params: { setting: { synth_api_key: "1234567890" } }
 
       assert_equal "1234567890", Setting.synth_api_key
+    end
+  end
+
+  test "can update market data provider" do
+    with_self_hosting do
+      patch settings_hosting_url, params: { setting: { market_data_provider: "alpha_vantage" } }
+
+      assert_equal "alpha_vantage", Setting.market_data_provider
+    end
+  end
+
+  test "can update alpha vantage api key" do
+    with_self_hosting do
+      patch settings_hosting_url, params: { setting: { alpha_vantage_api_key: "av_test_key" } }
+
+      assert_equal "av_test_key", Setting.alpha_vantage_api_key
     end
   end
 

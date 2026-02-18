@@ -78,9 +78,13 @@
 
 ### Market Data
 
+ROMS Finance supports two market data providers for stock prices and exchange rates. Choose one in **Settings > Self-Hosting** after login, or set via environment variables.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SYNTH_API_KEY` | _(none)_ | [Synth](https://synthfinance.com/) API key for stock prices and exchange rates. Can also be set in **Settings > Self-Hosting** after login. |
+| `MARKET_DATA_PROVIDER` | `synth` | Which provider to use: `synth` or `alpha_vantage`. Can also be changed in Settings. |
+| `SYNTH_API_KEY` | _(none)_ | [Synth](https://synthfinance.com/) API key. Can also be set in Settings. |
+| `ALPHA_VANTAGE_API_KEY` | _(none)_ | [Alpha Vantage](https://www.alphavantage.co/) API key. Free tier: 25 calls/day, includes TSX. Get a key at [alphavantage.co](https://www.alphavantage.co/support/#api-key). Can also be set in Settings. |
 
 ### Account Connectivity
 

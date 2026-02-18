@@ -44,6 +44,25 @@ class Provider::Registry
         Provider::Synth.new(api_key)
       end
 
+      def alpha_vantage
+        api_key = ENV.fetch("ALPHA_VANTAGE_API_KEY", Setting.alpha_vantage_api_key)
+
+        return nil unless api_key.present?
+
+        Provider::AlphaVantage.new(api_key)
+      end
+
+      def market_data_provider
+        provider_name = Setting.market_data_provider
+
+        case provider_name
+        when "alpha_vantage"
+          alpha_vantage
+        else
+          synth
+        end
+      end
+
       def plaid_us
         config = Rails.application.config.plaid
 
@@ -107,9 +126,9 @@ class Provider::Registry
     def available_providers
       case concept
       when :exchange_rates
-        %i[synth]
+        %i[market_data_provider]
       when :securities
-        %i[synth]
+        %i[market_data_provider]
       when :llm
         %i[openai]
       else

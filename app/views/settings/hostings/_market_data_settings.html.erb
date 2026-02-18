@@ -1,0 +1,94 @@
+<div class="space-y-4">
+  <div>
+    <h2 class="font-medium mb-1">Market Data Provider</h2>
+    <p class="text-secondary text-sm mb-4">Choose which provider to use for security prices and exchange rates.</p>
+  </div>
+
+  <%= styled_form_with model: Setting.new,
+                       url: settings_hosting_path,
+                       method: :patch,
+                       data: {
+                         controller: "auto-submit-form",
+                         "auto-submit-form-trigger-event-value": "change"
+                       } do |form| %>
+    <%= form.select :market_data_provider,
+                    options_for_select(
+                      [["Synth Finance", "synth"], ["Alpha Vantage", "alpha_vantage"]],
+                      Setting.market_data_provider
+                    ),
+                    {},
+                    { class: "form-field__input",
+                      data: { "auto-submit-form-target": "auto" } } %>
+  <% end %>
+
+  <% if Setting.market_data_provider == "synth" %>
+    <div class="mt-4 space-y-4">
+      <% if ENV["SYNTH_API_KEY"].present? %>
+        <p class="text-sm text-secondary">You have successfully configured your Synth API key through the SYNTH_API_KEY environment variable.</p>
+      <% end %>
+
+      <%= styled_form_with model: Setting.new,
+                           url: settings_hosting_path,
+                           method: :patch,
+                           data: {
+                             controller: "auto-submit-form",
+                             "auto-submit-form-trigger-event-value": "blur"
+                           } do |form| %>
+        <%= form.text_field :synth_api_key,
+                            label: "Synth API Key",
+                            type: "password",
+                            placeholder: "Enter your Synth API key",
+                            value: ENV.fetch("SYNTH_API_KEY", Setting.synth_api_key),
+                            disabled: ENV["SYNTH_API_KEY"].present?,
+                            container_class: @synth_usage.present? && !@synth_usage.success? ? "border-red-500" : "",
+                            data: { "auto-submit-form-target": "auto" } %>
+      <% end %>
+
+      <% if @synth_usage.present? && @synth_usage.success? %>
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <p class="text-sm text-secondary">
+              <%= @synth_usage.data.used %> / <%= number_with_delimiter(@synth_usage.data.limit) %> API calls used (<%= number_to_percentage(@synth_usage.data.utilization, precision: 1) %>)
+            </p>
+            <div class="w-52 h-1.5 bg-gray-100 rounded-2xl">
+              <div class="h-full bg-green-500 rounded-2xl"
+                   style="width: <%= [@synth_usage.data.utilization, 2].max %>%;"></div>
+            </div>
+          </div>
+          <div class="bg-gray-100 rounded-md px-1.5 py-0.5 w-fit">
+            <p class="text-xs font-medium text-secondary uppercase">
+              <%= @synth_usage.data.plan %> plan
+            </p>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="mt-4 space-y-4">
+      <% if ENV["ALPHA_VANTAGE_API_KEY"].present? %>
+        <p class="text-sm text-secondary">You have successfully configured your Alpha Vantage API key through the ALPHA_VANTAGE_API_KEY environment variable.</p>
+      <% end %>
+
+      <%= styled_form_with model: Setting.new,
+                           url: settings_hosting_path,
+                           method: :patch,
+                           data: {
+                             controller: "auto-submit-form",
+                             "auto-submit-form-trigger-event-value": "blur"
+                           } do |form| %>
+        <%= form.text_field :alpha_vantage_api_key,
+                            label: "Alpha Vantage API Key",
+                            type: "password",
+                            placeholder: "Enter your Alpha Vantage API key",
+                            value: ENV.fetch("ALPHA_VANTAGE_API_KEY", Setting.alpha_vantage_api_key),
+                            disabled: ENV["ALPHA_VANTAGE_API_KEY"].present?,
+                            data: { "auto-submit-form-target": "auto" } %>
+      <% end %>
+
+      <p class="text-sm text-secondary">
+        Alpha Vantage free tier allows 25 API calls per day. Each security or exchange rate lookup uses 1 call.
+        Get a free key at <a href="https://www.alphavantage.co/support/#api-key" target="_blank" class="text-primary underline">alphavantage.co</a>.
+      </p>
+    </div>
+  <% end %>
+</div>

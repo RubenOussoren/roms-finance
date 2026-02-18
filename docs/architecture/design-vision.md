@@ -77,7 +77,7 @@ This architecture **leverages the existing Provider pattern** already in Maybe F
 
 ```ruby
 # Existing pattern in Maybe Finance (app/models/provider/)
-Provider::Registry.get_provider(:synth)  # Market data provider
+Provider::Registry.get_provider(:market_data_provider)  # Market data (synth or alpha_vantage)
 Provider::Registry.get_provider(:plaid)  # Bank connectivity provider
 
 # Extended for jurisdictions 🔧

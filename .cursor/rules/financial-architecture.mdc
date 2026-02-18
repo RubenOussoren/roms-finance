@@ -322,7 +322,7 @@ strategy.simulator.simulate!  # Factory pattern selects correct simulator
 This architecture leverages the existing Provider pattern:
 ```ruby
 # Existing pattern
-Provider::Registry.get_provider(:synth)  # Market data
+Provider::Registry.get_provider(:market_data_provider)  # Market data (synth or alpha_vantage)
 Provider::Registry.get_provider(:plaid)  # Bank connectivity
 
 # Extended for jurisdictions

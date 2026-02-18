@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://www.alphavantage.co/query?apikey=<ALPHA_VANTAGE_API_KEY>&function=TIME_SERIES_DAILY&outputsize=compact&symbol=AAPL
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.1
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"Meta Data":{"1. Information":"Daily Prices (open, high, low, close) and Volumes","2. Symbol":"AAPL","3. Last Refreshed":"2024-08-01","4. Output Size":"Compact","5. Time Zone":"US/Eastern"},"Time Series (Daily)":{"2024-08-01":{"1. open":"224.3700","2. high":"224.4800","3. low":"217.0200","4. close":"218.3600","5. volume":"62501000"}}}'
+  recorded_at: Fri, 16 May 2025 13:01:38 GMT
+recorded_with: VCR 6.3.1

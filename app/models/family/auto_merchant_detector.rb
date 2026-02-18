@@ -66,7 +66,7 @@ class Family::AutoMerchantDetector
     end
 
     def default_logo_provider_url
-      "https://logo.synthfinance.com"
+      "https://logo.clearbit.com"
     end
 
     def user_merchants_input

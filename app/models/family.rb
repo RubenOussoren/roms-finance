@@ -92,7 +92,7 @@ class Family < ApplicationRecord
   end
 
   def missing_data_provider?
-    requires_data_provider? && Provider::Registry.get_provider(:synth).nil?
+    requires_data_provider? && Provider::Registry.get_provider(:market_data_provider).nil?
   end
 
   def oldest_entry_date

@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://www.alphavantage.co/query?apikey=<ALPHA_VANTAGE_API_KEY>&function=OVERVIEW&symbol=AAPL
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.1
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"Symbol":"AAPL","AssetType":"Common Stock","Name":"Apple Inc.","Description":"Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide.","CIK":"320193","Exchange":"NASDAQ","Currency":"USD","Country":"USA","Sector":"TECHNOLOGY","Industry":"ELECTRONIC COMPUTERS","Address":"ONE APPLE PARK WAY, CUPERTINO, CA, US","OfficialSite":"https://www.apple.com","FiscalYearEnd":"September","LatestQuarter":"2024-06-29","MarketCapitalization":"3400000000000","EBITDA":"130000000000","PERatio":"33.5","PEGRatio":"2.1","BookValue":"4.5","DividendPerShare":"0.96","DividendYield":"0.0044","EPS":"6.57","RevenuePerShareTTM":"24.5","ProfitMargin":"0.264","OperatingMarginTTM":"0.305","ReturnOnAssetsTTM":"0.287","ReturnOnEquityTTM":"1.45","RevenueTTM":"383000000000","GrossProfitTTM":"170000000000","DilutedEPSTTM":"6.57","QuarterlyEarningsGrowthYOY":"0.11","QuarterlyRevenueGrowthYOY":"0.05","AnalystTargetPrice":"235","AnalystRatingStrongBuy":"12","AnalystRatingBuy":"20","AnalystRatingHold":"8","AnalystRatingSell":"2","AnalystRatingStrongSell":"0","TrailingPE":"33.5","ForwardPE":"28.1","PriceToSalesRatioTTM":"8.9","PriceToBookRatio":"48.5","EVToRevenue":"8.6","EVToEBITDA":"25.3","Beta":"1.24","52WeekHigh":"237.23","52WeekLow":"164.08","50DayMovingAverage":"218.5","200DayMovingAverage":"195.3","SharesOutstanding":"15400000000","DividendDate":"2024-08-15","ExDividendDate":"2024-08-12"}'
+  recorded_at: Fri, 16 May 2025 13:01:38 GMT
+recorded_with: VCR 6.3.1

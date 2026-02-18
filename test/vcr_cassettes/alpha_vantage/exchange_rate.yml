@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://www.alphavantage.co/query?apikey=<ALPHA_VANTAGE_API_KEY>&from_symbol=USD&function=FX_DAILY&outputsize=full&to_symbol=GBP
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.1
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"Meta Data":{"1. Information":"Forex Daily Prices (open, high, low, close)","2. From Symbol":"USD","3. To Symbol":"GBP","4. Output Size":"Compact","5. Last Refreshed":"2024-01-02"},"Time Series FX (Daily)":{"2024-01-02":{"1. open":"0.7850","2. high":"0.7870","3. low":"0.7830","4. close":"0.7855"},"2024-01-01":{"1. open":"0.7840","2. high":"0.7860","3. low":"0.7820","4. close":"0.7850"}}}'
+  recorded_at: Fri, 16 May 2025 13:01:38 GMT
+recorded_with: VCR 6.3.1
