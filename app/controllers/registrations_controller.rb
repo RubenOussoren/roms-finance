@@ -36,7 +36,7 @@ class RegistrationsController < ApplicationController
   private
 
     def require_registration_access
-      return if self_hosted_first_login?
+      return if first_login?
       return if @invitation.present?
       return if valid_invite_code_in_params?
       return unless invite_code_required?

@@ -8,7 +8,7 @@ module Api
       skip_before_action :log_api_access
 
       def signup
-        unless self_hosted_first_login?
+        unless first_login?
           if invite_code_required? && !valid_invite_code_in_params?
             render json: { error: "Registration is by invitation only." }, status: :forbidden
             return

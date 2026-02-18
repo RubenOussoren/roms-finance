@@ -19,7 +19,7 @@ module Authentication
       if session_record = find_session_by_cookie
         Current.session = session_record
       else
-        if self_hosted_first_login?
+        if first_login?
           redirect_to new_registration_url
         else
           redirect_to new_session_url
@@ -41,10 +41,6 @@ module Authentication
       session = user.sessions.create!
       cookies.signed.permanent[:session_token] = { value: session.id, httponly: true }
       session
-    end
-
-    def self_hosted_first_login?
-      Rails.application.config.app_mode.self_hosted? && User.count.zero?
     end
 
     def set_request_details

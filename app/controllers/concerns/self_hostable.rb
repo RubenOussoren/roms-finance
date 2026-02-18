@@ -2,7 +2,7 @@ module SelfHostable
   extend ActiveSupport::Concern
 
   included do
-    helper_method :self_hosted?, :self_hosted_first_login?
+    helper_method :self_hosted?, :self_hosted_first_login?, :first_login?
 
     prepend_before_action :verify_self_host_config
   end
@@ -12,8 +12,12 @@ module SelfHostable
       Rails.configuration.app_mode.self_hosted?
     end
 
+    def first_login?
+      User.count.zero?
+    end
+
     def self_hosted_first_login?
-      self_hosted? && User.count.zero?
+      self_hosted? && first_login?
     end
 
     def verify_self_host_config
