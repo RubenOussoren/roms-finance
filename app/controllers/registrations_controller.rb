@@ -6,7 +6,7 @@ class RegistrationsController < ApplicationController
   before_action :set_invitation
   before_action :require_registration_access
   before_action :set_user, only: :create
-  before_action :claim_invite_code, only: :create, if: :invite_code_required?
+  before_action :claim_invite_code, only: :create, if: -> { invite_code_required? && !first_login? }
   before_action :validate_password_requirements, only: :create
 
   def new
@@ -55,7 +55,7 @@ class RegistrationsController < ApplicationController
     end
 
     def user_params(specific_param = nil)
-      params = self.params.require(:user).permit(:name, :email, :password, :password_confirmation, :invite_code, :invitation)
+      params = self.params.require(:user).permit(:email, :password, :password_confirmation, :invite_code, :invitation)
       specific_param ? params[specific_param] : params
     end
 

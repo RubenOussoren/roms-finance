@@ -73,6 +73,22 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "first user can submit registration when invite-only is on" do
+    with_self_hosting do
+      Setting.require_invite_for_signup = true
+      User.stubs(:count).returns(0)
+
+      assert_difference -> { User.where(email: "first@example.com").count }, +1 do
+        post registration_url, params: { user: {
+          email: "first@example.com",
+          password: "Password1!" } }
+      end
+      assert_redirected_to root_url
+    ensure
+      Setting.require_invite_for_signup = false
+    end
+  end
+
   test "invitation token bypasses invite-only gate" do
     with_self_hosting do
       Setting.require_invite_for_signup = true
