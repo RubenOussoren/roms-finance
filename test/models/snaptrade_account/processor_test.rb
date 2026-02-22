@@ -41,6 +41,18 @@ class SnapTradeAccount::ProcessorTest < ActiveSupport::TestCase
     assert_equal @snaptrade_account.id, account.snaptrade_account_id
   end
 
+  test "new account inherits created_by_user_id from snaptrade_connection user" do
+    member = users(:family_member)
+    @snaptrade_account.snaptrade_connection.update!(user: member)
+
+    assert_difference "Account.count", 1 do
+      @processor.process
+    end
+
+    account = @snaptrade_account.reload.account
+    assert_equal member.id, account.created_by_user_id
+  end
+
   test "continues processing if positions fail in production" do
     SnapTradeAccount::PositionsProcessor.any_instance
       .stubs(:process).raises(StandardError.new("positions error"))

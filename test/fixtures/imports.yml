@@ -1,14 +1,17 @@
 transaction:
   family: dylan_family
+  user: family_admin
   type: TransactionImport
   status: pending
 
 trade:
   family: dylan_family
+  user: family_admin
   type: TradeImport
   status: pending
 
 account:
   family: dylan_family
+  user: family_admin
   type: AccountImport
   status: pending

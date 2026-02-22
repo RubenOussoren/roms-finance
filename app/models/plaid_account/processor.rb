@@ -34,6 +34,10 @@ class PlaidAccount::Processor
           plaid_account_id: plaid_account.id
         )
 
+        if account.new_record?
+          account.created_by_user_id = plaid_account.plaid_item.user_id
+        end
+
         # Name and subtype are the only attributes a user can override for Plaid accounts
         account.enrich_attributes(
           {

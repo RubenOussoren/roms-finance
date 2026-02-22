@@ -28,6 +28,10 @@ class SnapTradeAccount::Processor
           snaptrade_account_id: snaptrade_account.id
         )
 
+        if account.new_record?
+          account.created_by_user_id = snaptrade_account.snaptrade_connection.user_id
+        end
+
         account.enrich_attributes(
           {
             name: snaptrade_account.display_name,

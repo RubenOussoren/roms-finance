@@ -63,7 +63,8 @@ module Family::SnapTradeConnectable
       authorization_id: authorization_id,
       brokerage_name: extract_brokerage_name(connection_data),
       brokerage_slug: extract_brokerage_slug(connection_data),
-      raw_payload: connection_data.respond_to?(:to_hash) ? connection_data.to_hash : (connection_data || {})
+      raw_payload: connection_data.respond_to?(:to_hash) ? connection_data.to_hash : (connection_data || {}),
+      user: Current.user
     )
 
     snaptrade_connection.sync_later

@@ -9,7 +9,7 @@ class PropertiesController < ApplicationController
 
   def create
     @account = Current.family.accounts.create!(
-      property_params.merge(currency: Current.family.currency, balance: 0, status: "draft")
+      property_params.merge(currency: Current.family.currency, balance: 0, status: "draft", created_by_user_id: Current.user.id)
     )
 
     redirect_to balances_property_path(@account)

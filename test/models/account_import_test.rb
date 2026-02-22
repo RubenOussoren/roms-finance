@@ -63,6 +63,34 @@ class AccountImportTest < ActiveSupport::TestCase
     end
   end
 
+  test "imported accounts inherit created_by_user_id from import" do
+    member = users(:family_member)
+    @import.update!(user: member)
+
+    import_csv = <<~CSV
+      type,name,amount,currency
+      depository,Member Checking,500.00,USD
+    CSV
+
+    @import.update!(
+      raw_file_str: import_csv,
+      entity_type_col_label: "type",
+      name_col_label: "name",
+      amount_col_label: "amount",
+      currency_col_label: "currency"
+    )
+
+    @import.generate_rows_from_csv
+    @import.mappings.create! key: "depository", value: "Depository", type: "Import::AccountTypeMapping"
+    @import.reload
+
+    @import.publish
+
+    assert_equal "complete", @import.status
+    account = @import.accounts.find_by(name: "Member Checking")
+    assert_equal member.id, account.created_by_user_id
+  end
+
   test "column_keys returns expected keys" do
     assert_equal %i[entity_type name amount currency], @import.column_keys
   end

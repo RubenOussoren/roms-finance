@@ -25,6 +25,7 @@ class ImportsController < ApplicationController
       type: import_params[:type],
       account: account,
       date_format: Current.family.date_format,
+      user: Current.user,
     )
 
     redirect_to import_upload_path(import)

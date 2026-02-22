@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_22_100003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -501,7 +501,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
     t.string "exchange_operating_mic_col_label"
     t.string "amount_type_strategy", default: "signed_amount"
     t.string "amount_type_inflow_value"
+    t.uuid "user_id"
     t.index ["family_id"], name: "index_imports_on_family_id"
+    t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
   create_table "investments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -731,8 +733,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
     t.string "status", default: "good", null: false
     t.jsonb "raw_payload", default: {}
     t.jsonb "raw_institution_payload", default: {}
+    t.uuid "user_id"
     t.index ["family_id"], name: "index_plaid_items_on_family_id"
     t.index ["plaid_id"], name: "index_plaid_items_on_plaid_id", unique: true
+    t.index ["user_id"], name: "index_plaid_items_on_user_id"
   end
 
   create_table "projection_assumptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -912,8 +916,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
     t.jsonb "raw_payload", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id"
     t.index ["authorization_id"], name: "index_snaptrade_connections_on_authorization_id", unique: true
     t.index ["family_id"], name: "index_snaptrade_connections_on_family_id"
+    t.index ["user_id"], name: "index_snaptrade_connections_on_user_id"
   end
 
   create_table "subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1103,6 +1109,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
   add_foreign_key "impersonation_sessions", "users", column: "impersonator_id"
   add_foreign_key "import_rows", "imports"
   add_foreign_key "imports", "families"
+  add_foreign_key "imports", "users"
   add_foreign_key "invitations", "families"
   add_foreign_key "invitations", "users", column: "inviter_id"
   add_foreign_key "merchants", "families"
@@ -1113,6 +1120,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "plaid_accounts", "plaid_items"
   add_foreign_key "plaid_items", "families"
+  add_foreign_key "plaid_items", "users"
   add_foreign_key "projection_assumptions", "accounts"
   add_foreign_key "projection_assumptions", "families"
   add_foreign_key "projection_assumptions", "projection_standards"
@@ -1128,6 +1136,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_18_100000) do
   add_foreign_key "sessions", "users"
   add_foreign_key "snaptrade_accounts", "snaptrade_connections"
   add_foreign_key "snaptrade_connections", "families"
+  add_foreign_key "snaptrade_connections", "users"
   add_foreign_key "subscriptions", "families"
   add_foreign_key "syncs", "syncs", column: "parent_id"
   add_foreign_key "taggings", "tags"

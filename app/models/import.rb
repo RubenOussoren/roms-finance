@@ -16,6 +16,7 @@ class Import < ApplicationRecord
 
   belongs_to :family
   belongs_to :account, optional: true
+  belongs_to :user, optional: true
 
   before_validation :set_default_number_format
 

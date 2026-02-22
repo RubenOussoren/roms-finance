@@ -9,6 +9,7 @@ class SnapTradeConnection < ApplicationRecord
   after_destroy :deregister_snaptrade_user_if_last
 
   belongs_to :family
+  belongs_to :user, optional: true
   has_many :snaptrade_accounts, dependent: :destroy
   has_many :accounts, through: :snaptrade_accounts
 

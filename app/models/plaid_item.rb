@@ -13,6 +13,7 @@ class PlaidItem < ApplicationRecord
   before_destroy :remove_plaid_item
 
   belongs_to :family
+  belongs_to :user, optional: true
   has_one_attached :logo
 
   has_many :plaid_accounts, dependent: :destroy

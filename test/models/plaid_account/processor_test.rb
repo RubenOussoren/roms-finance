@@ -223,6 +223,33 @@ class PlaidAccount::ProcessorTest < ActiveSupport::TestCase
     assert_not_equal original_balance, original_anchor.entry.amount
   end
 
+  test "new account inherits created_by_user_id from plaid_item user" do
+    Account.destroy_all
+
+    member = users(:family_member)
+    @plaid_account.plaid_item.update!(user: member)
+
+    expect_default_subprocessor_calls
+
+    @plaid_account.update!(
+      plaid_id: "test_plaid_id",
+      plaid_type: "depository",
+      plaid_subtype: "checking",
+      current_balance: 1000,
+      available_balance: 1000,
+      currency: "USD",
+      name: "Member's Bank Account",
+      mask: "5678"
+    )
+
+    assert_difference "Account.count" do
+      PlaidAccount::Processor.new(@plaid_account).process
+    end
+
+    account = Account.order(created_at: :desc).first
+    assert_equal member.id, account.created_by_user_id
+  end
+
   private
     def expect_investment_product_processor_calls
       PlaidAccount::Investments::TransactionsProcessor.any_instance.expects(:process).once
