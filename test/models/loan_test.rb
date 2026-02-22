@@ -245,4 +245,193 @@ class LoanTest < ActiveSupport::TestCase
     loan.initial_balance = 500000
     assert loan.valid?
   end
+
+  # expected_balance_at tests
+
+  test "expected_balance_at computes amortized balance for mortgage" do
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Mortgage",
+      balance: 830000,
+      currency: "CAD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 4.9,
+        term_months: 360,
+        rate_type: "fixed",
+        initial_balance: 830000,
+        origination_date: Date.new(2024, 7, 1)
+      )
+    )
+
+    loan = loan_account.loan
+    # After some months, balance should be less than original
+    future = loan.origination_date + 18.months
+    balance = loan.expected_balance_at(future)
+    assert_not_nil balance
+    assert balance < 830000, "Balance should decrease over time"
+    assert balance > 0, "Balance should be positive"
+  end
+
+  test "expected_balance_at uses calibrated values when present" do
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Mortgage",
+      balance: 760000,
+      currency: "CAD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 4.9,
+        term_months: 360,
+        rate_type: "fixed",
+        initial_balance: 830000,
+        origination_date: Date.new(2024, 7, 1),
+        calibrated_balance: 760000,
+        calibrated_at: Date.new(2026, 2, 1)
+      )
+    )
+
+    loan = loan_account.loan
+    # At calibration date, balance should equal calibrated_balance
+    balance_at_calibration = loan.expected_balance_at(Date.new(2026, 2, 1))
+    assert_equal 760000.0, balance_at_calibration
+
+    # One month later, should be slightly less
+    balance_one_month = loan.expected_balance_at(Date.new(2026, 3, 1))
+    assert balance_one_month < 760000, "Balance should decrease after calibration"
+    assert balance_one_month > 750000, "Balance should not decrease dramatically in one month"
+  end
+
+  test "expected_balance_at returns nil when amortization cannot be computed" do
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Variable Loan",
+      balance: 500000,
+      currency: "USD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 4.9,
+        term_months: 300,
+        rate_type: "variable"
+      )
+    )
+
+    assert_nil loan_account.loan.expected_balance_at(Date.current)
+  end
+
+  test "expected_balance_at handles zero interest rate" do
+    loan_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Zero Interest Loan",
+      balance: 120000,
+      currency: "USD",
+      subtype: "auto",
+      accountable: Loan.create!(
+        interest_rate: 0,
+        term_months: 120,
+        rate_type: "fixed",
+        initial_balance: 120000,
+        origination_date: Date.new(2024, 1, 1)
+      )
+    )
+
+    loan = loan_account.loan
+    # After 60 months (half the term), balance should be half
+    balance = loan.expected_balance_at(Date.new(2029, 1, 1))
+    assert_in_delta 60000.0, balance, 1.0
+  end
+
+  test "can_compute_amortization? returns true with all required fields" do
+    loan = Loan.create!(
+      interest_rate: 4.9,
+      term_months: 360,
+      rate_type: "fixed",
+      initial_balance: 830000,
+      origination_date: Date.new(2024, 7, 1)
+    )
+    # Need an account for original_balance to work
+    Account.create!(
+      family: families(:dylan_family),
+      name: "Test",
+      balance: 830000,
+      currency: "CAD",
+      subtype: "mortgage",
+      accountable: loan
+    )
+
+    assert loan.can_compute_amortization?
+  end
+
+  test "can_compute_amortization? returns false without origination_date or calibrated_at" do
+    loan = Loan.create!(
+      interest_rate: 4.9,
+      term_months: 360,
+      rate_type: "fixed",
+      initial_balance: 830000
+    )
+    Account.create!(
+      family: families(:dylan_family),
+      name: "Test",
+      balance: 830000,
+      currency: "CAD",
+      subtype: "mortgage",
+      accountable: loan
+    )
+
+    assert_not loan.can_compute_amortization?
+  end
+
+  test "recalibrate! updates calibrated_balance and calibrated_at" do
+    loan = Loan.create!(
+      interest_rate: 4.9,
+      term_months: 360,
+      rate_type: "fixed",
+      origination_date: Date.new(2024, 7, 1)
+    )
+
+    loan.recalibrate!(760000, Date.new(2026, 2, 1))
+    loan.reload
+
+    assert_equal 760000, loan.calibrated_balance.to_f
+    assert_equal Date.new(2026, 2, 1), loan.calibrated_at
+  end
+
+  test "expected_balance_at uses non-mortgage compounding for auto loans" do
+    mortgage_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Mortgage",
+      balance: 400000,
+      currency: "USD",
+      subtype: "mortgage",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 300,
+        rate_type: "fixed",
+        initial_balance: 400000,
+        origination_date: Date.new(2024, 1, 1)
+      )
+    )
+
+    auto_account = Account.create!(
+      family: families(:dylan_family),
+      name: "Auto Loan",
+      balance: 400000,
+      currency: "USD",
+      subtype: "auto",
+      accountable: Loan.create!(
+        interest_rate: 5.0,
+        term_months: 300,
+        rate_type: "fixed",
+        initial_balance: 400000,
+        origination_date: Date.new(2024, 1, 1)
+      )
+    )
+
+    future = Date.new(2025, 7, 1) # 18 months
+    mortgage_balance = mortgage_account.loan.expected_balance_at(future)
+    auto_balance = auto_account.loan.expected_balance_at(future)
+
+    # Canadian semi-annual compounding yields slightly different balance
+    assert_not_equal mortgage_balance, auto_balance
+  end
 end

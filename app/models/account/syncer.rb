@@ -17,7 +17,7 @@ class Account::Syncer
 
   private
     def materialize_balances
-      strategy = account.linked? ? :reverse : :forward
+      strategy = (account.linked? || account.split_target?) ? :reverse : :forward
       Balance::Materializer.new(account, strategy: strategy).materialize_balances
     end
 

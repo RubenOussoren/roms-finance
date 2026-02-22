@@ -47,9 +47,23 @@ class PlaidAccount::Processor
           source: "plaid"
         )
 
+        # Only assign accountable when account is new or accountable type is changing.
+        # This prevents orphaning the existing accountable (and losing its data like
+        # interest_rate, term_months, origination_date, calibrated_balance, etc.)
+        expected_class = map_accountable_class(plaid_account.plaid_type, plaid_account.plaid_subtype)
+        if account.new_record? || account.accountable_type != expected_class.name
+          account.accountable = expected_class.new
+        end
+
+        combined_balance = balance_calculator.balance
+
+        # Check if this account has a balance split configured
+        split_result = account.persisted? ? account.compute_balance_split(combined_balance) : nil
+
+        account_balance = split_result ? split_result.source_balance : combined_balance
+
         account.assign_attributes(
-          accountable: map_accountable(plaid_account.plaid_type),
-          balance: balance_calculator.balance,
+          balance: account_balance,
           currency: plaid_account.currency,
           cash_balance: balance_calculator.cash_balance
         )
@@ -57,13 +71,17 @@ class PlaidAccount::Processor
         account.save!
 
         # Create or update the current balance anchor valuation for event-sourced ledger
-        # Note: This is a partial implementation. In the future, we'll introduce HoldingValuation
-        # to properly track the holdings vs. cash breakdown, but for now we're only tracking
-        # the total balance in the current anchor. The cash_balance field on the account model
-        # is still being used for the breakdown.
-        # Use CurrentBalanceManager directly to avoid sync_later side-effect from Account#set_current_balance,
-        # since the parent PlaidItem sync will schedule account syncs via schedule_account_syncs.
-        Account::CurrentBalanceManager.new(account).set_current_balance(balance_calculator.balance)
+        Account::CurrentBalanceManager.new(account).set_current_balance(account_balance)
+
+        # Update split target balances
+        if split_result
+          split_result.target_adjustments.each do |adjustment|
+            target = adjustment[:account]
+            target_balance = adjustment[:balance]
+            target.update!(balance: target_balance)
+            Account::CurrentBalanceManager.new(target).set_current_balance(target_balance)
+          end
+        end
       end
     end
 

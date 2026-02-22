@@ -177,6 +177,8 @@ Rails.application.routes.draw do
       delete :reset, on: :member
     end
     resource :account_permissions, only: [ :edit, :update ]
+    resource :split, only: [ :new, :create, :destroy ], controller: "account_splits"
+    resource :recalibration, only: [ :new, :create ], controller: "account_recalibrations"
   end
 
   # Convenience routes for polymorphic paths

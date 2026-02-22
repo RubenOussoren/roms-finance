@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_22_100003) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_22_100004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -69,6 +69,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100003) do
     t.uuid "created_by_user_id", null: false
     t.boolean "is_joint", default: false, null: false
     t.uuid "snaptrade_account_id"
+    t.uuid "split_source_id"
     t.index ["accountable_id", "accountable_type"], name: "index_accounts_on_accountable_id_and_accountable_type"
     t.index ["accountable_type"], name: "index_accounts_on_accountable_type"
     t.index ["currency"], name: "index_accounts_on_currency"
@@ -80,6 +81,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100003) do
     t.index ["import_id"], name: "index_accounts_on_import_id"
     t.index ["plaid_account_id"], name: "index_accounts_on_plaid_account_id"
     t.index ["snaptrade_account_id"], name: "index_accounts_on_snaptrade_account_id"
+    t.index ["split_source_id"], name: "index_accounts_on_split_source_id"
     t.index ["status"], name: "index_accounts_on_status"
   end
 
@@ -564,6 +566,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100003) do
     t.integer "annual_lump_sum_month"
     t.integer "renewal_term_months"
     t.decimal "prepayment_privilege_percent", precision: 5, scale: 2
+    t.date "origination_date"
+    t.decimal "calibrated_balance", precision: 19, scale: 4
+    t.date "calibrated_at"
   end
 
   create_table "merchants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1078,6 +1083,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100003) do
   add_foreign_key "account_permissions", "users"
   add_foreign_key "account_projections", "accounts"
   add_foreign_key "account_projections", "projection_assumptions"
+  add_foreign_key "accounts", "accounts", column: "split_source_id"
   add_foreign_key "accounts", "families"
   add_foreign_key "accounts", "imports"
   add_foreign_key "accounts", "plaid_accounts"

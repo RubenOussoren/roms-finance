@@ -1,0 +1,29 @@
+<%# locals: (account:) %>
+
+<div class="rounded-lg border border-primary bg-container p-4 space-y-3">
+  <div class="flex items-center gap-2">
+    <%= icon "git-branch", class: "w-4 h-4 text-secondary" %>
+    <span class="text-sm font-medium text-primary">Balance Split Active</span>
+  </div>
+
+  <div class="text-sm text-secondary space-y-1">
+    <p>Combined with: <strong><%= account.split_targets.map(&:name).join(", ") %></strong></p>
+    <p>Synced from Plaid as one account, then split using amortization schedule.</p>
+    <% if account.accountable.calibrated_at.present? %>
+      <p>Last calibrated: <%= account.accountable.calibrated_at.strftime("%b %d, %Y") %> at <%= format_money Money.new(account.accountable.calibrated_balance, account.currency) %></p>
+    <% end %>
+  </div>
+
+  <div class="flex gap-2">
+    <%= link_to "Recalibrate",
+        new_account_recalibration_path(account),
+        class: "btn btn--ghost text-sm",
+        data: { turbo_frame: :modal } %>
+
+    <%= button_to "Remove Split",
+        account_split_path(account),
+        method: :delete,
+        class: "btn btn--ghost text-sm text-destructive",
+        data: { turbo_confirm: "This will merge all split accounts back into one. Continue?" } %>
+  </div>
+</div>

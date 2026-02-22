@@ -1,6 +1,6 @@
 class Account < ApplicationRecord
   include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable
-  include JurisdictionAware, DataQualityCheckable, AccountAccessible
+  include JurisdictionAware, DataQualityCheckable, AccountAccessible, BalanceSplittable
 
   validates :name, :balance, :currency, presence: true
 

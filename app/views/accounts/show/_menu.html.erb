@@ -17,6 +17,14 @@
     ) %>
   <% end %>
 
+  <% if account.linked? && account.accountable_type == "Loan" && !account.split_source? && !account.split_target? %>
+    <% menu.with_item(variant: "link", text: "Split mortgage + HELOC", href: new_account_split_path(account), icon: "git-branch", data: { turbo_frame: :modal }) %>
+  <% end %>
+
+  <% if account.split_source? %>
+    <% menu.with_item(variant: "link", text: "Recalibrate", href: new_account_recalibration_path(account), icon: "calculator", data: { turbo_frame: :modal }) %>
+  <% end %>
+
   <% unless account.linked? %>
     <% menu.with_item(
       variant: "button",

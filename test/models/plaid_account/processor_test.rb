@@ -94,8 +94,7 @@ class PlaidAccount::ProcessorTest < ActiveSupport::TestCase
   test "calculates balance using BalanceCalculator for investment accounts" do
     @plaid_account.update!(plaid_type: "investment")
 
-    # Balance is called twice: once for account.balance and once for set_current_balance
-    PlaidAccount::Investments::BalanceCalculator.any_instance.expects(:balance).returns(1000).twice
+    PlaidAccount::Investments::BalanceCalculator.any_instance.expects(:balance).returns(1000).once
     PlaidAccount::Investments::BalanceCalculator.any_instance.expects(:cash_balance).returns(1000).once
 
     PlaidAccount::Processor.new(@plaid_account).process
@@ -221,6 +220,58 @@ class PlaidAccount::ProcessorTest < ActiveSupport::TestCase
     assert_equal original_entry_id, original_anchor.entry.id
     assert_equal 2500, original_anchor.entry.amount
     assert_not_equal original_balance, original_anchor.entry.amount
+  end
+
+  test "splits combined balance between mortgage and HELOC when split is configured" do
+    expect_depository_product_processor_calls
+    expect_investment_product_processor_calls
+    expect_no_investment_balance_calculator_calls
+
+    # Mortgage account triggers MortgageProcessor in process_liabilities
+    PlaidAccount::Liabilities::CreditProcessor.any_instance.expects(:process).never
+    PlaidAccount::Liabilities::MortgageProcessor.any_instance.expects(:process).once
+    PlaidAccount::Liabilities::StudentLoanProcessor.any_instance.expects(:process).never
+
+    account = @plaid_account.account
+    loan = Loan.create!(
+      interest_rate: 4.9, term_months: 360, rate_type: "fixed",
+      origination_date: Date.new(2024, 7, 1), initial_balance: 830000
+    )
+    account.update!(accountable: loan, subtype: "mortgage")
+
+    heloc_loan = Loan.create!(rate_type: "variable")
+    heloc = account.family.accounts.create!(
+      name: "HELOC", accountable: heloc_loan, subtype: "home_equity",
+      balance: 0, currency: account.currency,
+      created_by_user_id: account.created_by_user_id, split_source: account
+    )
+
+    # Combined balance must exceed amortization-expected mortgage balance
+    # so the split assigns amortization value to mortgage and remainder to HELOC
+    expected_mortgage = loan.expected_balance_at(Date.current)
+    combined_balance = expected_mortgage + 20000
+    @plaid_account.update!(plaid_type: "loan", plaid_subtype: "mortgage", current_balance: combined_balance)
+
+    PlaidAccount::Processor.new(@plaid_account).process
+
+    account.reload
+    heloc.reload
+
+    assert_equal expected_mortgage, account.balance.to_f
+    assert_in_delta(20000, heloc.balance.to_f, 0.01)
+  end
+
+  test "does not replace accountable on subsequent syncs" do
+    expect_default_subprocessor_calls
+
+    account = @plaid_account.account
+    original_accountable_id = account.accountable_id
+
+    PlaidAccount::Processor.new(@plaid_account).process
+
+    account.reload
+    assert_equal original_accountable_id, account.accountable_id,
+      "Accountable should not be replaced on re-sync"
   end
 
   test "new account inherits created_by_user_id from plaid_item user" do

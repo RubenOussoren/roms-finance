@@ -32,4 +32,25 @@ class PlaidAccount::TypeMappableTest < ActiveSupport::TestCase
     assert_equal "other", @mock_processor.map_subtype("depository", nil)
     assert_equal "other", @mock_processor.map_subtype("depository", "unknown")
   end
+
+  test "line of credit overrides loan to CreditCard" do
+    accountable = @mock_processor.map_accountable("loan", "line of credit")
+    assert_instance_of CreditCard, accountable
+  end
+
+  test "line of credit maps to line_of_credit subtype" do
+    assert_equal "line_of_credit", @mock_processor.map_subtype("loan", "line of credit")
+  end
+
+  test "map_accountable_class returns class without instantiation" do
+    assert_equal Depository, @mock_processor.map_accountable_class("depository")
+    assert_equal Loan, @mock_processor.map_accountable_class("loan")
+    assert_equal CreditCard, @mock_processor.map_accountable_class("loan", "line of credit")
+  end
+
+  test "loan without subtype override maps to Loan" do
+    assert_instance_of Loan, @mock_processor.map_accountable("loan")
+    assert_instance_of Loan, @mock_processor.map_accountable("loan", "mortgage")
+    assert_instance_of Loan, @mock_processor.map_accountable("loan", "student")
+  end
 end

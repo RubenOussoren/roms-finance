@@ -60,8 +60,15 @@ class PlaidItem < ApplicationRecord
   end
 
   # Once all the data is fetched, we can schedule account syncs to calculate historical balances
+  # Also includes split targets (e.g. HELOC derived from a combined mortgage+HELOC Plaid balance)
   def schedule_account_syncs(parent_sync: nil, window_start_date: nil, window_end_date: nil)
-    accounts.each do |account|
+    loaded_accounts = accounts.includes(:split_targets).to_a
+    accounts_to_sync = loaded_accounts.dup
+    loaded_accounts.each do |acct|
+      acct.split_targets.each { |t| accounts_to_sync << t unless accounts_to_sync.include?(t) }
+    end
+
+    accounts_to_sync.each do |account|
       account.sync_later(
         parent_sync: parent_sync,
         window_start_date: window_start_date,

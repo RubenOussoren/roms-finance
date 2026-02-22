@@ -5,6 +5,7 @@ class Loan < ApplicationRecord
     "mortgage" => { short: "Mortgage", long: "Mortgage" },
     "student" => { short: "Student", long: "Student Loan" },
     "auto" => { short: "Auto", long: "Auto Loan" },
+    "home_equity" => { short: "HELOC", long: "Home Equity Line of Credit" },
     "other" => { short: "Other", long: "Other Loan" }
   }.freeze
 
@@ -41,7 +42,51 @@ class Loan < ApplicationRecord
     @monthly_payment ||= calculate_monthly_payment
   end
 
+  def expected_balance_at(date)
+    return nil unless can_compute_amortization?
+
+    start_balance = calibrated_balance || original_balance.amount.to_f
+    start_date = calibrated_at || origination_date
+
+    months_elapsed = (date.year * 12 + date.month) -
+                     (start_date.year * 12 + start_date.month)
+    remaining = remaining_term_from(start_date)
+    months_elapsed = months_elapsed.clamp(0, remaining)
+
+    annual_rate = interest_rate / 100.0
+    r = account.subtype == "mortgage" ?
+          CanadianMortgage.monthly_rate(annual_rate) :
+          annual_rate / 12.0
+
+    if r.zero?
+      (start_balance * (1.0 - months_elapsed.to_f / remaining)).round(2)
+    else
+      n = remaining
+      compound_total = (1 + r)**n
+      compound_elapsed = (1 + r)**months_elapsed
+      (start_balance * (compound_total - compound_elapsed) / (compound_total - 1)).round(2)
+    end
+  end
+
+  def can_compute_amortization?
+    interest_rate.present? && term_months.present? && term_months > 0 &&
+      rate_type == "fixed" &&
+      (calibrated_balance.present? || original_balance.amount.to_f > 0) &&
+      (calibrated_at.present? || origination_date.present?)
+  end
+
+  def recalibrate!(balance, date = Date.current)
+    update!(calibrated_balance: balance, calibrated_at: date)
+  end
+
   private
+
+    def remaining_term_from(start_date)
+      return term_months unless origination_date.present? && start_date != origination_date
+      months_used = (start_date.year * 12 + start_date.month) -
+                    (origination_date.year * 12 + origination_date.month)
+      [ term_months - months_used, 1 ].max
+    end
 
     def initial_balance_immutable
       if initial_balance_changed? && initial_balance_was.present?

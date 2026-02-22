@@ -1,5 +1,13 @@
 <%# locals: (account:) %>
 
+<% if account.split_source? %>
+  <%= render "account_splits/info", account: account %>
+<% end %>
+
+<% if account.split_target? %>
+  <%= render "account_splits/derived_info", account: account %>
+<% end %>
+
 <div class="grid grid-cols-3 gap-2">
   <%= summary_card title: t(".original_principal") do %>
     <%= format_money account.loan.original_balance %>

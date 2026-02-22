@@ -1,0 +1,83 @@
+<%= turbo_frame_tag "modal" do %>
+  <%= render DS::Dialog.new do |dialog| %>
+    <% dialog.with_header(title: "Split Mortgage + HELOC") %>
+    <% dialog.with_body do %>
+      <div class="space-y-4">
+        <p class="text-sm text-secondary">
+          Split "<%= @account.name %>" into separate mortgage and HELOC accounts.
+          The HELOC balance will be derived automatically from Plaid's combined balance.
+        </p>
+
+        <%= form_with url: account_split_path(@account), method: :post, class: "space-y-4" do |f| %>
+          <fieldset class="space-y-3">
+            <legend class="text-sm font-medium text-primary">Mortgage Details</legend>
+
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <label for="split_origination_date" class="block text-sm font-medium text-secondary mb-1">Origination date</label>
+                <%= f.date_field :origination_date, name: "split[origination_date]",
+                    class: "form-field__input", required: true %>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <label for="split_interest_rate" class="block text-sm font-medium text-secondary mb-1">Interest rate (%)</label>
+                <%= f.number_field :interest_rate, name: "split[interest_rate]",
+                    class: "form-field__input", step: 0.001, min: 0, required: true,
+                    value: @account.accountable.interest_rate %>
+              </div>
+              <div class="flex-1">
+                <label for="split_rate_type" class="block text-sm font-medium text-secondary mb-1">Rate type</label>
+                <%= f.select :rate_type, [["Fixed", "fixed"], ["Variable", "variable"]],
+                    { selected: @account.accountable.rate_type || "fixed" },
+                    name: "split[rate_type]", class: "form-field__input" %>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <label for="split_term_months" class="block text-sm font-medium text-secondary mb-1">Term (months)</label>
+                <%= f.number_field :term_months, name: "split[term_months]",
+                    class: "form-field__input", min: 1, required: true,
+                    value: @account.accountable.term_months %>
+              </div>
+            </div>
+          </fieldset>
+
+          <%= render "shared/ruler", classes: "my-4" %>
+
+          <fieldset class="space-y-3">
+            <legend class="text-sm font-medium text-primary">HELOC Account</legend>
+
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <label for="split_heloc_name" class="block text-sm font-medium text-secondary mb-1">HELOC account name</label>
+                <%= f.text_field :heloc_name, name: "split[heloc_name]",
+                    class: "form-field__input",
+                    placeholder: "#{@account.name} HELOC" %>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex-1">
+                <label for="split_heloc_balance" class="block text-sm font-medium text-secondary mb-1">Current HELOC balance</label>
+                <%= f.number_field :heloc_balance, name: "split[heloc_balance]",
+                    class: "form-field__input", step: 0.01, min: 0, required: true %>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="text-xs text-secondary space-y-1">
+            <p>After creating the split, Plaid syncs will automatically distribute the combined balance between the mortgage and HELOC.</p>
+            <p>Use "Recalibrate" after prepayments to update the mortgage baseline.</p>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <%= f.submit "Create Split", class: "btn btn--primary" %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

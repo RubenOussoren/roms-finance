@@ -3,17 +3,26 @@ module PlaidAccount::TypeMappable
 
   UnknownAccountTypeError = Class.new(StandardError)
 
-  def map_accountable(plaid_type)
-    accountable_class = TYPE_MAPPING.dig(
-      plaid_type.to_sym,
-      :accountable
-    )
+  def map_accountable(plaid_type, plaid_subtype = nil)
+    type_config = TYPE_MAPPING[plaid_type.to_sym]
+    raise UnknownAccountTypeError, "Unknown account type: #{plaid_type}" unless type_config
 
-    unless accountable_class
-      raise UnknownAccountTypeError, "Unknown account type: #{plaid_type}"
+    if plaid_subtype && type_config[:accountable_overrides]&.key?(plaid_subtype)
+      return type_config[:accountable_overrides][plaid_subtype].new
     end
 
-    accountable_class.new
+    type_config[:accountable].new
+  end
+
+  def map_accountable_class(plaid_type, plaid_subtype = nil)
+    type_config = TYPE_MAPPING[plaid_type.to_sym]
+    raise UnknownAccountTypeError, "Unknown account type: #{plaid_type}" unless type_config
+
+    if plaid_subtype && type_config[:accountable_overrides]&.key?(plaid_subtype)
+      return type_config[:accountable_overrides][plaid_subtype]
+    end
+
+    type_config[:accountable]
   end
 
   def map_subtype(plaid_type, plaid_subtype)
@@ -45,11 +54,12 @@ module PlaidAccount::TypeMappable
     },
     loan: {
       accountable: Loan,
+      accountable_overrides: { "line of credit" => CreditCard },
       subtype_mapping: {
         "mortgage" => "mortgage",
         "student" => "student",
         "auto" => "auto",
-        "business" => "business",
+        "business" => "other",
         "home equity" => "home_equity",
         "line of credit" => "line_of_credit"
       }
