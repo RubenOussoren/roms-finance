@@ -44,6 +44,23 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", text: "Release notes unavailable"
   end
 
+  test "changelog with valid release notes" do
+    github_provider = mock
+    github_provider.expects(:fetch_latest_release_notes).returns({
+      avatar: "https://avatars.githubusercontent.com/u/12345",
+      username: "rubenoussoren",
+      name: "v1.0.0",
+      published_at: Date.new(2026, 1, 15),
+      body: "## What's New\n\n- Feature A\n- Feature B"
+    })
+    Provider::Registry.stubs(:get_provider).with(:github).returns(github_provider)
+
+    get changelog_path
+    assert_response :ok
+    assert_select "h2", text: "v1.0.0"
+    assert_select "span.text-primary", text: "rubenoussoren"
+  end
+
   test "changelog with incomplete release notes" do
     # Mock the GitHub provider to return incomplete data (missing some fields)
     github_provider = mock

@@ -40,7 +40,7 @@ class PagesController < ApplicationController
         username: "ROMS Finance",
         name: "Release notes unavailable",
         published_at: Date.current,
-        body: "<p>Release notes are not available at this time. Please check back later.</p>"
+        body: "Release notes are not available at this time. Please check back later."
       }
     end
 
