@@ -12,9 +12,12 @@ class AccountPermissionsController < ApplicationController
 
   def update
     ActiveRecord::Base.transaction do
-      update_permissions if params[:permissions].present?
-      update_ownerships if params[:ownerships].present?
+      ActiveRecord::Base.no_touching do
+        update_permissions if params[:permissions].present?
+        update_ownerships if params[:ownerships].present?
+      end
     end
+    @account.touch
 
     redirect_to account_path(@account), notice: "Settings updated"
   rescue ActiveRecord::RecordInvalid => e
@@ -54,6 +57,15 @@ class AccountPermissionsController < ApplicationController
     end
 
     def update_ownerships
+      total = ownerships_params.values.sum { |v| v.to_d }
+      if total > 100
+        raise ActiveRecord::RecordInvalid.new(
+          AccountOwnership.new.tap { |o| o.errors.add(:percentage, "total ownership cannot exceed 100%") }
+        )
+      end
+
+      @account.account_ownerships.reload
+
       ownerships_params.each do |user_id, pct_string|
         pct = pct_string.to_d
         ownership = @account.account_ownerships.find_or_initialize_by(user_id: user_id)
