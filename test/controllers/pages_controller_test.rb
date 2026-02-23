@@ -25,6 +25,14 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
+  test "cashflow form preserves scope param" do
+    get root_path(scope: :personal)
+    assert_response :ok
+    assert_select "turbo-frame#cashflow_sankey_section" do
+      assert_select "input[type=hidden][name=scope][value=personal]"
+    end
+  end
+
   test "changelog with nil release notes" do
     # Mock the GitHub provider to return nil (simulating API failure or no releases)
     github_provider = mock

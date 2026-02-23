@@ -21,7 +21,7 @@ class PagesController < ApplicationController
     end
 
     family_currency = Current.family.currency
-    income_statement = IncomeStatement.new(Current.family, viewer: Current.user)
+    income_statement = IncomeStatement.new(Current.family, viewer: Current.user, scope: @scope)
     income_totals = income_statement.income_totals(period: @cashflow_period)
     expense_totals = income_statement.expense_totals(period: @cashflow_period)
 

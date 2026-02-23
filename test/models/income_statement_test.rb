@@ -316,4 +316,63 @@ class IncomeStatementTest < ActiveSupport::TestCase
     income_statement = IncomeStatement.new(@family)
     assert_equal 4, income_statement.totals.transactions_count
   end
+
+  # --- Personal scope tests ---
+
+  test "personal scope excludes other user's accounts" do
+    other_user = @family.users.create!(
+      first_name: "Other", last_name: "User",
+      email: "other_scope_test@test.com", password: "password123"
+    )
+
+    other_account = @family.accounts.create!(
+      name: "Other Savings", currency: @family.currency, balance: 2000,
+      accountable: Depository.new, created_by_user: other_user
+    )
+    create_transaction(account: other_account, amount: 750, category: @groceries_category)
+
+    # Household scope includes the other user's transaction
+    household_totals = IncomeStatement.new(@family, viewer: @user, scope: :household).totals
+    assert_equal 5, household_totals.transactions_count
+
+    # Personal scope excludes the other user's account (no ownership record, not joint, not created by viewer)
+    personal_totals = IncomeStatement.new(@family, viewer: @user, scope: :personal).totals
+    assert_equal 4, personal_totals.transactions_count
+  end
+
+  test "personal scope includes joint accounts" do
+    other_user = @family.users.create!(
+      first_name: "Other", last_name: "User",
+      email: "joint_scope_test@test.com", password: "password123"
+    )
+
+    joint_account = @family.accounts.create!(
+      name: "Joint Checking", currency: @family.currency, balance: 3000,
+      accountable: Depository.new, created_by_user: other_user, is_joint: true
+    )
+    create_transaction(account: joint_account, amount: 500, category: @groceries_category)
+
+    # Personal scope includes joint account even though created by other user
+    personal_totals = IncomeStatement.new(@family, viewer: @user, scope: :personal).totals
+    assert_equal 5, personal_totals.transactions_count
+  end
+
+  test "personal scope includes accounts with explicit ownership records" do
+    other_user = @family.users.create!(
+      first_name: "Other", last_name: "User",
+      email: "ownership_scope_test@test.com", password: "password123"
+    )
+
+    shared_account = @family.accounts.create!(
+      name: "Shared Investment", currency: @family.currency, balance: 10000,
+      accountable: Depository.new, created_by_user: other_user
+    )
+    # Give @user an explicit ownership stake
+    AccountOwnership.create!(account: shared_account, user: @user, percentage: 50)
+    create_transaction(account: shared_account, amount: 600, category: @groceries_category)
+
+    # Personal scope includes account where viewer has ownership record
+    personal_totals = IncomeStatement.new(@family, viewer: @user, scope: :personal).totals
+    assert_equal 5, personal_totals.transactions_count
+  end
 end

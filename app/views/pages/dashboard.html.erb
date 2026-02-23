@@ -55,7 +55,8 @@
       <section class="bg-container py-4 rounded-xl shadow-border-xs">
         <%= render partial: "pages/dashboard/cashflow_sankey", locals: {
           sankey_data: @cashflow_sankey_data,
-          period: @cashflow_period
+          period: @cashflow_period,
+          scope: @scope
         } %>
       </section>
     <% end %>

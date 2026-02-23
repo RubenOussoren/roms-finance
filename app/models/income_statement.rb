@@ -3,11 +3,12 @@ class IncomeStatement
 
   monetize :median_expense, :median_income
 
-  attr_reader :family, :viewer
+  attr_reader :family, :viewer, :scope
 
-  def initialize(family, viewer: nil)
+  def initialize(family, viewer: nil, scope: :household)
     @family = family
     @viewer = viewer
+    @scope = scope
   end
 
   def totals(transactions_scope: nil)
@@ -64,10 +65,12 @@ class IncomeStatement
 
     def scoped_transactions
       base = family.transactions.visible
-      if viewer
-        base.where(entries: { account_id: family.accounts.full_access_for(viewer).select(:id) })
-      else
+      if viewer.nil?
         base
+      elsif scope == :personal
+        base.where(entries: { account_id: family.accounts.with_ownership_for(viewer).select(:id) })
+      else # :household
+        base.where(entries: { account_id: family.accounts.full_access_for(viewer).select(:id) })
       end
     end
 

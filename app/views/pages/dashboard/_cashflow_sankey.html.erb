@@ -1,4 +1,4 @@
-<%# locals: (sankey_data:, period:) %>
+<%# locals: (sankey_data:, period:, scope: :household) %>
 <div id="cashflow-sankey-chart">
   <div class="flex justify-between items-center gap-4 px-4 mb-4">
     <h2 class="text-lg font-medium inline-flex items-center gap-1.5">
@@ -6,6 +6,7 @@
     </h2>
 
     <%= form_with url: root_path, method: :get, data: { controller: "auto-submit-form", turbo_frame: "cashflow_sankey_section" } do |form| %>
+      <%= form.hidden_field :scope, value: scope %>
       <%= form.select :cashflow_period,
                 Period.as_options,
                 { selected: period.key },
