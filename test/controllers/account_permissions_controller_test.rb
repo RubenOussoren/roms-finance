@@ -137,9 +137,9 @@ class AccountPermissionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     # Owner should show 0% (not the 100% default) since DB records exist
-    assert_select "input[name='ownerships[#{@owner.id}]'][value='0.0']"
+    assert_select "input[name='ownerships[#{@owner.id}]'][value='0']"
     # Member should show their DB value of 100%
-    assert_select "input[name='ownerships[#{@member.id}]'][value='100.0']"
+    assert_select "input[name='ownerships[#{@member.id}]'][value='100']"
   end
 
   test "saving ownership with partial existing records works correctly" do

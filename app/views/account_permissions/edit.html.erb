@@ -62,9 +62,9 @@
             <% @all_members.each do |member| %>
               <% ownership = @ownerships[member.id] %>
               <% if @ownerships.any? %>
-                <% current_pct = ownership&.percentage || 0.0 %>
+                <% current_pct = (ownership&.percentage || 0).to_i %>
               <% else %>
-                <% default_pct = @account.is_joint? ? (100.0 / @all_members.size).round(2) : (member.id == @account.created_by_user_id ? 100.0 : 0.0) %>
+                <% default_pct = @account.is_joint? ? (100.0 / @all_members.size).round(0).to_i : (member.id == @account.created_by_user_id ? 100 : 0) %>
                 <% current_pct = default_pct %>
               <% end %>
               <div class="flex items-center justify-between gap-4 p-3 rounded-lg border border-primary bg-container">
@@ -82,7 +82,7 @@
                   <input type="number"
                          name="ownerships[<%= member.id %>]"
                          value="<%= current_pct %>"
-                         min="0" max="100" step="0.01"
+                         min="0" max="100" step="1"
                          autocomplete="off"
                          class="w-20 rounded-md border border-secondary bg-container px-2 py-1.5 text-sm text-primary text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                          data-ownership-split-target="percentage"
@@ -100,7 +100,12 @@
         </div>
 
         <div class="flex justify-end pt-2">
-          <%= f.submit "Save settings", class: "btn btn--primary", data: { ownership_split_target: "submit" } %>
+          <%= render DS::Button.new(
+            text: "Save settings",
+            variant: :primary,
+            type: "submit",
+            data: { ownership_split_target: "submit", turbo_submits_with: "Saving..." }
+          ) %>
         </div>
       <% end %>
     <% end %>

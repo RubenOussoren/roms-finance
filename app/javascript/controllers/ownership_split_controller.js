@@ -16,7 +16,7 @@ export default class extends Controller {
     })
 
     const unassigned = Math.max(0, 100 - total)
-    this.unassignedTarget.textContent = `${unassigned.toFixed(2)}%`
+    this.unassignedTarget.textContent = `${Math.round(unassigned)}%`
 
     if (total > 100) {
       this.errorTarget.classList.remove("hidden")
