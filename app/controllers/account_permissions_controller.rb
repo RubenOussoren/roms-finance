@@ -1,4 +1,6 @@
 class AccountPermissionsController < ApplicationController
+  include StreamExtensions
+
   before_action :set_account
   before_action :ensure_multi_user_family
   before_action :ensure_account_owner
@@ -19,7 +21,10 @@ class AccountPermissionsController < ApplicationController
     end
     @account.touch
 
-    redirect_to account_path(@account), notice: "Settings updated"
+    respond_to do |format|
+      format.html { redirect_to account_path(@account), notice: "Settings updated" }
+      format.turbo_stream { stream_redirect_to account_path(@account), notice: "Settings updated" }
+    end
   rescue ActiveRecord::RecordInvalid => e
     @family_members = Current.family.users.where.not(id: @account.created_by_user_id)
     @all_members = Current.family.users.order(:created_at)
