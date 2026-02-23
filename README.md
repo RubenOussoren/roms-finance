@@ -72,8 +72,8 @@
 ## Quick Start (Self-Hosting)
 
 ```bash
-curl -O https://raw.githubusercontent.com/RubenOussoren/roms-finance/main/compose.example.yml
-SECRET_KEY_BASE=$(openssl rand -hex 64) docker compose -f compose.example.yml up -d
+curl -o compose.yml https://raw.githubusercontent.com/RubenOussoren/roms-finance/main/compose.example.yml
+SECRET_KEY_BASE=$(openssl rand -hex 64) docker compose up -d
 # Open http://localhost:3000 — first user becomes admin
 ```
 
@@ -83,7 +83,7 @@ For reverse proxy setup, SMTP configuration, and provider API keys, see the [ful
 
 ## Optional Integrations
 
-All providers auto-disable when unconfigured. Set the relevant environment variables in your `compose.example.yml` to enable them. Alpha Vantage can also be configured in Settings > Self-Hosting.
+All providers auto-disable when unconfigured. Set the relevant environment variables in your `compose.yml` to enable them. Alpha Vantage can also be configured in Settings > Self-Hosting.
 
 | Provider | Region | Connects | Guide |
 |---|---|---|---|

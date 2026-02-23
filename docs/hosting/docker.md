@@ -8,10 +8,10 @@
 
 ## Quick Start
 
-1. **Download the example Compose file:**
+1. **Download the Compose file:**
 
    ```bash
-   curl -O https://raw.githubusercontent.com/RubenOussoren/roms-finance/main/compose.example.yml
+   curl -o compose.yml https://raw.githubusercontent.com/RubenOussoren/roms-finance/main/compose.example.yml
    ```
 
 2. **Generate a secret key:**
@@ -23,7 +23,7 @@
 3. **Start the application:**
 
    ```bash
-   SECRET_KEY_BASE=<your-generated-key> docker compose -f compose.example.yml up -d
+   SECRET_KEY_BASE=<your-generated-key> docker compose up -d
    ```
 
    Or create a `.env` file alongside your compose file:
@@ -35,7 +35,7 @@
    Then run:
 
    ```bash
-   docker compose -f compose.example.yml up -d
+   docker compose up -d
    ```
 
 4. **Open the app** at [http://localhost:3000](http://localhost:3000). The first user to register becomes the admin.
@@ -140,15 +140,15 @@ The compose file exposes port 3000 on the `web` service. Point your reverse prox
 ### View logs
 
 ```bash
-docker compose -f compose.example.yml logs -f web
-docker compose -f compose.example.yml logs -f worker
+docker compose logs -f web
+docker compose logs -f worker
 ```
 
 ### Update to latest version
 
 ```bash
-docker compose -f compose.example.yml pull
-docker compose -f compose.example.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
 Database migrations run automatically on startup.
@@ -156,25 +156,25 @@ Database migrations run automatically on startup.
 ### Backup the database
 
 ```bash
-docker compose -f compose.example.yml exec db pg_dump -U roms_user roms_production > backup.sql
+docker compose exec db pg_dump -U roms_user roms_production > backup.sql
 ```
 
 ### Restore from backup
 
 ```bash
-docker compose -f compose.example.yml exec -T db psql -U roms_user roms_production < backup.sql
+docker compose exec -T db psql -U roms_user roms_production < backup.sql
 ```
 
 ### Stop the application
 
 ```bash
-docker compose -f compose.example.yml down
+docker compose down
 ```
 
 To also remove volumes (deletes all data):
 
 ```bash
-docker compose -f compose.example.yml down -v
+docker compose down -v
 ```
 
 ## Troubleshooting
@@ -192,7 +192,7 @@ openssl rand -hex 64
 Check the web container logs:
 
 ```bash
-docker compose -f compose.example.yml logs web
+docker compose logs web
 ```
 
 Common causes:
@@ -205,13 +205,13 @@ Common causes:
 Ensure the `db` service is healthy:
 
 ```bash
-docker compose -f compose.example.yml ps
+docker compose ps
 ```
 
 If the database container keeps restarting, check its logs:
 
 ```bash
-docker compose -f compose.example.yml logs db
+docker compose logs db
 ```
 
 ### Sidekiq dashboard credentials
