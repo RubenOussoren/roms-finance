@@ -133,6 +133,106 @@ class BalanceSheetTest < ActiveSupport::TestCase
     assert_equal :personal, bs.scope
   end
 
+  # --- Fractional ownership tests ---
+
+  test "personal scope with 50/50 ownership shows half balance" do
+    other_user = create_family_user
+
+    house = create_account(balance: 500000, accountable: Property.new, created_by_user: @user)
+    AccountOwnership.create!(account: house, user: @user, percentage: 50)
+    AccountOwnership.create!(account: house, user: other_user, percentage: 50)
+
+    bs = BalanceSheet.new(@family, viewer: @user, scope: :personal)
+    assert_equal 250000, bs.net_worth
+  end
+
+  test "personal scope with 60/40 ownership shows correct fraction" do
+    other_user = create_family_user
+
+    house = create_account(balance: 100000, accountable: Property.new, created_by_user: @user)
+    AccountOwnership.create!(account: house, user: @user, percentage: 60)
+    AccountOwnership.create!(account: house, user: other_user, percentage: 40)
+
+    bs_user = BalanceSheet.new(@family, viewer: @user, scope: :personal)
+    assert_equal 60000, bs_user.net_worth
+
+    bs_other = BalanceSheet.new(@family, viewer: other_user, scope: :personal)
+    assert_equal 40000, bs_other.net_worth
+  end
+
+  test "personal scope without ownership records shows full balance for owner" do
+    _other_user = create_family_user
+
+    create_account(balance: 10000, accountable: Depository.new, created_by_user: @user)
+
+    bs = BalanceSheet.new(@family, viewer: @user, scope: :personal)
+    assert_equal 10000, bs.net_worth
+  end
+
+  test "personal scope without ownership records shows zero for non-owner" do
+    other_user = create_family_user
+
+    create_account(balance: 10000, accountable: Depository.new, created_by_user: @user)
+
+    bs = BalanceSheet.new(@family, viewer: other_user, scope: :personal)
+    assert_equal 0, bs.net_worth
+  end
+
+  test "personal scope joint account with no records splits equally" do
+    other_user = create_family_user
+
+    joint = create_account(balance: 10000, accountable: Depository.new, created_by_user: @user)
+    joint.update_column(:is_joint, true)
+
+    member_count = @family.users.count
+    expected_share = (10000.0 / member_count).round
+
+    bs = BalanceSheet.new(@family, viewer: @user, scope: :personal)
+    assert_in_delta expected_share, bs.net_worth, 1
+
+    bs_other = BalanceSheet.new(@family, viewer: other_user, scope: :personal)
+    assert_in_delta expected_share, bs_other.net_worth, 1
+  end
+
+  test "household scope ignores ownership fractions" do
+    other_user = create_family_user
+
+    house = create_account(balance: 500000, accountable: Property.new, created_by_user: @user)
+    AccountOwnership.create!(account: house, user: @user, percentage: 50)
+    AccountOwnership.create!(account: house, user: other_user, percentage: 50)
+
+    bs = BalanceSheet.new(@family, viewer: @user, scope: :household)
+    assert_equal 500000, bs.net_worth
+  end
+
+  test "no viewer ignores ownership fractions" do
+    other_user = create_family_user
+
+    house = create_account(balance: 500000, accountable: Property.new, created_by_user: @user)
+    AccountOwnership.create!(account: house, user: @user, percentage: 50)
+    AccountOwnership.create!(account: house, user: other_user, percentage: 50)
+
+    bs = BalanceSheet.new(@family)
+    assert_equal 500000, bs.net_worth
+  end
+
+  test "personal scope with mix of owned and fractional accounts" do
+    other_user = create_family_user
+
+    # Fully owned by user
+    _checking = create_account(balance: 5000, accountable: Depository.new, created_by_user: @user)
+    # 50/50 shared property
+    house = create_account(balance: 400000, accountable: Property.new, created_by_user: @user)
+    AccountOwnership.create!(account: house, user: @user, percentage: 50)
+    AccountOwnership.create!(account: house, user: other_user, percentage: 50)
+    # Owned by other user (should not appear)
+    _other_savings = create_account(balance: 20000, accountable: Depository.new, created_by_user: other_user)
+
+    bs = BalanceSheet.new(@family, viewer: @user, scope: :personal)
+    # 5000 (fully owned) + 200000 (50% of 400k) = 205000
+    assert_equal 205000, bs.net_worth
+  end
+
   test "Family#multi_user? returns false for single-user family" do
     # empty family only has one user after removing the extra ones
     single_user_family = Family.create!(name: "Single", currency: "USD", country: "US", locale: "en", date_format: "%Y-%m-%d")

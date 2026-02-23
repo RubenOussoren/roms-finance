@@ -73,7 +73,7 @@ class AccountPermissionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "balance_only", permission.visibility
   end
 
-  test "joint account edit shows info but no submit" do
+  test "joint account edit shows disabled visibility selects" do
     @account.update!(is_joint: true)
     get edit_account_account_permissions_url(@account)
     assert_response :success
@@ -87,5 +87,45 @@ class AccountPermissionsControllerTest < ActionDispatch::IntegrationTest
     }
     assert_redirected_to account_path(@account)
     assert_nil @account.account_permissions.find_by(user_id: @member.id)
+  end
+
+  # --- Ownership CRUD tests ---
+
+  test "owner can set ownership percentages" do
+    patch account_account_permissions_url(@account), params: {
+      permissions: { @member.id => "full" },
+      ownerships: { @owner.id => "60", @member.id => "40" }
+    }
+    assert_redirected_to account_path(@account)
+    assert_equal 60, @account.account_ownerships.find_by(user_id: @owner.id).percentage
+    assert_equal 40, @account.account_ownerships.find_by(user_id: @member.id).percentage
+  end
+
+  test "setting ownership to zero destroys the record" do
+    AccountOwnership.create!(account: @account, user: @owner, percentage: 100)
+    patch account_account_permissions_url(@account), params: {
+      permissions: { @member.id => "full" },
+      ownerships: { @owner.id => "0", @member.id => "0" }
+    }
+    assert_redirected_to account_path(@account)
+    assert_equal 0, @account.account_ownerships.count
+  end
+
+  test "ownership exceeding 100 percent re-renders with error" do
+    patch account_account_permissions_url(@account), params: {
+      permissions: { @member.id => "full" },
+      ownerships: { @owner.id => "70", @member.id => "50" }
+    }
+    assert_response :unprocessable_entity
+  end
+
+  test "non-owner cannot update ownership" do
+    sign_in @member
+    patch account_account_permissions_url(@account), params: {
+      permissions: { @member.id => "full" },
+      ownerships: { @owner.id => "50", @member.id => "50" }
+    }
+    assert_redirected_to account_path(@account)
+    assert_equal 0, @account.account_ownerships.count
   end
 end

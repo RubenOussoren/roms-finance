@@ -23,6 +23,7 @@ class Account < ApplicationRecord
   has_many :projections, class_name: "Account::Projection", dependent: :destroy
   has_many :milestones, dependent: :destroy
   has_many :account_permissions, dependent: :destroy
+  has_many :account_ownerships, dependent: :destroy
   has_many :strategies_as_primary, class_name: "DebtOptimizationStrategy", foreign_key: :primary_mortgage_id, dependent: :nullify
   has_many :strategies_as_heloc, class_name: "DebtOptimizationStrategy", foreign_key: :heloc_id, dependent: :nullify
   has_many :strategies_as_rental, class_name: "DebtOptimizationStrategy", foreign_key: :rental_mortgage_id, dependent: :nullify
@@ -178,6 +179,18 @@ class Account < ApplicationRecord
     else
       raise "Unknown account type: #{accountable_type}"
     end
+  end
+
+  def ownership_fraction_for(user, member_count: nil)
+    if account_ownerships.loaded? ? account_ownerships.empty? : !account_ownerships.exists?
+      if is_joint?
+        member_count ||= family.users.count
+        return 1.0 / member_count.to_f
+      end
+      return created_by_user_id == user.id ? 1.0 : 0.0
+    end
+    ownership = account_ownerships.find_by(user_id: user.id)
+    ownership ? ownership.percentage / 100.0 : 0.0
   end
 
   # Returns account-specific assumption or falls back to family default

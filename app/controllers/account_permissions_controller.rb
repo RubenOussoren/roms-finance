@@ -5,22 +5,25 @@ class AccountPermissionsController < ApplicationController
 
   def edit
     @family_members = Current.family.users.where.not(id: @account.created_by_user_id)
+    @all_members = Current.family.users.order(:created_at)
     @permissions = @account.account_permissions.index_by(&:user_id)
+    @ownerships = @account.account_ownerships.index_by(&:user_id)
   end
 
   def update
-    AccountPermission.transaction do
-      permissions_params.each do |user_id, visibility|
-        if visibility == "full"
-          @account.account_permissions.where(user_id: user_id).destroy_all
-        else
-          permission = @account.account_permissions.find_or_initialize_by(user_id: user_id)
-          permission.update!(visibility: visibility)
-        end
-      end
+    ActiveRecord::Base.transaction do
+      update_permissions if params[:permissions].present?
+      update_ownerships if params[:ownerships].present?
     end
 
-    redirect_to account_path(@account), notice: "Privacy settings updated"
+    redirect_to account_path(@account), notice: "Settings updated"
+  rescue ActiveRecord::RecordInvalid => e
+    @family_members = Current.family.users.where.not(id: @account.created_by_user_id)
+    @all_members = Current.family.users.order(:created_at)
+    @permissions = @account.account_permissions.index_by(&:user_id)
+    @ownerships = @account.account_ownerships.index_by(&:user_id)
+    flash.now[:alert] = e.message
+    render :edit, status: :unprocessable_entity
   end
 
   private
@@ -39,7 +42,35 @@ class AccountPermissionsController < ApplicationController
       end
     end
 
+    def update_permissions
+      permissions_params.each do |user_id, visibility|
+        if visibility == "full"
+          @account.account_permissions.where(user_id: user_id).destroy_all
+        else
+          permission = @account.account_permissions.find_or_initialize_by(user_id: user_id)
+          permission.update!(visibility: visibility)
+        end
+      end
+    end
+
+    def update_ownerships
+      ownerships_params.each do |user_id, pct_string|
+        pct = pct_string.to_d
+        ownership = @account.account_ownerships.find_or_initialize_by(user_id: user_id)
+
+        if pct <= 0
+          ownership.destroy! if ownership.persisted?
+        else
+          ownership.update!(percentage: pct)
+        end
+      end
+    end
+
     def permissions_params
       params.require(:permissions).permit!.to_h
+    end
+
+    def ownerships_params
+      params.require(:ownerships).permit!.to_h
     end
 end

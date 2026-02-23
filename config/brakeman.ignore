@@ -115,6 +115,29 @@
         915
       ],
       "note": "Dynamic permission keys per account — structure validated in controller"
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "e023c90d718c4105becdb18333f46a9103306f34f217bed04faae89ca719bc3f",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/account_permissions_controller.rb",
+      "line": 74,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:ownerships).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "AccountPermissionsController",
+        "method": "ownerships_params"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": "Dynamic ownership keys per account — structure validated in controller"
     }
   ],
   "brakeman_version": "8.0.2"

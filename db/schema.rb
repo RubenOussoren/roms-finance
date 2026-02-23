@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_22_100004) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -18,6 +18,17 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100004) do
   # Custom types defined in this database.
   # Note that some types may not work with other database engines. Be careful if changing database.
   create_enum "account_status", ["ok", "syncing", "error"]
+
+  create_table "account_ownerships", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "account_id", null: false
+    t.uuid "user_id", null: false
+    t.decimal "percentage", precision: 5, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "user_id"], name: "index_account_ownerships_on_account_id_and_user_id", unique: true
+    t.index ["account_id"], name: "index_account_ownerships_on_account_id"
+    t.index ["user_id"], name: "index_account_ownerships_on_user_id"
+  end
 
   create_table "account_permissions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
@@ -1079,6 +1090,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100004) do
     t.jsonb "locked_attributes", default: {}
   end
 
+  add_foreign_key "account_ownerships", "accounts"
+  add_foreign_key "account_ownerships", "users"
   add_foreign_key "account_permissions", "accounts"
   add_foreign_key "account_permissions", "users"
   add_foreign_key "account_projections", "accounts"

@@ -31,7 +31,7 @@ class BalanceSheet::AccountTotals
         if viewer.nil?
           base
         elsif scope == :personal
-          base.owned_by(viewer)
+          base.with_ownership_for(viewer)
         else # :household
           base.accessible_by(viewer)
         end
@@ -61,18 +61,47 @@ class BalanceSheet::AccountTotals
 
     def query
       @query ||= Rails.cache.fetch(cache_key) do
-        visible_accounts
+        q = visible_accounts
           .joins(ActiveRecord::Base.sanitize_sql_array([
             "LEFT JOIN exchange_rates ON exchange_rates.date = ? AND accounts.currency = exchange_rates.from_currency AND exchange_rates.to_currency = ?",
             Date.current,
             family.currency
           ]))
-          .select(
+
+        if viewer && scope == :personal
+          q = q.joins(ActiveRecord::Base.sanitize_sql_array([
+            "LEFT JOIN account_ownerships ao ON ao.account_id = accounts.id AND ao.user_id = ?",
+            viewer.id
+          ]))
+
+          q.select(
+            "accounts.*",
+            "SUM(accounts.balance * COALESCE(exchange_rates.rate, 1) * #{ownership_fraction_sql}) as converted_balance"
+          )
+          .group(:classification, :accountable_type, :id)
+          .to_a
+        else
+          q.select(
             "accounts.*",
             "SUM(accounts.balance * COALESCE(exchange_rates.rate, 1)) as converted_balance"
           )
           .group(:classification, :accountable_type, :id)
           .to_a
+        end
       end
+    end
+
+    def ownership_fraction_sql
+      member_count = family.users.count
+      default_joint_fraction = (1.0 / member_count).round(10)
+
+      ActiveRecord::Base.sanitize_sql_array([
+        "CASE " \
+        "WHEN ao.percentage IS NOT NULL THEN ao.percentage / 100.0 " \
+        "WHEN NOT EXISTS (SELECT 1 FROM account_ownerships ao2 WHERE ao2.account_id = accounts.id) " \
+        "AND accounts.is_joint = true THEN ? " \
+        "ELSE 1.0 END",
+        default_joint_fraction
+      ])
     end
 end

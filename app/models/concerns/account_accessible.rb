@@ -39,6 +39,17 @@ module AccountAccessible
     scope :owned_by, ->(user) {
       where(created_by_user_id: user.id)
     }
+
+    scope :with_ownership_for, ->(user) {
+      left_joins(:account_ownerships)
+        .where(
+          "account_ownerships.user_id = :uid OR " \
+          "(NOT EXISTS (SELECT 1 FROM account_ownerships ao WHERE ao.account_id = accounts.id) " \
+          "AND (accounts.created_by_user_id = :uid OR accounts.is_joint = true))",
+          uid: user.id
+        )
+        .distinct
+    }
   end
 
   def owned_by?(user)

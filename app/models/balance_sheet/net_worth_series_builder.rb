@@ -11,7 +11,8 @@ class BalanceSheet::NetWorthSeriesBuilder
         account_ids: visible_account_ids,
         currency: family.currency,
         period: period,
-        favorable_direction: "up"
+        favorable_direction: "up",
+        ownership_fractions: ownership_fractions
       )
 
       builder.balance_series
@@ -27,10 +28,22 @@ class BalanceSheet::NetWorthSeriesBuilder
         if viewer.nil?
           base
         elsif scope == :personal
-          base.owned_by(viewer)
+          base.with_ownership_for(viewer)
         else
           base.accessible_by(viewer)
         end.pluck(:id)
+      end
+    end
+
+    def ownership_fractions
+      return nil unless viewer && scope == :personal
+
+      accounts = family.accounts.visible.with_ownership_for(viewer)
+        .includes(:account_ownerships)
+      member_count = family.users.count
+
+      accounts.each_with_object({}) do |account, hash|
+        hash[account.id] = account.ownership_fraction_for(viewer, member_count: member_count)
       end
     end
 

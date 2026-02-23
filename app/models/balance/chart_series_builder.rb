@@ -1,10 +1,11 @@
 class Balance::ChartSeriesBuilder
-  def initialize(account_ids:, currency:, period: Period.last_30_days, interval: "1 day", favorable_direction: "up")
+  def initialize(account_ids:, currency:, period: Period.last_30_days, interval: "1 day", favorable_direction: "up", ownership_fractions: nil)
     @account_ids = account_ids
     @currency = currency
     @period = period
     @interval = interval
     @favorable_direction = favorable_direction
+    @ownership_fractions = ownership_fractions
   end
 
   def balance_series
@@ -29,7 +30,7 @@ class Balance::ChartSeriesBuilder
   end
 
   private
-    attr_reader :account_ids, :currency, :period, :favorable_direction
+    attr_reader :account_ids, :currency, :period, :favorable_direction, :ownership_fractions
 
     def interval
       @interval || period.interval
@@ -66,17 +67,21 @@ class Balance::ChartSeriesBuilder
     end
 
     def query_data
-      @query_data ||= Balance.find_by_sql([
-        query,
-        {
-          account_ids: account_ids,
-          target_currency: currency,
-          start_date: period.start_date,
-          end_date: period.end_date,
-          interval: interval,
-          sign_multiplier: sign_multiplier
-        }
-      ])
+      binds = {
+        account_ids: account_ids,
+        target_currency: currency,
+        start_date: period.start_date,
+        end_date: period.end_date,
+        interval: interval,
+        sign_multiplier: sign_multiplier
+      }
+
+      if ownership_fractions.present?
+        binds[:ownership_ids] = ownership_fractions.keys
+        binds[:ownership_fractions] = ownership_fractions.values.map { |v| v.round(10) }
+      end
+
+      @query_data ||= Balance.find_by_sql([ query, binds ])
     rescue => e
       Rails.logger.error "Query data error: #{e.message} for accounts #{account_ids}, period #{period.start_date} to #{period.end_date}"
       raise
@@ -91,35 +96,59 @@ class Balance::ChartSeriesBuilder
     end
 
     def query
+      ownership_cte = if ownership_fractions.present?
+        <<~SQL
+          , ownership AS (
+            SELECT unnest(array[:ownership_ids]::uuid[]) AS account_id,
+                   unnest(array[:ownership_fractions]::numeric[]) AS fraction
+          )
+        SQL
+      else
+        ""
+      end
+
+      ownership_join = if ownership_fractions.present?
+        "LEFT JOIN ownership o ON o.account_id = accounts.id"
+      else
+        ""
+      end
+
+      fraction = if ownership_fractions.present?
+        "COALESCE(o.fraction, 1.0)"
+      else
+        "1.0"
+      end
+
       <<~SQL
         WITH dates AS (
           SELECT generate_series(DATE :start_date, DATE :end_date, :interval::interval)::date AS date
           UNION DISTINCT
           SELECT :end_date::date  -- Ensure end date is included
-        )
+        )#{ownership_cte}
         SELECT
           d.date,
           -- Use flows_factor: already handles asset (+1) vs liability (-1)
-          COALESCE(SUM(last_bal.end_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer), 0) AS end_balance,
-          COALESCE(SUM(last_bal.end_cash_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer), 0) AS end_cash_balance,
+          COALESCE(SUM(last_bal.end_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer * #{fraction}), 0) AS end_balance,
+          COALESCE(SUM(last_bal.end_cash_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer * #{fraction}), 0) AS end_cash_balance,
           -- Holdings only for assets (flows_factor = 1)
           COALESCE(SUM(
             CASE WHEN last_bal.flows_factor = 1
               THEN last_bal.end_non_cash_balance
               ELSE 0
-            END * COALESCE(er.rate, 1) * :sign_multiplier::integer
+            END * COALESCE(er.rate, 1) * :sign_multiplier::integer * #{fraction}
           ), 0) AS end_holdings_balance,
           -- Previous balances
-          COALESCE(SUM(last_bal.start_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer), 0) AS start_balance,
-          COALESCE(SUM(last_bal.start_cash_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer), 0) AS start_cash_balance,
+          COALESCE(SUM(last_bal.start_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer * #{fraction}), 0) AS start_balance,
+          COALESCE(SUM(last_bal.start_cash_balance * last_bal.flows_factor * COALESCE(er.rate, 1) * :sign_multiplier::integer * #{fraction}), 0) AS start_cash_balance,
           COALESCE(SUM(
             CASE WHEN last_bal.flows_factor = 1
               THEN last_bal.start_non_cash_balance
               ELSE 0
-            END * COALESCE(er.rate, 1) * :sign_multiplier::integer
+            END * COALESCE(er.rate, 1) * :sign_multiplier::integer * #{fraction}
           ), 0) AS start_holdings_balance
         FROM dates d
         CROSS JOIN accounts
+        #{ownership_join}
         LEFT JOIN LATERAL (
           SELECT b.end_balance,
                  b.end_cash_balance,

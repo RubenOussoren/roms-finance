@@ -1,18 +1,26 @@
 <%= turbo_frame_tag "modal" do %>
   <%= render DS::Dialog.new do |dialog| %>
-    <% dialog.with_header(title: "Privacy Settings") %>
+    <% dialog.with_header(title: "Sharing & Ownership") %>
     <% dialog.with_body do %>
-      <div class="space-y-4">
-        <p class="text-sm text-secondary">Control who can see "<%= @account.name %>"</p>
+      <% if flash[:alert].present? %>
+        <div class="flex items-center gap-2 mb-4">
+          <%= icon("alert-circle", size: "sm", color: "destructive") %>
+          <p class="text-destructive text-sm"><%= flash[:alert] %></p>
+        </div>
+      <% end %>
+      <%= form_with url: account_account_permissions_path(@account), method: :patch, class: "space-y-6", data: { controller: "ownership-split" } do |f| %>
+        <%# --- VISIBILITY SECTION --- %>
+        <div class="space-y-4">
+          <p class="text-sm font-medium text-primary">Visibility</p>
+          <p class="text-sm text-secondary">Control who can see "<%= @account.name %>"</p>
 
-        <% if @account.is_joint? %>
-          <%= render DS::Alert.new(
-            message: "This is a joint account. All family members always have full access to joint accounts.",
-            variant: :info
-          ) %>
-        <% end %>
+          <% if @account.is_joint? %>
+            <%= render DS::Alert.new(
+              message: "This is a joint account. All family members always have full access to joint accounts.",
+              variant: :info
+            ) %>
+          <% end %>
 
-        <%= form_with url: account_account_permissions_path(@account), method: :patch, class: "space-y-4" do |f| %>
           <div class="space-y-3">
             <% @family_members.each do |member| %>
               <div class="flex items-center justify-between gap-4 p-3 rounded-lg border border-primary bg-container">
@@ -43,14 +51,54 @@
             <p><strong>Balance only</strong> -- Can see balance but not transactions or holdings</p>
             <p><strong>Hidden</strong> -- Cannot see this account at all</p>
           </div>
+        </div>
 
-          <% unless @account.is_joint? %>
-            <div class="flex justify-end pt-2">
-              <%= f.submit "Save settings", class: "btn btn--primary" %>
-            </div>
-          <% end %>
-        <% end %>
-      </div>
+        <%# --- OWNERSHIP SECTION --- %>
+        <div class="border-t border-primary pt-4 space-y-4">
+          <p class="text-sm font-medium text-primary">Ownership split</p>
+          <p class="text-sm text-secondary">Determines how this account's value is split in each member's personal net worth.</p>
+
+          <div class="space-y-3">
+            <% @all_members.each do |member| %>
+              <% ownership = @ownerships[member.id] %>
+              <% default_pct = @account.is_joint? ? (100.0 / @all_members.size).round(2) : (member.id == @account.created_by_user_id ? 100.0 : 0.0) %>
+              <% current_pct = ownership&.percentage || default_pct %>
+              <div class="flex items-center justify-between gap-4 p-3 rounded-lg border border-primary bg-container">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-medium shrink-0">
+                    <%= member.display_name.first.upcase %>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-primary truncate"><%= member.display_name %></p>
+                    <p class="text-xs text-secondary truncate"><%= member.email %></p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1 shrink-0">
+                  <input type="number"
+                         name="ownerships[<%= member.id %>]"
+                         value="<%= current_pct %>"
+                         min="0" max="100" step="0.01"
+                         autocomplete="off"
+                         class="w-20 rounded-md border border-secondary bg-container px-2 py-1.5 text-sm text-primary text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         data-ownership-split-target="percentage"
+                         data-action="input->ownership-split#recalculate">
+                  <span class="text-sm text-secondary">%</span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-secondary">Unassigned: <span data-ownership-split-target="unassigned">0%</span></span>
+            <span class="text-destructive hidden" data-ownership-split-target="error">Total exceeds 100%</span>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <%= f.submit "Save settings", class: "btn btn--primary", data: { ownership_split_target: "submit" } %>
+        </div>
+      <% end %>
     <% end %>
   <% end %>
 <% end %>

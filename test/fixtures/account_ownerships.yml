@@ -1,0 +1,2 @@
+# No default fixtures - absence of ownership rows means default behavior
+# Tests create specific ownership rows as needed
