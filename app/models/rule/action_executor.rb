@@ -17,6 +17,10 @@ class Rule::ActionExecutor
     "function"
   end
 
+  def preposition
+    "to"
+  end
+
   def options
     nil
   end
@@ -30,7 +34,8 @@ class Rule::ActionExecutor
       type: type,
       key: key,
       label: label,
-      options: options
+      options: options,
+      preposition: preposition
     }
   end
 

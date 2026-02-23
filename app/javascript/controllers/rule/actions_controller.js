@@ -30,7 +30,7 @@ export default class extends Controller {
     if (actionExecutor.type === "select") {
       this.#buildSelectFor(actionExecutor);
     } else if (actionExecutor.type === "text") {
-      this.#buildTextInputFor();
+      this.#buildTextInputFor(actionExecutor);
     } else {
       // Hide for any type that doesn't need a value (e.g. function)
       this.#hideActionValue();
@@ -49,6 +49,13 @@ export default class extends Controller {
   #buildSelectFor(actionExecutor) {
     // Clone the select template
     const template = this.selectTemplateTarget.content.cloneNode(true);
+
+    // Update the preposition label
+    const prepositionEl = template.querySelector("span");
+    if (prepositionEl) {
+      prepositionEl.textContent = actionExecutor.preposition || "to";
+    }
+
     const selectEl = template.querySelector("select");
 
     // Add options to the select element
@@ -75,9 +82,15 @@ export default class extends Controller {
     this.actionValueTarget.classList.remove("hidden");
   }
 
-  #buildTextInputFor() {
+  #buildTextInputFor(actionExecutor) {
     // Clone the text template
     const template = this.textTemplateTarget.content.cloneNode(true);
+
+    // Update the preposition label
+    const prepositionEl = template.querySelector("span");
+    if (prepositionEl) {
+      prepositionEl.textContent = actionExecutor.preposition || "to";
+    }
 
     // Ensure the input is always empty
     const inputEl = template.querySelector("input");
