@@ -61,8 +61,12 @@
           <div class="space-y-3">
             <% @all_members.each do |member| %>
               <% ownership = @ownerships[member.id] %>
-              <% default_pct = @account.is_joint? ? (100.0 / @all_members.size).round(2) : (member.id == @account.created_by_user_id ? 100.0 : 0.0) %>
-              <% current_pct = ownership&.percentage || default_pct %>
+              <% if @ownerships.any? %>
+                <% current_pct = ownership&.percentage || 0.0 %>
+              <% else %>
+                <% default_pct = @account.is_joint? ? (100.0 / @all_members.size).round(2) : (member.id == @account.created_by_user_id ? 100.0 : 0.0) %>
+                <% current_pct = default_pct %>
+              <% end %>
               <div class="flex items-center justify-between gap-4 p-3 rounded-lg border border-primary bg-container">
                 <div class="flex items-center gap-3 min-w-0">
                   <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-medium shrink-0">

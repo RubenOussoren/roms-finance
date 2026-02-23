@@ -128,4 +128,32 @@ class AccountPermissionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to account_path(@account)
     assert_equal 0, @account.account_ownerships.count
   end
+
+  test "edit form shows 0 percent for user without record when partial ownership exists" do
+    # Simulate the corruption: only one user has a DB record
+    AccountOwnership.create!(account: @account, user: @member, percentage: 100)
+
+    get edit_account_account_permissions_url(@account)
+    assert_response :success
+
+    # Owner should show 0% (not the 100% default) since DB records exist
+    assert_select "input[name='ownerships[#{@owner.id}]'][value='0.0']"
+    # Member should show their DB value of 100%
+    assert_select "input[name='ownerships[#{@member.id}]'][value='100.0']"
+  end
+
+  test "saving ownership with partial existing records works correctly" do
+    # Start with corrupted state: only member has 100%
+    AccountOwnership.create!(account: @account, user: @member, percentage: 100)
+
+    # User fixes it to 50/50
+    patch account_account_permissions_url(@account), params: {
+      permissions: { @member.id => "full" },
+      ownerships: { @owner.id => "50", @member.id => "50" }
+    }
+
+    assert_redirected_to account_path(@account)
+    assert_equal 50, @account.account_ownerships.find_by(user_id: @owner.id).percentage
+    assert_equal 50, @account.account_ownerships.find_by(user_id: @member.id).percentage
+  end
 end

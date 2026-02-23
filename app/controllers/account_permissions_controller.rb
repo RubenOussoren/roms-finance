@@ -69,18 +69,15 @@ class AccountPermissionsController < ApplicationController
         )
       end
 
-      @account.account_ownerships.reload
+      @account.account_ownerships.destroy_all
 
       ownerships_params.each do |user_id, pct_string|
         pct = pct_string.to_d
-        ownership = @account.account_ownerships.find_or_initialize_by(user_id: user_id)
-
-        if pct <= 0
-          ownership.destroy! if ownership.persisted?
-        else
-          ownership.update!(percentage: pct)
-        end
+        next if pct <= 0
+        @account.account_ownerships.create!(user_id: user_id, percentage: pct)
       end
+
+      Rails.logger.info "[OWNERSHIP] Saved for account #{@account.id}: #{@account.account_ownerships.reload.map { |o| "#{o.user_id}=#{o.percentage}%" }.join(', ')}"
     end
 
     def permissions_params
