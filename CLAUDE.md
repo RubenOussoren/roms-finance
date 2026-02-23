@@ -138,7 +138,7 @@ For detailed patterns, refer to:
 
 Skills are slash commands (e.g. `/commit`, `/test`) that trigger predefined workflows. Use them in the AI chat to run common tasks.
 
-**Workflow**: `/commit`, `/pr`, `/pre-pr`, `/test`, `/setup`, `/db`
+**Workflow**: `/commit`, `/pr`, `/pre-pr`, `/test`, `/setup`, `/db`, `/release`
 **Code review**: `/review`, `/phase-review`, `/pag-check`
 **Domain scaffolding**: `/calculator`, `/simulator`
 

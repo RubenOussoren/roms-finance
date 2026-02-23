@@ -83,6 +83,7 @@ Create a well-formatted pull request using GitHub CLI.
 - Test plan should be actionable checklist
 - Do NOT use TodoWrite or Task tools
 - Always return PR URL when complete
+- If this PR includes user-facing changes, consider running `/release note` to update the draft release notes
 
 ## Draft PRs
 

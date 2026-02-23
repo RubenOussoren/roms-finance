@@ -64,7 +64,7 @@ Six rules, each with a clear scope:
 
 ### Claude Skills (`.claude/skills/`)
 
-Eleven skills available as slash commands:
+Twelve skills available as slash commands:
 
 | Skill | Command | Description |
 |---|---|---|
@@ -79,15 +79,16 @@ Eleven skills available as slash commands:
 | pag-check | `/pag-check` | Verify PAG 2025 compliance for financial projections |
 | calculator | `/calculator` | Generate financial calculator (pure function, PAG-aware, JurisdictionAware) |
 | simulator | `/simulator` | Generate debt simulator with AbstractDebtSimulator inheritance + mortgage math |
+| release | `/release` | Manage GitHub release notes -- add notes to draft, review status, publish |
 
 ## Skills Workflow
 
 ### Workflow Stages
 
 ```
-Setup ──────→ Development Loop ──────→ Pre-PR Gate ──────→ PR
-/setup         /test, /review          /pre-pr            /pr, /commit
-/db            /calculator              /phase-review
+Setup ──────→ Development Loop ──────→ Pre-PR Gate ──────→ PR ──────→ Release
+/setup         /test, /review          /pre-pr            /pr         /release
+/db            /calculator              /phase-review      /commit
                /simulator              /pag-check
 ```
 
@@ -119,6 +120,8 @@ Setup ──────→ Development Loop ──────→ Pre-PR Gate �
 | New debt simulator | `/simulator` → `/pag-check` → `/pre-pr` |
 | Phase complete | `/phase-review` |
 | Quick linting + security | `/pre-pr` (linting is part of the pre-PR gate) |
+| Cutting a release | `/release status` → `/release note` (repeat) → `/release publish` |
+| Feature merged, update notes | `/commit` → `/release note` |
 
 ### CI ↔ Skill Parity
 
