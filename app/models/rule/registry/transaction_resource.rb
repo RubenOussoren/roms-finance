@@ -16,7 +16,8 @@ class Rule::Registry::TransactionResource < Rule::Registry
       Rule::ActionExecutor::SetTransactionCategory.new(rule),
       Rule::ActionExecutor::SetTransactionTags.new(rule),
       Rule::ActionExecutor::SetTransactionMerchant.new(rule),
-      Rule::ActionExecutor::SetTransactionName.new(rule)
+      Rule::ActionExecutor::SetTransactionName.new(rule),
+      Rule::ActionExecutor::CreateTransfer.new(rule)
     ]
 
     if ai_enabled?
