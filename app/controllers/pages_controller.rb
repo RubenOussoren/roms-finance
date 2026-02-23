@@ -31,17 +31,16 @@ class PagesController < ApplicationController
   end
 
   def changelog
-    @release_notes = github_provider.fetch_latest_release_notes
+    @releases = github_provider.fetch_release_notes
 
-    # Fallback if no release notes are available
-    if @release_notes.nil?
-      @release_notes = {
+    if @releases.empty?
+      @releases = [ {
         avatar: nil,
         username: "ROMS Finance",
         name: "Release notes unavailable",
         published_at: Date.current,
         body: "Release notes are not available at this time. Please check back later."
-      }
+      } ]
     end
 
     render layout: "settings"

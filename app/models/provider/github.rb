@@ -1,24 +1,26 @@
 class Provider::Github < Provider
-  def fetch_latest_release_notes
+  def fetch_release_notes
     response = with_provider_response do
-      release = Rails.cache.fetch("github_latest_release", expires_in: 6.hours) do
-        client.latest_release(repo)&.to_h
+      releases = Rails.cache.fetch("github_releases", expires_in: 6.hours) do
+        client.releases(repo, per_page: 10).map(&:to_h)
       end
 
-      raise Error, "No releases found" if release.nil?
+      raise Error, "No releases found" if releases.blank?
 
-      author = release[:author] || {}
+      releases.map do |release|
+        author = release[:author] || {}
 
-      {
-        avatar: author[:avatar_url],
-        username: author[:login] || repo.split("/").first,
-        name: release[:name].presence || release[:tag_name],
-        published_at: release[:published_at],
-        body: release[:body]
-      }
+        {
+          avatar: author[:avatar_url],
+          username: author[:login] || repo.split("/").first,
+          name: release[:name].presence || release[:tag_name],
+          published_at: release[:published_at],
+          body: release[:body]
+        }
+      end
     end
 
-    response.success? ? response.data : nil
+    response.success? ? response.data : []
   end
 
   private

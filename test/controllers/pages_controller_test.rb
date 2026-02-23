@@ -33,10 +33,9 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "changelog with nil release notes" do
-    # Mock the GitHub provider to return nil (simulating API failure or no releases)
+  test "changelog with empty release notes" do
     github_provider = mock
-    github_provider.expects(:fetch_latest_release_notes).returns(nil)
+    github_provider.expects(:fetch_release_notes).returns([])
     Provider::Registry.stubs(:get_provider).with(:github).returns(github_provider)
 
     get changelog_path
@@ -46,37 +45,77 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
 
   test "changelog with valid release notes" do
     github_provider = mock
-    github_provider.expects(:fetch_latest_release_notes).returns({
-      avatar: "https://avatars.githubusercontent.com/u/12345",
-      username: "rubenoussoren",
-      name: "v1.0.0",
-      published_at: Date.new(2026, 1, 15),
-      body: "## What's New\n\n- Feature A\n- Feature B"
-    })
+    github_provider.expects(:fetch_release_notes).returns([
+      {
+        avatar: "https://avatars.githubusercontent.com/u/12345",
+        username: "rubenoussoren",
+        name: "v1.0.0",
+        published_at: Date.new(2026, 1, 15),
+        body: "## What's New\n\n- Feature A\n- Feature B"
+      }
+    ])
     Provider::Registry.stubs(:get_provider).with(:github).returns(github_provider)
 
     get changelog_path
     assert_response :ok
     assert_select "h2", text: "v1.0.0"
-    assert_select "span.text-primary", text: "rubenoussoren"
+    assert_select "span.text-subdued", text: "by rubenoussoren"
   end
 
   test "changelog with incomplete release notes" do
-    # Mock the GitHub provider to return incomplete data (missing some fields)
     github_provider = mock
-    incomplete_data = {
-      avatar: nil,
-      username: "roms-finance",
-      name: "Test Release",
-      published_at: nil,
-      body: nil
-    }
-    github_provider.expects(:fetch_latest_release_notes).returns(incomplete_data)
+    github_provider.expects(:fetch_release_notes).returns([
+      {
+        avatar: nil,
+        username: "roms-finance",
+        name: "Test Release",
+        published_at: nil,
+        body: nil
+      }
+    ])
     Provider::Registry.stubs(:get_provider).with(:github).returns(github_provider)
 
     get changelog_path
     assert_response :ok
     assert_select "h2", text: "Test Release"
-    # Should not crash even with nil values
+  end
+
+  test "changelog with multiple releases renders latest expanded and older collapsed" do
+    github_provider = mock
+    github_provider.expects(:fetch_release_notes).returns([
+      {
+        avatar: "https://avatars.githubusercontent.com/u/12345",
+        username: "rubenoussoren",
+        name: "v2.0.0",
+        published_at: Date.new(2026, 2, 1),
+        body: "## v2 Notes\n\n- Major update"
+      },
+      {
+        avatar: "https://avatars.githubusercontent.com/u/12345",
+        username: "rubenoussoren",
+        name: "v1.1.0",
+        published_at: Date.new(2026, 1, 20),
+        body: "## v1.1 Notes\n\n- Minor update"
+      },
+      {
+        avatar: nil,
+        username: "rubenoussoren",
+        name: "v1.0.0",
+        published_at: Date.new(2026, 1, 1),
+        body: "## Initial Release"
+      }
+    ])
+    Provider::Registry.stubs(:get_provider).with(:github).returns(github_provider)
+
+    get changelog_path
+    assert_response :ok
+
+    # Latest release rendered as h2 (expanded card)
+    assert_select "h2", text: "v2.0.0"
+
+    # Older releases rendered inside <details> elements
+    assert_select "details", 2
+    assert_select "details summary span.text-primary", text: "v1.1.0"
+    assert_select "details summary span.text-primary", text: "v1.0.0"
   end
 end

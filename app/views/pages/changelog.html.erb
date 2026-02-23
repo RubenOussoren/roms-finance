@@ -1,27 +1,48 @@
 <%= content_for :page_title, t(".title") %>
 
-<div class="bg-container shadow-border-xs rounded-xl p-4 grow overflow-y-auto">
-  <div class="flex flex-col md:flex-row justify-between gap-4 mb-12 last:mb-0">
-    <div class="w-full md:w-1/3">
-      <div class="md:px-3 flex items-center gap-3">
-        <% if @release_notes[:avatar].present? %>
-          <div class="fg-inverse shrink-0 w-9 h-9">
-            <%= image_tag @release_notes[:avatar], class: "rounded-full w-full h-full object-cover" %>
-          </div>
-        <% else %>
-          <div class="bg-gray-300 text-gray-600 shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium">
-            <%= @release_notes[:username]&.first&.upcase || "?" %>
-          </div>
-        <% end %>
-        <div>
-          <span class="text-primary font-medium text-sm"><%= @release_notes[:username] %></span>
-          <div class="text-secondary text-sm"><%= @release_notes[:published_at]&.strftime("%B %d, %Y") || "Date unavailable" %></div>
+<div class="space-y-3">
+  <% @releases.each_with_index do |release, index| %>
+    <% if index == 0 %>
+      <div class="bg-container shadow-border-xs rounded-xl p-4">
+        <div class="flex items-center gap-3 mb-4">
+          <% if release[:avatar].present? %>
+            <div class="shrink-0 w-7 h-7">
+              <%= image_tag release[:avatar], class: "rounded-full w-full h-full object-cover" %>
+            </div>
+          <% end %>
+          <h2 class="text-primary font-medium text-lg"><%= release[:name] %></h2>
+          <span class="text-subdued text-sm">
+            <%= release[:published_at]&.strftime("%B %d, %Y") || "Date unavailable" %>
+          </span>
+          <% if release[:username].present? %>
+            <span class="text-subdued text-sm">by <%= release[:username] %></span>
+          <% end %>
+        </div>
+        <div class="text-secondary text-sm prose prose--github-release-notes">
+          <%= markdown(release[:body] || "No release notes available") %>
         </div>
       </div>
-    </div>
-    <div class="w-full md:w-2/3 text-secondary text-sm prose prose--github-release-notes">
-      <h2 class="mb-5 text-xl text-primary"><%= @release_notes[:name] %></h2>
-      <%= markdown(@release_notes[:body] || "No release notes available") %>
-    </div>
-  </div>
+    <% else %>
+      <details class="group bg-container shadow-border-xs rounded-xl">
+        <summary class="flex items-center gap-3 p-4 cursor-pointer list-none">
+          <%= icon "chevron-right", class: "w-4 h-4 text-subdued transition-transform group-open:rotate-90" %>
+          <% if release[:avatar].present? %>
+            <div class="shrink-0 w-7 h-7">
+              <%= image_tag release[:avatar], class: "rounded-full w-full h-full object-cover" %>
+            </div>
+          <% end %>
+          <span class="text-primary font-medium"><%= release[:name] %></span>
+          <span class="text-subdued text-sm">
+            <%= release[:published_at]&.strftime("%B %d, %Y") || "Date unavailable" %>
+          </span>
+          <% if release[:username].present? %>
+            <span class="text-subdued text-sm">by <%= release[:username] %></span>
+          <% end %>
+        </summary>
+        <div class="px-4 pb-4 text-secondary text-sm prose prose--github-release-notes">
+          <%= markdown(release[:body] || "No release notes available") %>
+        </div>
+      </details>
+    <% end %>
+  <% end %>
 </div>
