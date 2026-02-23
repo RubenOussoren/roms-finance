@@ -8,11 +8,24 @@
 
   <%= turbo_frame_tag "projections-content" do %>
     <div class="space-y-4">
+      <% if @show_scope_toggle %>
+        <div class="flex gap-1 p-1 bg-surface-inset rounded-lg w-fit">
+          <%= link_to "Household", projections_path(scope: :household, tab: @tab, projection_years: @projection_years),
+              class: class_names("px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                @scope == :household ? "bg-container shadow-border-xs text-primary" : "text-secondary hover:text-primary"),
+              data: { turbo_action: "replace" } %>
+          <%= link_to "Personal", projections_path(scope: :personal, tab: @tab, projection_years: @projection_years),
+              class: class_names("px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                @scope == :personal ? "bg-container shadow-border-xs text-primary" : "text-secondary hover:text-primary"),
+              data: { turbo_action: "replace" } %>
+        </div>
+      <% end %>
+
       <div class="flex items-center justify-between gap-4">
         <nav class="flex bg-surface-inset p-1 rounded-lg grow">
           <% { "overview" => "Overview", "investments" => "Investments", "debts" => "Debts", "strategies" => "Strategies" }.each do |tab_id, label| %>
             <%= link_to label,
-                projections_path(tab: tab_id, projection_years: @projection_years),
+                projections_path(tab: tab_id, projection_years: @projection_years, scope: @scope),
                 class: class_names(
                   "w-full inline-flex justify-center items-center text-sm font-medium px-2 py-1 rounded-md transition-colors duration-200",
                   @tab == tab_id ?
@@ -25,6 +38,7 @@
 
         <%= form_with url: projections_path, method: :get, data: { controller: "auto-submit-form" } do |form| %>
           <%= form.hidden_field :tab, value: @tab %>
+          <%= form.hidden_field :scope, value: @scope %>
           <%= form.select :projection_years,
               [["5 years", 5], ["10 years", 10], ["20 years", 20], ["30 years", 30]],
               { selected: @projection_years },
@@ -44,11 +58,13 @@
       <% when "investments" %>
         <%= render "projections/investments",
             accounts: @investment_accounts,
+            investment_total: @investment_total,
             projection_years: @projection_years %>
       <% when "debts" %>
         <%= render "projections/debts",
             loan_accounts: @loan_accounts,
             loan_payoffs: @loan_payoffs,
+            debt_total: @debt_total,
             projection_years: @projection_years %>
       <% when "strategies" %>
         <%= render "projections/strategies", strategies: @strategies %>

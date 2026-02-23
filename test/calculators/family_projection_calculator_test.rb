@@ -286,4 +286,48 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
     assert percentiles[:p50] < percentiles[:p75], "p50 should be < p75 at high volatility"
     assert percentiles[:p75] < percentiles[:p90], "p75 should be < p90 at high volatility"
   end
+
+  test "backward compatible — no viewer produces same results as before" do
+    calc_no_viewer = FamilyProjectionCalculator.new(@family)
+    calc_with_viewer = FamilyProjectionCalculator.new(@family, viewer: nil, scope: :household)
+
+    result_a = calc_no_viewer.project(years: 1)
+    result_b = calc_with_viewer.project(years: 1)
+
+    assert_equal result_a[:projections].size, result_b[:projections].size
+    assert_equal result_a[:currency], result_b[:currency]
+  end
+
+  test "personal scope with viewer returns projection data" do
+    viewer = users(:family_admin)
+    calc = FamilyProjectionCalculator.new(@family, viewer: viewer, scope: :personal)
+    result = calc.project(years: 1)
+
+    assert_includes result.keys, :projections
+    assert_equal 12, result[:projections].count
+    assert_includes result.keys, :historical
+  end
+
+  test "personal scope summary_metrics returns scoped values" do
+    viewer = users(:family_admin)
+    calc = FamilyProjectionCalculator.new(@family, viewer: viewer, scope: :personal)
+    metrics = calc.summary_metrics
+
+    assert_includes metrics.keys, :current_net_worth
+    assert_includes metrics.keys, :total_assets
+    assert_includes metrics.keys, :total_liabilities
+  end
+
+  test "fraction_for returns 1.0 when no viewer" do
+    calc = FamilyProjectionCalculator.new(@family)
+    account = @family.accounts.active.first
+    assert_equal 1.0, calc.send(:fraction_for, account)
+  end
+
+  test "fraction_for returns 1.0 for household scope even with viewer" do
+    viewer = users(:family_admin)
+    calc = FamilyProjectionCalculator.new(@family, viewer: viewer, scope: :household)
+    account = @family.accounts.active.first
+    assert_equal 1.0, calc.send(:fraction_for, account)
+  end
 end

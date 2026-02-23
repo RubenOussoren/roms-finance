@@ -10,10 +10,12 @@ class FamilyProjectionCalculator
   SAME_CLASS_CORRELATION = 0.8   # e.g., equity-equity
   CROSS_CLASS_CORRELATION = 0.3  # e.g., equity-bonds
 
-  attr_reader :family
+  attr_reader :family, :viewer, :scope
 
-  def initialize(family)
+  def initialize(family, viewer: nil, scope: :household)
     @family = family
+    @viewer = viewer
+    @scope = scope
   end
 
   # Generate family-wide net worth projection
@@ -39,11 +41,11 @@ class FamilyProjectionCalculator
 
   # Quick summary metrics for the overview
   def summary_metrics
-    balance_sheet = family.balance_sheet
+    bs = viewer ? family.balance_sheet_for(viewer, scope: scope) : family.balance_sheet
     {
-      current_net_worth: balance_sheet.net_worth,
-      total_assets: balance_sheet.assets.total,
-      total_liabilities: balance_sheet.liabilities.total,
+      current_net_worth: bs.net_worth,
+      total_assets: bs.assets.total,
+      total_liabilities: bs.liabilities.total,
       currency: family.currency
     }
   end
@@ -52,7 +54,8 @@ class FamilyProjectionCalculator
 
     def historical_net_worth_data
       # Get last 12 months of net worth data
-      series = family.balance_sheet.net_worth_series(period: Period.last_365_days)
+      bs = viewer ? family.balance_sheet_for(viewer, scope: scope) : family.balance_sheet
+      series = bs.net_worth_series(period: Period.last_365_days)
       return [] if series.blank? || series.values.blank?
 
       series.values.map do |point|
@@ -66,8 +69,8 @@ class FamilyProjectionCalculator
     def project_net_worth(months:)
       # Aggregate projections from all accounts
       # Eager load accountable, entries, and projection_assumption to prevent N+1 queries
-      asset_accounts = family.accounts.where(classification: "asset").active.includes(:accountable, :projection_assumption)
-      liability_accounts = family.accounts.where(classification: "liability").active.includes(:accountable, :projection_assumption)
+      asset_accounts = active_accounts("asset")
+      liability_accounts = active_accounts("liability")
 
       # Validate currency consistency
       all_accounts = asset_accounts + liability_accounts
@@ -85,14 +88,14 @@ class FamilyProjectionCalculator
       projections = (1..months).map do |month|
         date = Date.current + month.months
 
-        # Calculate projected assets
+        # Calculate projected assets (with ownership fractions for personal scope)
         projected_assets = asset_accounts.sum do |account|
-          project_account_balance(account, month)
+          project_account_balance(account, month) * fraction_for(account)
         end
 
         # Calculate projected liabilities (decreasing over time for loans)
         projected_liabilities = liability_accounts.sum do |account|
-          project_account_balance(account, month)
+          project_account_balance(account, month) * fraction_for(account)
         end
 
         # Net worth = assets - liabilities
@@ -122,14 +125,14 @@ class FamilyProjectionCalculator
     def aggregate_volatility(asset_accounts)
       return 0.15 if asset_accounts.empty? # Default 15%
 
-      total_balance = asset_accounts.sum(&:balance)
+      total_balance = asset_accounts.sum { |a| a.balance * fraction_for(a) }
       return 0.15 if total_balance.zero?
 
       # Build arrays of weights, volatilities, and asset classes
       account_data = asset_accounts.map do |account|
         assumption = assumption_for(account)
         {
-          weight: (account.balance / total_balance).to_f,
+          weight: (account.balance * fraction_for(account) / total_balance).to_f,
           volatility: (assumption&.effective_volatility || 0.15).to_f,
           asset_class: asset_class_for(account)
         }
@@ -149,6 +152,33 @@ class FamilyProjectionCalculator
       end
 
       Math.sqrt([ variance, 0.0 ].max)
+    end
+
+    def active_accounts(classification)
+      base = family.accounts.where(classification: classification).active
+      base = if viewer.nil?
+        base
+      elsif scope == :personal
+        base.with_ownership_for(viewer)
+      else
+        base.accessible_by(viewer)
+      end
+      base.includes(:accountable, :projection_assumption, :account_ownerships)
+    end
+
+    def fraction_for(account)
+      return 1.0 unless viewer && scope == :personal
+      ownership_fractions[account.id] || 1.0
+    end
+
+    def ownership_fractions
+      @ownership_fractions ||= begin
+        accounts = family.accounts.active.with_ownership_for(viewer).includes(:account_ownerships)
+        member_count = family.users.count
+        accounts.each_with_object({}) do |account, hash|
+          hash[account.id] = account.ownership_fraction_for(viewer, member_count: member_count)
+        end
+      end
     end
 
     def asset_class_for(account)

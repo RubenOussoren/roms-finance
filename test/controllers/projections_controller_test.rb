@@ -60,4 +60,44 @@ class ProjectionsControllerTest < ActionDispatch::IntegrationTest
       assert_response :success
     end
   end
+
+  test "all tabs work with personal scope" do
+    %w[overview investments debts strategies].each do |tab|
+      get projections_url(tab: tab, scope: "personal")
+      assert_response :success
+    end
+  end
+
+  test "all tabs work with household scope" do
+    %w[overview investments debts strategies].each do |tab|
+      get projections_url(tab: tab, scope: "household")
+      assert_response :success
+    end
+  end
+
+  test "invalid scope defaults to household" do
+    get projections_url(tab: "overview", scope: "bogus")
+    assert_response :success
+  end
+
+  test "scope toggle visible for multi-user family" do
+    family = families(:dylan_family)
+    assert family.multi_user?, "Fixture family should have multiple users"
+
+    get projections_url
+    assert_response :success
+    assert_select "a", text: "Household"
+    assert_select "a", text: "Personal"
+  end
+
+  test "scope toggle hidden for single-user family" do
+    family = families(:dylan_family)
+    # Remove all users except the admin to simulate single-user
+    family.users.where.not(id: users(:family_admin).id).destroy_all
+
+    get projections_url
+    assert_response :success
+    assert_select "a", text: "Household", count: 0
+    assert_select "a", text: "Personal", count: 0
+  end
 end
