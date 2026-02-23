@@ -8,29 +8,21 @@
           This updates the baseline used to split the combined Plaid balance.
         </p>
 
-        <%= form_with url: account_recalibration_path(@account), method: :post, class: "space-y-4" do |f| %>
+        <%= styled_form_with url: account_recalibration_path(@account), scope: :recalibration, method: :post, class: "space-y-4" do |f| %>
           <div class="space-y-3">
-            <div>
-              <label for="recalibration_balance" class="block text-sm font-medium text-secondary mb-1">Current mortgage balance</label>
-              <%= f.number_field :balance, name: "recalibration[balance]",
-                  class: "form-field__input", step: 0.01, min: 0, required: true,
-                  value: @account.balance %>
-            </div>
+            <%= f.number_field :balance, label: "Current mortgage balance",
+                step: 0.01, min: 0, required: true,
+                value: @account.balance %>
 
-            <div>
-              <label for="recalibration_date" class="block text-sm font-medium text-secondary mb-1">As of date</label>
-              <%= f.date_field :date, name: "recalibration[date]",
-                  class: "form-field__input", value: Date.current %>
-            </div>
+            <%= f.date_field :date, label: "As of date",
+                value: Date.current %>
           </div>
 
           <div class="text-xs text-secondary">
             <p>After recalibration, future Plaid syncs will use this balance as the new starting point for amortization calculations.</p>
           </div>
 
-          <div class="flex justify-end pt-2">
-            <%= f.submit "Recalibrate", class: "btn btn--primary" %>
-          </div>
+          <%= f.submit "Recalibrate" %>
         <% end %>
       </div>
     <% end %>

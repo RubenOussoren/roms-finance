@@ -8,41 +8,23 @@
           The HELOC balance will be derived automatically from Plaid's combined balance.
         </p>
 
-        <%= form_with url: account_split_path(@account), method: :post, class: "space-y-4" do |f| %>
+        <%= styled_form_with url: account_split_path(@account), scope: :split, method: :post, class: "space-y-4" do |f| %>
           <fieldset class="space-y-3">
             <legend class="text-sm font-medium text-primary">Mortgage Details</legend>
 
-            <div class="flex items-center gap-2">
-              <div class="flex-1">
-                <label for="split_origination_date" class="block text-sm font-medium text-secondary mb-1">Origination date</label>
-                <%= f.date_field :origination_date, name: "split[origination_date]",
-                    class: "form-field__input", required: true %>
-              </div>
-            </div>
+            <%= f.date_field :origination_date, label: "Origination date", required: true %>
 
             <div class="flex items-center gap-2">
-              <div class="flex-1">
-                <label for="split_interest_rate" class="block text-sm font-medium text-secondary mb-1">Interest rate (%)</label>
-                <%= f.number_field :interest_rate, name: "split[interest_rate]",
-                    class: "form-field__input", step: 0.001, min: 0, required: true,
-                    value: @account.accountable.interest_rate %>
-              </div>
-              <div class="flex-1">
-                <label for="split_rate_type" class="block text-sm font-medium text-secondary mb-1">Rate type</label>
-                <%= f.select :rate_type, [["Fixed", "fixed"], ["Variable", "variable"]],
-                    { selected: @account.accountable.rate_type || "fixed" },
-                    name: "split[rate_type]", class: "form-field__input" %>
-              </div>
+              <%= f.number_field :interest_rate, label: "Interest rate (%)",
+                  step: 0.001, min: 0, required: true,
+                  value: @account.accountable.interest_rate %>
+              <%= f.select :rate_type, [["Fixed", "fixed"], ["Variable", "variable"]],
+                  { label: "Rate type", selected: @account.accountable.rate_type || "fixed" } %>
             </div>
 
-            <div class="flex items-center gap-2">
-              <div class="flex-1">
-                <label for="split_term_months" class="block text-sm font-medium text-secondary mb-1">Term (months)</label>
-                <%= f.number_field :term_months, name: "split[term_months]",
-                    class: "form-field__input", min: 1, required: true,
-                    value: @account.accountable.term_months %>
-              </div>
-            </div>
+            <%= f.number_field :term_months, label: "Term (months)",
+                min: 1, required: true,
+                value: @account.accountable.term_months %>
           </fieldset>
 
           <%= render "shared/ruler", classes: "my-4" %>
@@ -50,22 +32,11 @@
           <fieldset class="space-y-3">
             <legend class="text-sm font-medium text-primary">HELOC Account</legend>
 
-            <div class="flex items-center gap-2">
-              <div class="flex-1">
-                <label for="split_heloc_name" class="block text-sm font-medium text-secondary mb-1">HELOC account name</label>
-                <%= f.text_field :heloc_name, name: "split[heloc_name]",
-                    class: "form-field__input",
-                    placeholder: "#{@account.name} HELOC" %>
-              </div>
-            </div>
+            <%= f.text_field :heloc_name, label: "HELOC account name",
+                placeholder: "#{@account.name} HELOC" %>
 
-            <div class="flex items-center gap-2">
-              <div class="flex-1">
-                <label for="split_heloc_balance" class="block text-sm font-medium text-secondary mb-1">Current HELOC balance</label>
-                <%= f.number_field :heloc_balance, name: "split[heloc_balance]",
-                    class: "form-field__input", step: 0.01, min: 0, required: true %>
-              </div>
-            </div>
+            <%= f.number_field :heloc_balance, label: "Current HELOC balance",
+                step: 0.01, min: 0, required: true %>
           </fieldset>
 
           <div class="text-xs text-secondary space-y-1">
@@ -73,9 +44,7 @@
             <p>Use "Recalibrate" after prepayments to update the mortgage baseline.</p>
           </div>
 
-          <div class="flex justify-end pt-2">
-            <%= f.submit "Create Split", class: "btn btn--primary" %>
-          </div>
+          <%= f.submit "Create Split" %>
         <% end %>
       </div>
     <% end %>

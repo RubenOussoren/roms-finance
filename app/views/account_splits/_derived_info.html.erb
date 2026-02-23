@@ -1,13 +1,8 @@
 <%# locals: (account:) %>
 
-<div class="rounded-lg border border-primary bg-container p-4 space-y-2">
-  <div class="flex items-center gap-2">
-    <%= icon "git-branch", class: "w-4 h-4 text-secondary" %>
-    <span class="text-sm font-medium text-primary">Derived Balance</span>
-  </div>
+<% message = capture do %>
+  <p>Balance derived from: <strong><%= account.split_source.name %></strong></p>
+  <p>This account's balance updates automatically when Plaid syncs the combined mortgage + HELOC balance.</p>
+<% end %>
 
-  <div class="text-sm text-secondary space-y-1">
-    <p>Balance derived from: <strong><%= account.split_source.name %></strong></p>
-    <p>This account's balance updates automatically when Plaid syncs the combined mortgage + HELOC balance.</p>
-  </div>
-</div>
+<%= render DS::Alert.new(message: message, variant: :info) %>
