@@ -43,6 +43,15 @@ class AccountRecalibrationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.new(2026, 2, 1), @mortgage_loan.calibrated_at
   end
 
+  test "create updates account balance to match recalibrated value" do
+    post account_recalibration_path(@mortgage), params: {
+      recalibration: { balance: "760000", date: Date.current.to_s }
+    }
+
+    @mortgage.reload
+    assert_equal 760000.0, @mortgage.balance.to_f
+  end
+
   test "create defaults date to today when not provided" do
     post account_recalibration_path(@mortgage), params: {
       recalibration: {

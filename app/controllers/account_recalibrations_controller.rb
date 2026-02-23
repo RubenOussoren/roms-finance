@@ -11,7 +11,7 @@ class AccountRecalibrationsController < ApplicationController
 
     @account.accountable.recalibrate!(balance, date)
 
-    # Trigger a sync to recompute the split
+    # Recompute split target balances (e.g. HELOC remainder)
     @account.sync_later if @account.split_source?
 
     redirect_to account_path(@account), notice: "Mortgage recalibrated to #{balance} as of #{date}."

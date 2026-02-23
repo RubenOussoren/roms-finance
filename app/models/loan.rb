@@ -77,6 +77,11 @@ class Loan < ApplicationRecord
 
   def recalibrate!(balance, date = Date.current)
     update!(calibrated_balance: balance, calibrated_at: date)
+
+    if account.present? && can_compute_amortization?
+      new_balance = expected_balance_at(Date.current)
+      Account::CurrentBalanceManager.new(account).set_current_balance(new_balance) if new_balance
+    end
   end
 
   private
