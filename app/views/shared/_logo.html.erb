@@ -1,1 +1,4 @@
-<%= link_to image_tag("logomark.png", class: "w-auto h-12 mx-auto"), root_path, data: { turbo: false} %>
+<%= link_to root_path, data: { turbo: false } do %>
+  <%= image_tag "logomark.png", class: "w-auto h-12 mx-auto theme-dark:hidden" %>
+  <%= image_tag "logomark-dark.png", class: "w-auto h-12 mx-auto hidden theme-dark:block" %>
+<% end %>

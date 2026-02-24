@@ -1,5 +1,6 @@
 <%= content_for :prev_nav do %>
-  <%= image_tag "logomark-color.png", class: "w-10 h-10" %>
+  <%= image_tag "logomark-color.png", class: "w-10 h-10 theme-dark:hidden" %>
+  <%= image_tag "logomark-dark.png", class: "w-10 h-10 hidden theme-dark:block" %>
 <% end %>
 
 <%= content_for :header_nav do %>
