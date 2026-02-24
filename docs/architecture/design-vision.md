@@ -73,10 +73,10 @@ Jurisdiction differences handled through **configuration**, not code changes:
 
 ### 0.4 Provider Pattern Alignment
 
-This architecture **leverages the existing Provider pattern** already in Maybe Finance:
+This architecture **leverages the existing Provider pattern** already in ROMS Finance:
 
 ```ruby
-# Existing pattern in Maybe Finance (app/models/provider/)
+# Existing pattern in ROMS Finance (app/models/provider/)
 Provider::Registry.get_provider(:market_data_provider)  # Market data (Alpha Vantage)
 Provider::Registry.get_provider(:plaid)  # Bank connectivity provider
 
@@ -1207,12 +1207,12 @@ end
 
 ---
 
-### 2.4 Integration with Existing Maybe Finance Models
+### 2.4 Integration with Existing ROMS Finance Models
 
-**Map Debt Optimization Concepts → Maybe Models**:
+**Map Debt Optimization Concepts → ROMS Finance Models**:
 
 ```ruby
-# Existing Maybe models to leverage
+# Existing ROMS Finance models to leverage
 Account (type: Loan)
   → Primary Mortgage (non-deductible in Canada, deductible in US)
   → Rental Mortgage (deductible)
@@ -1624,7 +1624,7 @@ end
 
 #### Test Structure
 
-**Use Fixtures** (per Maybe Finance conventions):
+**Use Fixtures** (per ROMS Finance conventions):
 ```ruby
 # test/fixtures/accounts.yml
 investment_account:
@@ -1691,7 +1691,7 @@ end
 
 **Structure**:
 ```ruby
-# Leverage existing Provider pattern (already in Maybe Finance)
+# Leverage existing Provider pattern (already in ROMS Finance)
 # Jurisdiction acts like a "provider" for tax/compliance rules
 class Jurisdiction < ApplicationRecord
   has_many :projection_standards
@@ -2045,7 +2045,7 @@ This document serves as the **authoritative design reference** for integrating s
 - **Part 1**: Investment Dashboard principles (adaptive projections, Monte Carlo, PAG compliance) 🇨🇦 + 🌍
 - **Part 2**: Tax-Optimized Debt Strategies (Smith Manoeuvre, cash flow modeling, CRA audit trail) 🇨🇦
 - **Part 8**: Adding New Jurisdictions (blueprint for US/UK/EU expansion) 🔧
-- **Maybe Finance conventions** (skinny controllers, Hotwire-first, concerns over services, Provider pattern)
+- **ROMS Finance conventions** (skinny controllers, Hotwire-first, concerns over services, Provider pattern)
 
 **Architecture Summary:**
 
@@ -2078,4 +2078,4 @@ This design achieves **80% Canadian focus** while maintaining **100% architectur
 - v2.0: Introduced visual markers (🇨🇦 🌍 🔧 🇺🇸 🇬🇧)
 - v2.0: Renamed models: `LoanStrategy` → `DebtOptimizationStrategy` (jurisdiction-aware)
 
-**Author**: Design vision compiled from investment dashboard, HELOC tool, and Maybe Finance architecture analysis, restructured for multi-jurisdiction support while maintaining Canadian focus
+**Author**: Design vision compiled from investment dashboard, HELOC tool, and ROMS Finance architecture analysis, restructured for multi-jurisdiction support while maintaining Canadian focus

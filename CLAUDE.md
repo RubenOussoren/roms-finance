@@ -72,7 +72,7 @@ The `investment-dashboard/` directory is a Python prototype for reference only. 
 - **Hotwire Stack**: Turbo + Stimulus for reactive UI
 - **ViewComponents**: Reusable UI components in `app/components/`
 - **Charts**: D3.js for financial visualizations
-- **Styling**: Tailwind CSS v4.x - always use functional tokens from `maybe-design-system.css`
+- **Styling**: Tailwind CSS v4.x - always use functional tokens from `roms-design-system.css`
 - **Icons**: Always use `icon` helper, never `lucide_icon` directly
 
 ### Background Processing
@@ -119,7 +119,7 @@ Sidekiq handles async tasks: account syncing, import processing, AI chat respons
 
 ## Design System
 
-Reference `app/assets/tailwind/maybe-design-system.css` for tokens:
+Reference `app/assets/tailwind/roms-design-system.css` for tokens:
 - `text-primary` not `text-white`
 - `bg-container` not `bg-white`
 - `border border-primary` not `border border-gray-200`

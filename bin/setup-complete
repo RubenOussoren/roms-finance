@@ -234,20 +234,20 @@ unless SKIP_USER
   # Check if user already exists
   user_exists_script = <<~RUBY
     require './config/environment'
-    user = User.find_by(email: 'user@maybe.local')
+    user = User.find_by(email: 'admin@roms.local')
     exit(user.present? ? 0 : 1)
   RUBY
 
   user_exists = system("ruby", "-e", user_exists_script)
 
   if user_exists && !RESET_DB
-    puts "  #{green("✓")} Test user already exists (user@maybe.local)"
+    puts "  #{green("✓")} Test user already exists (admin@roms.local)"
   else
     create_user_script = <<~RUBY
       require './config/environment'
       family = Family.create!(name: 'Test Family')
       user = User.create!(
-        email: 'user@maybe.local',
+        email: 'admin@roms.local',
         password: 'password',
         password_confirmation: 'password',
         family: family,
@@ -259,7 +259,7 @@ unless SKIP_USER
     RUBY
 
     if system("ruby", "-e", create_user_script)
-      puts "  #{green("✓")} Test user created (user@maybe.local)"
+      puts "  #{green("✓")} Test user created (admin@roms.local)"
     else
       puts "  #{red("✗")} Failed to create test user"
       @failures << "User creation"
@@ -295,7 +295,7 @@ if @failures.empty?
 
   unless SKIP_USER
     puts "  3. Login with:"
-    puts "     Email:    #{yellow("user@maybe.local")}"
+    puts "     Email:    #{yellow("admin@roms.local")}"
     puts "     Password: #{yellow("password")}"
     puts ""
   end

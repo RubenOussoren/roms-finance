@@ -171,16 +171,16 @@ export default class extends Controller {
 
 ### Design System
 
-The codebase uses TailwindCSS v4.x with a custom design system defined in [maybe-design-system.css](mdc:app/assets/tailwind/maybe-design-system.css).
+The codebase uses TailwindCSS v4.x with a custom design system defined in [roms-design-system.css](mdc:app/assets/tailwind/roms-design-system.css).
 
 ### Rules (Mandatory)
 
-- Always start by referencing [maybe-design-system.css](mdc:app/assets/tailwind/maybe-design-system.css) to see the base primitives, functional tokens, and component tokens
-- Always prefer using the functional "tokens" defined in maybe-design-system.css when possible:
+- Always start by referencing [roms-design-system.css](mdc:app/assets/tailwind/roms-design-system.css) to see the base primitives, functional tokens, and component tokens
+- Always prefer using the functional "tokens" defined in roms-design-system.css when possible:
   - Use `text-primary` rather than `text-white`
   - Use `bg-container` rather than `bg-white`
   - Use `border border-primary` rather than `border border-gray-200`
-- Never create new styles in [maybe-design-system.css](mdc:app/assets/tailwind/maybe-design-system.css) or [application.css](mdc:app/assets/tailwind/application.css) without explicitly receiving permission to do so
+- Never create new styles in [roms-design-system.css](mdc:app/assets/tailwind/roms-design-system.css) or [application.css](mdc:app/assets/tailwind/application.css) without explicitly receiving permission to do so
 - Always generate semantic HTML
 - Always use `icon` helper, never `lucide_icon` directly
 

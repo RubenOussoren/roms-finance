@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/assets/images/logo.png" alt="ROMS Finance" width="120">
+  <img src="app/assets/images/logo-white.png" alt="ROMS Finance" width="240">
 </p>
 
 <h1 align="center">ROMS Finance</h1>
@@ -24,18 +24,18 @@
 
 ## Features
 
-| Feature | Description |
-|---|---|
-| Multi-Account Tracking | Chequing, savings, credit cards, investments, crypto, loans, and properties |
-| Investment Projections | Monte Carlo confidence bands with PAG 2025 compliance |
-| Canadian Debt Optimization | Smith Manoeuvre simulator with 3-way comparison and CRA audit trail |
-| SnapTrade Brokerage | Auto-sync Wealthsimple, Questrade, and other Canadian brokerages |
-| Plaid Banking | Connect chequing, savings, credit cards, and loans (US and EU) |
-| Tax-Aware Calculations | Federal + provincial Canadian tax brackets (all provinces) |
-| Per-User Privacy | Household and personal views with granular account visibility |
-| Dark Mode | Full dark theme with system preference detection |
-| AI Assistant | Natural language queries about your finances (OpenAI) |
-| Self-Hostable | Single Docker Compose file, runs on x86 and arm64 (Raspberry Pi) |
+| Feature                    | Description                                                                 |
+| -------------------------- | --------------------------------------------------------------------------- |
+| Multi-Account Tracking     | Chequing, savings, credit cards, investments, crypto, loans, and properties |
+| Investment Projections     | Monte Carlo confidence bands with PAG 2025 compliance                       |
+| Canadian Debt Optimization | Smith Manoeuvre simulator with 3-way comparison and CRA audit trail         |
+| SnapTrade Brokerage        | Auto-sync Wealthsimple, Questrade, and other Canadian brokerages            |
+| Plaid Banking              | Connect chequing, savings, credit cards, and loans (US and EU)              |
+| Tax-Aware Calculations     | Federal + provincial Canadian tax brackets (all provinces)                  |
+| Per-User Privacy           | Household and personal views with granular account visibility               |
+| Dark Mode                  | Full dark theme with system preference detection                            |
+| AI Assistant               | Natural language queries about your finances (OpenAI)                       |
+| Self-Hostable              | Single Docker Compose file, runs on x86 and arm64 (Raspberry Pi)            |
 
 ## Screenshots
 
@@ -43,30 +43,35 @@
 <summary>Dark Mode</summary>
 
 ![Dashboard Dark Mode](docs/images/dashboard-dark.png)
+
 </details>
 
 <details>
 <summary>Investment Projections</summary>
 
 ![Projections](docs/images/projections.png)
+
 </details>
 
 <details>
 <summary>Account Detail with Holdings</summary>
 
 ![Account Detail](docs/images/account-detail.png)
+
 </details>
 
 <details>
 <summary>Smith Manoeuvre Debt Strategy</summary>
 
 ![Smith Manoeuvre](docs/images/smith-manoeuvre.png)
+
 </details>
 
 <details>
 <summary>Transactions</summary>
 
 ![Transactions](docs/images/transactions.png)
+
 </details>
 
 ## Quick Start (Self-Hosting)
@@ -85,12 +90,12 @@ For reverse proxy setup, SMTP configuration, and provider API keys, see the [ful
 
 All providers auto-disable when unconfigured. Set the relevant environment variables in your `compose.yml` to enable them. Alpha Vantage can also be configured in Settings > Self-Hosting.
 
-| Provider | Region | Connects | Guide |
-|---|---|---|---|
-| [SnapTrade](https://snaptrade.com) | Canada | Investment and crypto brokerages (Wealthsimple, Questrade, etc.) | [Docker guide](docs/hosting/docker.md) |
-| [Plaid](https://plaid.com) | US, EU | Bank accounts, credit cards, loans | [Docker guide](docs/hosting/docker.md) |
-| [Alpha Vantage](https://www.alphavantage.co) | Global | Stock prices, exchange rates (25 free calls/day) | [Docker guide](docs/hosting/docker.md) |
-| [OpenAI](https://platform.openai.com) | Global | AI-powered financial assistant | [Docker guide](docs/hosting/docker.md) |
+| Provider                                     | Region | Connects                                                         | Guide                                  |
+| -------------------------------------------- | ------ | ---------------------------------------------------------------- | -------------------------------------- |
+| [SnapTrade](https://snaptrade.com)           | Canada | Investment and crypto brokerages (Wealthsimple, Questrade, etc.) | [Docker guide](docs/hosting/docker.md) |
+| [Plaid](https://plaid.com)                   | US, EU | Bank accounts, credit cards, loans                               | [Docker guide](docs/hosting/docker.md) |
+| [Alpha Vantage](https://www.alphavantage.co) | Global | Stock prices, exchange rates (25 free calls/day)                 | [Docker guide](docs/hosting/docker.md) |
+| [OpenAI](https://platform.openai.com)        | Global | AI-powered financial assistant                                   | [Docker guide](docs/hosting/docker.md) |
 
 ## Development Setup
 
@@ -114,10 +119,10 @@ bin/dev
 
 Visit http://localhost:3000. Seeds create a realistic Canadian family with 20 accounts, 37 months of transactions, investment holdings, and a pre-simulated Smith Manoeuvre strategy.
 
-| Credential | Email | Password | Role |
-|---|---|---|---|
-| Admin | `admin@roms.local` | `password` | Full access |
-| Member | `member@roms.local` | `password` | Per-user privacy demo |
+| Credential | Email               | Password   | Role                  |
+| ---------- | ------------------- | ---------- | --------------------- |
+| Admin      | `admin@roms.local`  | `password` | Full access           |
+| Member     | `member@roms.local` | `password` | Per-user privacy demo |
 
 To reload demo data from scratch: `rake demo_data:default`
 

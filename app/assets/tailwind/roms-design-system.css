@@ -5,11 +5,11 @@
   One-off styling (3rd party overrides, etc.) should be done in the application.css file.
 */
 
-@import './maybe-design-system/background-utils.css';
-@import './maybe-design-system/foreground-utils.css';
-@import './maybe-design-system/text-utils.css';
-@import './maybe-design-system/border-utils.css';
-@import './maybe-design-system/component-utils.css';
+@import './roms-design-system/background-utils.css';
+@import './roms-design-system/foreground-utils.css';
+@import './roms-design-system/text-utils.css';
+@import './roms-design-system/border-utils.css';
+@import './roms-design-system/component-utils.css';
 
 @custom-variant theme-dark (&:where([data-theme=dark], [data-theme=dark] *));
 

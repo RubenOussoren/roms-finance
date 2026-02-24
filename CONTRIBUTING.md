@@ -1,6 +1,6 @@
 # Contributing to ROMS Finance
 
-This project is a fork of Maybe Finance. Check issues and PRs in **this** repository.
+Originally forked from [Maybe Finance](https://github.com/maybe-finance/maybe). Check issues and PRs in **this** repository.
 
 It means so much that you're interested in contributing! Seriously. Thank you. The entire community benefits from these contributions!
 

@@ -1,8 +1,7 @@
 require "i18n/tasks"
 
 # We're currently skipping some i18n tests to speed up development.  Eventually, we'll make a dedicated
-# project for getting i18n working.  More details on that here:
-# https://github.com/maybe-finance/maybe/issues/1225
+# project for getting i18n working.
 class I18nTest < ActiveSupport::TestCase
   def setup
     @i18n = I18n::Tasks::BaseTask.new
