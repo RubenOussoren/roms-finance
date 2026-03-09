@@ -29,6 +29,14 @@ class Settings::HostingsController < ApplicationController
       Setting.anthropic_api_key = hosting_params[:anthropic_api_key]
     end
 
+    if hosting_params.key?(:gemini_api_key)
+      Setting.gemini_api_key = hosting_params[:gemini_api_key]
+    end
+
+    if hosting_params.key?(:ollama_api_base)
+      Setting.ollama_api_base = hosting_params[:ollama_api_base]
+    end
+
     if hosting_params.key?(:default_ai_model)
       Setting.default_ai_model = hosting_params[:default_ai_model]
     end
@@ -52,6 +60,8 @@ class Settings::HostingsController < ApplicationController
         :alpha_vantage_api_key,
         :openai_access_token,
         :anthropic_api_key,
+        :gemini_api_key,
+        :ollama_api_base,
         :default_ai_model
       )
     end
