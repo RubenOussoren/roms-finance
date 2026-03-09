@@ -1,7 +1,7 @@
 class FamilyExportsController < ApplicationController
   include StreamExtensions
 
-  before_action :require_admin
+  before_action :require_admin, except: [ :download ]
   before_action :set_export, only: [ :download ]
 
   def new
@@ -36,7 +36,9 @@ class FamilyExportsController < ApplicationController
   private
 
     def set_export
-      @export = Current.family.family_exports.find(params[:id])
+      scope = Current.family.family_exports
+      scope = scope.where(requested_by_user_id: Current.user.id) unless Current.user.admin?
+      @export = scope.find(params[:id])
     end
 
     def require_admin

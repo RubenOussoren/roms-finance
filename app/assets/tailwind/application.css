@@ -173,3 +173,18 @@
     background: #a6a6a6;
   }
 }
+
+.streaming-cursor::after {
+  content: '\25CF';
+  animation: blink 1s step-end infinite;
+  @apply text-secondary ml-0.5;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaming-cursor::after { animation: none; }
+  .animate-pulse { animation: none; }
+}

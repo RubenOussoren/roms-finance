@@ -2,15 +2,19 @@ import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
   static targets = ["messages", "form", "input"];
+  #boundHandleKeyboard;
 
   connect() {
     this.#configureAutoScroll();
+    this.#boundHandleKeyboard = this.#handleKeyboardShortcut.bind(this);
+    document.addEventListener("keydown", this.#boundHandleKeyboard);
   }
 
   disconnect() {
     if (this.messagesObserver) {
       this.messagesObserver.disconnect();
     }
+    document.removeEventListener("keydown", this.#boundHandleKeyboard);
   }
 
   autoResize() {
@@ -30,6 +34,12 @@ export default class extends Controller {
     setTimeout(() => {
       this.formTarget.requestSubmit();
     }, 200);
+  }
+
+  clearInput() {
+    this.inputTarget.value = "";
+    this.inputTarget.style.height = "auto";
+    this.inputTarget.focus();
   }
 
   // Newlines require shift+enter, otherwise submit the form (same functionality as ChatGPT and others)
@@ -57,4 +67,13 @@ export default class extends Controller {
   #scrollToBottom = () => {
     this.messagesTarget.scrollTop = this.messagesTarget.scrollHeight;
   };
+
+  #handleKeyboardShortcut(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+      e.preventDefault();
+      if (this.hasInputTarget) {
+        this.inputTarget.focus();
+      }
+    }
+  }
 }

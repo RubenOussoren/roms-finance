@@ -4,6 +4,10 @@ class Setting < RailsSettings::Base
 
   field :alpha_vantage_api_key, type: :string, default: ENV["ALPHA_VANTAGE_API_KEY"]
   field :openai_access_token, type: :string, default: ENV["OPENAI_ACCESS_TOKEN"]
+  field :anthropic_api_key, type: :string, default: ENV["ANTHROPIC_API_KEY"]
+  field :gemini_api_key, type: :string, default: ENV["GEMINI_API_KEY"]
+  field :ollama_api_base, type: :string, default: ENV.fetch("OLLAMA_API_BASE", nil)
+  field :default_ai_model, type: :string, default: ENV.fetch("DEFAULT_AI_MODEL", "gpt-5.1-mini")
 
   # Defaults to invite-only when INVITE_ONLY env var is unset (secure-by-default for self-hosted).
   # Only applies in self-hosted mode; managed mode uses ENV["REQUIRE_INVITE_CODE"] directly.

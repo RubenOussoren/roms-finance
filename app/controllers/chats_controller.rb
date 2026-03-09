@@ -9,6 +9,7 @@ class ChatsController < ApplicationController
   end
 
   def show
+    enqueue_memory_extraction_for_previous_chat
     set_last_viewed_chat(@chat)
   end
 
@@ -19,7 +20,7 @@ class ChatsController < ApplicationController
   def create
     @chat = Current.user.chats.start!(chat_params[:content], model: chat_params[:ai_model])
     set_last_viewed_chat(@chat)
-    redirect_to chat_path(@chat, thinking: true)
+    redirect_to chat_path(@chat)
   end
 
   def edit
@@ -43,7 +44,7 @@ class ChatsController < ApplicationController
 
   def retry
     @chat.retry_last_message!
-    redirect_to chat_path(@chat, thinking: true)
+    redirect_to chat_path(@chat)
   end
 
   private
@@ -57,6 +58,15 @@ class ChatsController < ApplicationController
 
     def clear_last_viewed_chat
       Current.user.update!(last_viewed_chat: nil)
+    end
+
+    def enqueue_memory_extraction_for_previous_chat
+      previous_chat = Current.user.last_viewed_chat
+      return if previous_chat.nil? || previous_chat.id == @chat.id
+      return if previous_chat.summary.present?
+      return if previous_chat.conversation_messages.count < 4
+
+      AiMemoryExtractionJob.perform_later(previous_chat)
     end
 
     def chat_params

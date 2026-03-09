@@ -1,0 +1,85 @@
+<%= settings_section title: "AI Usage", subtitle: "Token usage and cost tracking for AI assistant" do %>
+  <div class="space-y-6">
+    <%# Monthly summary cards %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="p-4 bg-container rounded-lg border border-primary">
+        <p class="text-sm text-secondary">Cost this month</p>
+        <p class="text-xl font-semibold text-primary"><%= number_to_currency(@monthly_cost_cents / 100.0) %></p>
+      </div>
+      <div class="p-4 bg-container rounded-lg border border-primary">
+        <p class="text-sm text-secondary">Messages</p>
+        <p class="text-xl font-semibold text-primary"><%= number_with_delimiter(@monthly_message_count) %></p>
+      </div>
+      <div class="p-4 bg-container rounded-lg border border-primary">
+        <p class="text-sm text-secondary">Input tokens</p>
+        <p class="text-xl font-semibold text-primary"><%= number_with_delimiter(@monthly_input_tokens) %></p>
+      </div>
+      <div class="p-4 bg-container rounded-lg border border-primary">
+        <p class="text-sm text-secondary">Output tokens</p>
+        <p class="text-xl font-semibold text-primary"><%= number_with_delimiter(@monthly_output_tokens) %></p>
+      </div>
+    </div>
+
+    <%# Per-model breakdown %>
+    <% if @model_breakdown.any? %>
+      <div>
+        <h3 class="font-medium mb-2 text-primary">By model</h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-secondary border-b border-primary">
+                <th class="py-2 pr-4">Model</th>
+                <th class="py-2 pr-4 text-right">Messages</th>
+                <th class="py-2 pr-4 text-right">Input tokens</th>
+                <th class="py-2 pr-4 text-right">Output tokens</th>
+                <th class="py-2 text-right">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @model_breakdown.each do |row| %>
+                <tr class="border-b border-secondary">
+                  <td class="py-2 pr-4 text-primary"><%= row.ai_model %></td>
+                  <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.message_count) %></td>
+                  <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_input_tokens) %></td>
+                  <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_output_tokens) %></td>
+                  <td class="py-2 text-right text-primary"><%= number_to_currency(row.total_cost_cents.to_i / 100.0) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Daily breakdown %>
+    <% if @daily_breakdown.any? %>
+      <div>
+        <h3 class="font-medium mb-2 text-primary">Daily breakdown (<%= @current_month.strftime("%B %Y") %>)</h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-secondary border-b border-primary">
+                <th class="py-2 pr-4">Date</th>
+                <th class="py-2 pr-4 text-right">Messages</th>
+                <th class="py-2 pr-4 text-right">Input tokens</th>
+                <th class="py-2 pr-4 text-right">Output tokens</th>
+                <th class="py-2 text-right">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @daily_breakdown.each do |row| %>
+                <tr class="border-b border-secondary">
+                  <td class="py-2 pr-4 text-primary"><%= row.day %></td>
+                  <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.message_count) %></td>
+                  <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_input_tokens) %></td>
+                  <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_output_tokens) %></td>
+                  <td class="py-2 text-right text-primary"><%= number_to_currency(row.total_cost_cents.to_i / 100.0) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

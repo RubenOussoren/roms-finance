@@ -14,10 +14,10 @@ class ChatsControllerTest < ActionDispatch::IntegrationTest
 
   test "creates chat" do
     assert_difference("Chat.count") do
-      post chats_url, params: { chat: { content: "Hello", ai_model: "gpt-4.1" } }
+      post chats_url, params: { chat: { content: "Hello", ai_model: "gpt-5.4" } }
     end
 
-    assert_redirected_to chat_path(Chat.order(created_at: :desc).first, thinking: true)
+    assert_redirected_to chat_path(Chat.order(created_at: :desc).first)
   end
 
   test "shows chat" do

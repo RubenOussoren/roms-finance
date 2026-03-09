@@ -1,0 +1,23 @@
+<%# locals: (message:) %>
+
+<div id="<%= dom_id(message, :feedback) %>" class="flex items-center gap-1">
+  <% current_rating = message.feedback&.rating %>
+
+  <%= button_to message_feedback_path(message),
+      params: { message_feedback: { rating: :thumbs_up } },
+      method: :post,
+      class: "p-1 rounded #{current_rating == 'thumbs_up' ? 'text-primary' : 'text-secondary'} hover:text-primary",
+      aria: { label: "Thumbs up" },
+      data: { turbo_stream: true } do %>
+    <%= icon("thumbs-up", size: "sm") %>
+  <% end %>
+
+  <%= button_to message_feedback_path(message),
+      params: { message_feedback: { rating: :thumbs_down } },
+      method: :post,
+      class: "p-1 rounded #{current_rating == 'thumbs_down' ? 'text-primary' : 'text-secondary'} hover:text-primary",
+      aria: { label: "Thumbs down" },
+      data: { turbo_stream: true } do %>
+    <%= icon("thumbs-down", size: "sm") %>
+  <% end %>
+</div>
