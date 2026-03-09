@@ -1,6 +1,8 @@
 class Assistant
   include Provided, Configurable, Broadcastable
 
+  MAX_CONVERSATION_MESSAGES = 20
+
   attr_reader :chat, :instructions
 
   class << self
@@ -20,44 +22,75 @@ class Assistant
     assistant_message = AssistantMessage.new(
       chat: chat,
       content: "",
-      ai_model: message.ai_model
+      ai_model: message.ai_model,
+      status: :pending
     )
+
+    function_instances = build_function_instances
 
     responder = Assistant::Responder.new(
       message: message,
       instructions: instructions,
-      function_tool_caller: function_tool_caller,
+      function_instances: function_instances,
       llm: get_model_provider(message.ai_model)
     )
 
-    latest_response_id = chat.latest_assistant_response_id
+    assistant_message.start_streaming!
 
     responder.on(:output_text) do |text|
       if assistant_message.content.blank?
         stop_thinking
-
-        Chat.transaction do
-          assistant_message.append_text!(text)
-          chat.update_latest_response!(latest_response_id)
-        end
+        assistant_message.append_text!(text)
       else
         assistant_message.append_text!(text)
       end
     end
 
     responder.on(:response) do |data|
-      update_thinking("Analyzing your data...")
+      assistant_message.flush_buffer!
 
-      if data[:function_tool_calls].present?
-        assistant_message.tool_calls = data[:function_tool_calls]
-        latest_response_id = data[:id]
-      else
-        chat.update_latest_response!(data[:id])
+      # Track token usage
+      assistant_message.input_tokens = data[:input_tokens] || 0
+      assistant_message.output_tokens = data[:output_tokens] || 0
+      assistant_message.cost_cents = assistant_message.calculate_cost
+
+      # Persist any tool calls that RubyLLM executed during the conversation
+      if data[:tool_calls_log].present?
+        data[:tool_calls_log].each do |log_entry|
+          assistant_message.tool_calls.build(
+            type: "ToolCall::Function",
+            provider_id: SecureRandom.uuid,
+            provider_call_id: SecureRandom.uuid,
+            function_name: log_entry[:function_name],
+            function_arguments: log_entry[:arguments].to_json,
+            function_result: log_entry[:result]
+          )
+        end
       end
     end
 
-    responder.respond(previous_response_id: latest_response_id)
+    conversation_history = build_conversation_history(message)
+    responder.respond(messages: conversation_history)
+    assistant_message.update!(status: :complete) if assistant_message.persisted?
+  rescue Faraday::TooManyRequestsError => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
+    stop_thinking
+    chat.add_error(Provider::Error.new("I'm a bit busy right now. Please try again in a moment."))
+  rescue Faraday::UnauthorizedError, Faraday::ForbiddenError => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
+    stop_thinking
+    Rails.logger.error("AI provider authentication error: #{e.message}")
+    chat.add_error(Provider::Error.new("AI is temporarily unavailable. Your admin has been notified."))
+  rescue Faraday::TimeoutError, Faraday::ConnectionFailed => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
+    stop_thinking
+    chat.add_error(Provider::Error.new("Having trouble connecting to the AI provider. Please try again."))
   rescue => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(e)
   end
@@ -65,11 +98,18 @@ class Assistant
   private
     attr_reader :functions
 
-    def function_tool_caller
-      function_instances = functions.map do |fn|
-        fn.new(chat.user)
-      end
+    def build_function_instances
+      functions.map { |fn| fn.new(chat.user) }
+    end
 
-      @function_tool_caller ||= FunctionToolCaller.new(function_instances)
+    def build_conversation_history(current_message)
+      prior_messages = chat.conversation_messages
+        .where.not(id: current_message.id)
+        .ordered
+        .last(MAX_CONVERSATION_MESSAGES)
+
+      prior_messages.map do |msg|
+        { role: msg.role, content: msg.content }
+      end
     end
 end

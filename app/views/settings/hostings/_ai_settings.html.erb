@@ -1,0 +1,118 @@
+<div class="space-y-4">
+  <div>
+    <h2 class="font-medium mb-1">AI Assistant</h2>
+    <p class="text-secondary text-sm mb-4">Configure the AI model and provider API keys for the chat assistant.</p>
+  </div>
+
+  <div class="mt-4 space-y-4">
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: {
+                           controller: "auto-submit-form",
+                           "auto-submit-form-trigger-event-value": "blur"
+                         } do |form| %>
+      <%= form.select :default_ai_model,
+                      [
+                        ["GPT-4.1 (OpenAI)", "gpt-4.1"],
+                        ["GPT-4.1 Mini (OpenAI)", "gpt-4.1-mini"],
+                        ["Claude Sonnet 4 (Anthropic)", "claude-sonnet-4-20250514"],
+                        ["Claude Haiku 3.5 (Anthropic)", "claude-haiku-4-5-20251001"],
+                        ["Gemini 2.5 Flash (Google)", "gemini-2.5-flash-preview-05-20"],
+                        ["Gemini 2.5 Pro (Google)", "gemini-2.5-pro-preview-05-06"]
+                      ],
+                      { selected: Setting.default_ai_model },
+                      { label: "Default AI Model",
+                        data: { "auto-submit-form-target": "auto" } } %>
+    <% end %>
+
+    <% if ENV["OPENAI_ACCESS_TOKEN"].present? %>
+      <p class="text-sm text-secondary">OpenAI API key is configured via the OPENAI_ACCESS_TOKEN environment variable.</p>
+    <% end %>
+
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: {
+                           controller: "auto-submit-form",
+                           "auto-submit-form-trigger-event-value": "blur"
+                         } do |form| %>
+      <%= form.text_field :openai_access_token,
+                          label: "OpenAI API Key",
+                          type: "password",
+                          placeholder: "Enter your OpenAI API key",
+                          value: ENV.fetch("OPENAI_ACCESS_TOKEN", Setting.openai_access_token),
+                          disabled: ENV["OPENAI_ACCESS_TOKEN"].present?,
+                          data: { "auto-submit-form-target": "auto" } %>
+    <% end %>
+
+    <% if ENV["ANTHROPIC_API_KEY"].present? %>
+      <p class="text-sm text-secondary">Anthropic API key is configured via the ANTHROPIC_API_KEY environment variable.</p>
+    <% end %>
+
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: {
+                           controller: "auto-submit-form",
+                           "auto-submit-form-trigger-event-value": "blur"
+                         } do |form| %>
+      <%= form.text_field :anthropic_api_key,
+                          label: "Anthropic API Key",
+                          type: "password",
+                          placeholder: "Enter your Anthropic API key",
+                          value: ENV.fetch("ANTHROPIC_API_KEY", Setting.anthropic_api_key),
+                          disabled: ENV["ANTHROPIC_API_KEY"].present?,
+                          data: { "auto-submit-form-target": "auto" } %>
+    <% end %>
+
+    <% if ENV["GEMINI_API_KEY"].present? %>
+      <p class="text-sm text-secondary">Gemini API key is configured via the GEMINI_API_KEY environment variable.</p>
+    <% end %>
+
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: {
+                           controller: "auto-submit-form",
+                           "auto-submit-form-trigger-event-value": "blur"
+                         } do |form| %>
+      <%= form.text_field :gemini_api_key,
+                          label: "Gemini API Key",
+                          type: "password",
+                          placeholder: "Enter your Gemini API key",
+                          value: ENV.fetch("GEMINI_API_KEY", Setting.gemini_api_key),
+                          disabled: ENV["GEMINI_API_KEY"].present?,
+                          data: { "auto-submit-form-target": "auto" } %>
+    <% end %>
+
+    <% if ENV["OLLAMA_API_BASE"].present? %>
+      <p class="text-sm text-secondary">Ollama API base is configured via the OLLAMA_API_BASE environment variable.</p>
+    <% end %>
+
+    <%= styled_form_with model: Setting.new,
+                         url: settings_hosting_path,
+                         method: :patch,
+                         data: {
+                           controller: "auto-submit-form",
+                           "auto-submit-form-trigger-event-value": "blur"
+                         } do |form| %>
+      <%= form.text_field :ollama_api_base,
+                          label: "Ollama API Base URL",
+                          placeholder: "http://localhost:11434",
+                          value: ENV.fetch("OLLAMA_API_BASE", Setting.ollama_api_base),
+                          disabled: ENV["OLLAMA_API_BASE"].present?,
+                          data: { "auto-submit-form-target": "auto" } %>
+    <% end %>
+
+    <p class="text-sm text-secondary">
+      At least one API key (OpenAI, Anthropic, or Gemini) is required for the AI assistant to function.
+      The selected model must match a configured provider. Ollama provides local model hosting.
+    </p>
+
+    <div class="mt-2 space-x-4">
+      <%= link_to "View AI usage & costs →", settings_ai_usage_path, class: "text-sm text-link hover:underline" %>
+      <%= link_to "Manage AI memory →", settings_ai_memory_path, class: "text-sm text-link hover:underline" %>
+    </div>
+  </div>
+</div>
