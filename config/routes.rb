@@ -65,6 +65,10 @@ Rails.application.routes.draw do
       delete :clear_cache, on: :collection
     end
     resource :ai_usage, only: :show, controller: "settings/ai_usages"
+    resource :ai_memory, only: :show, controller: "ai_memories" do
+      delete :clear, on: :collection
+    end
+    delete "ai_memories/:id", to: "ai_memories#destroy", as: :destroy_ai_memory
     resource :billing, only: :show
     resource :security, only: :show
     resource :api_key, only: [ :show, :new, :create, :destroy ]
