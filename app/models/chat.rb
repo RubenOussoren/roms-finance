@@ -38,10 +38,6 @@ class Chat < ApplicationRecord
     end
   end
 
-  def update_latest_response!(provider_response_id)
-    update!(latest_assistant_response_id: provider_response_id)
-  end
-
   def add_error(e)
     update! error: e.to_json
     broadcast_append target: "messages", partial: "chats/error", locals: { chat: self }

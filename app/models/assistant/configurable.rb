@@ -8,18 +8,66 @@ module Assistant::Configurable
 
       {
         instructions: default_instructions(preferred_currency, preferred_date_format),
-        functions: default_functions
+        functions: available_functions(chat.user.family)
       }
     end
 
     private
-      def default_functions
-        [
-          Assistant::Function::GetTransactions,
+      def available_functions(family)
+        functions = [
+          Assistant::Function::GetFinancialSummary,
           Assistant::Function::GetAccounts,
+          Assistant::Function::GetTransactions,
           Assistant::Function::GetBalanceSheet,
           Assistant::Function::GetIncomeStatement
         ]
+
+        # Investment tools — only if user has investment accounts
+        if family.accounts.where(accountable_type: "Investment").exists?
+          functions << Assistant::Function::GetHoldings
+        end
+
+        # Projections — always available
+        functions << Assistant::Function::GetProjections
+
+        # Milestones — only if any milestones exist
+        if Milestone.joins(:account).where(accounts: { family_id: family.id }).exists?
+          functions << Assistant::Function::GetMilestones
+        end
+
+        # Budget — only if budgets have been set up
+        if family.budgets.exists?
+          functions << Assistant::Function::GetBudgets
+        end
+
+        # Debt optimization — only if strategies exist
+        if family.debt_optimization_strategies.exists?
+          functions << Assistant::Function::GetDebtOptimization
+        end
+
+        # Loan payoff — only if loan accounts exist
+        if family.accounts.where(accountable_type: "Loan").exists?
+          functions << Assistant::Function::GetLoanPayoff
+        end
+
+        # Always available utility tools
+        functions.push(
+          Assistant::Function::GetCategories,
+          Assistant::Function::GetTags,
+          Assistant::Function::GetMerchants
+        )
+
+        # Rules — only if rules exist
+        if family.rules.exists?
+          functions << Assistant::Function::GetRules
+        end
+
+        # Connectivity status — only if connected accounts exist
+        if PlaidItem.where(family: family).exists? || SnapTradeConnection.where(family: family).exists?
+          functions << Assistant::Function::GetConnectivityStatus
+        end
+
+        functions
       end
 
       def default_instructions(preferred_currency, preferred_date_format)
@@ -30,7 +78,23 @@ module Assistant::Configurable
 
           ## Your purpose
 
-          You help users understand their financial data by answering questions about their accounts, transactions, income, expenses, net worth, forecasting and more.
+          You help users understand their financial data by answering questions about their accounts, transactions, income, expenses, net worth, investments, budgets, debt strategies, projections, and more.
+
+          ## Your capabilities
+
+          You have access to tools that let you query the user's financial data in real-time. Use them proactively:
+          - **get_financial_summary** — quick overview of net worth, assets, liabilities
+          - **get_accounts** / **get_transactions** — account details and transaction history
+          - **get_balance_sheet** / **get_income_statement** — financial statements with trends
+          - **get_holdings** — investment portfolio with performance data
+          - **get_projections** — future value projections with confidence bands
+          - **get_milestones** — financial goals and progress
+          - **get_budgets** — budget vs actual spending by category
+          - **get_debt_optimization** — Smith Manoeuvre and debt strategy analysis
+          - **get_loan_payoff** — loan amortization and extra payment scenarios
+          - **get_categories** / **get_tags** / **get_merchants** — spending breakdowns
+          - **get_rules** — transaction automation rules
+          - **get_connectivity_status** — bank/brokerage connection health
 
           ## Your rules
 
@@ -76,6 +140,8 @@ module Assistant::Configurable
           - For functions that require dates, use the current date as your reference point: #{Date.current}
           - If you suspect that you do not have enough data to 100% accurately answer, be transparent about it and state exactly what
             the data you're presenting represents and what context it is in (i.e. date range, account, etc.)
+          - When a user asks about investments, use get_holdings. For projections, use get_projections. For budgets, use get_budgets.
+          - Start with get_financial_summary if the user asks a broad question about their finances.
         PROMPT
       end
   end
