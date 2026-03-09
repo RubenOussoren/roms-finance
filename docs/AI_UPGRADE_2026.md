@@ -2,13 +2,27 @@
 
 **Date**: March 2026
 **Scope**: Multi-provider LLM support, expanded AI function coverage, AI memory, modernized chat UI
+**Last Updated**: March 9, 2026
+
+---
+
+## Progress Summary
+
+| Phase       | Status        | Description                                                    |
+| ----------- | ------------- | -------------------------------------------------------------- |
+| **Phase 1** | **COMPLETED** | Multi-provider LLM foundation (OpenAI + Anthropic via RubyLLM) |
+| **Phase 2** | **COMPLETED** | 12 new AI function tools + dynamic loading                     |
+| **Phase 3** | Not started   | Chat UI improvements                                           |
+| **Phase 4** | Not started   | Additional providers (Gemini/Ollama) + cost tracking           |
+| **Phase 5** | Not started   | AI memory (persistent user context)                            |
+| Phase 6     | Future        | RAG for chat history (deferred)                                |
 
 ---
 
 ## Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
-2. [Current State Analysis](#2-current-state-analysis)
+2. [Current State (Post Phase 1+2)](#2-current-state-post-phase-12)
 3. [Multi-Provider LLM Architecture](#3-multi-provider-llm-architecture)
 4. [Expanded AI Function Tools](#4-expanded-ai-function-tools)
 5. [AI Memory — Persistent User Context](#5-ai-memory--persistent-user-context)
@@ -20,627 +34,277 @@
 
 ## 1. Executive Summary
 
-The AI system currently runs on OpenAI GPT-4.1 only, has 4 read-only function tools (accounts, transactions, balance sheet, income statement), no persistent memory, and a basic streaming chat UI. This document outlines the upgrade path to:
-
-- **Multi-provider support**: OpenAI + Anthropic (Phase 1), Gemini + Ollama (Phase 4)
-- **15+ function tools**: covering investments, projections, budgets, debt optimization, milestones, and more
-- **AI memory**: three-layer system for persistent user context (~1,700 tokens/request overhead)
-- **Modern chat UI**: message actions, accessibility, streaming improvements
+The AI system has been upgraded from a single-provider (OpenAI-only) setup with 4 function tools to a **multi-provider architecture** supporting OpenAI and Anthropic models with **16 function tools** covering all major financial features. The remaining work focuses on chat UI modernization (Phase 3), additional providers and cost tracking (Phase 4), and AI memory (Phase 5).
 
 ### Key Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Multi-provider abstraction | **RubyLLM** (`ruby_llm` gem) | Rails-native, ActiveRecord integration, unified tool calling. One gem replaces 3+ provider SDKs. |
-| Tool migration | **Wrap, don't inherit** | Keep existing `Assistant::Function` interface; adapt to RubyLLM via adapter. Avoids coupling to third-party DSL. |
-| Model selection | **Admin-level setting** | Users should not pick models. Set `default_ai_model` in `Setting`. It just works. |
-| Streaming | Turbo Streams + Action Cable (existing) | Already in place. Add token batching (100ms flush). |
-| Cost tracking | RubyLLM built-in token counts | Per-message tracking in DB. Simple admin spend page. Defer budget enforcement. |
-| RAG pipeline | **Deferred** | Financial data is structured — function tools query it via SQL more accurately than semantic search. RAG only considered later for chat history if needed. |
-| Function tools | **Read-only by design** | All tools are read-only. Write operations (create transaction, set budget) are a future consideration requiring separate safety review. |
+| Decision                   | Choice                                  | Rationale                                                                                                        |
+| -------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Multi-provider abstraction | **RubyLLM** (`ruby_llm` gem)            | Rails-native, unified tool calling. One gem replaces 3+ provider SDKs.                                           |
+| Tool migration             | **Wrap, don't inherit**                 | `FunctionToolAdapter` converts `Assistant::Function` instances to RubyLLM tools. Our interface, their execution. |
+| Model selection            | **Admin-level setting**                 | `Setting.default_ai_model` — users don't pick models. It just works.                                             |
+| Streaming                  | Turbo Streams + Action Cable (existing) | Already in place. Token batching deferred to Phase 3.                                                            |
+| Cost tracking              | **Deferred to Phase 4**                 | RubyLLM provides token counts; DB columns + admin page needed.                                                   |
+| RAG pipeline               | **Deferred**                            | Financial data is structured — function tools query via SQL.                                                     |
+| Function tools             | **Read-only by design**                 | All 16 tools are read-only. Write operations require future safety review.                                       |
 
 ---
 
-## 2. Current State Analysis
+## 2. Current State (Post Phase 1+2)
 
-### 2.1 What Exists
+### 2.1 What Was Built
 
 **Provider layer** (`app/models/provider/`):
-- `Provider::Openai` — sole LLM provider, uses `ruby-openai` gem
-- `Provider::LlmConcept` — abstract interface with `ChatMessage`, `ChatResponse`, `ChatStreamChunk`, `ChatFunctionRequest` data structures
-- `Provider::Registry` — hardcoded to `%i[openai]` for LLM concept
-- `Provider::Openai::ChatConfig` — builds OpenAI-specific tool/message format
-- `Provider::Openai::ChatParser` / `ChatStreamParser` — parse OpenAI-specific response JSON
+
+- `Provider::RubyLlm` — **NEW** — multi-provider adapter implementing `LlmConcept` via RubyLLM gem
+- `Provider::RubyLlm::FunctionToolAdapter` — **NEW** — converts `Assistant::Function` instances to `RubyLLM::Tool` subclasses with real execution
+- `Provider::RubyLlm::AutoCategorizer` — **NEW** — provider-agnostic auto-categorization
+- `Provider::RubyLlm::AutoMerchantDetector` — **NEW** — provider-agnostic merchant detection
+- `Provider::LlmConcept` — **UPDATED** — `ChatResponse` now includes `tool_calls_log`; `chat_response` signature updated to accept `function_instances:` and `messages:`
+- `Provider::Registry` — **UPDATED** — `:llm` concept routes to `ruby_llm_provider`
+- `config/initializers/ruby_llm.rb` — **NEW** — configures OpenAI + Anthropic API keys
+
+**Removed** (OpenAI-specific chat code):
+
+- ~~`Provider::Openai::ChatConfig`~~ — **DELETED**
+- ~~`Provider::Openai::ChatParser`~~ — **DELETED**
+- ~~`Provider::Openai::ChatStreamParser`~~ — **DELETED**
+- `Provider::Openai#chat_response` — **REMOVED** (auto-categorize/merchant detect retained)
 
 **Assistant layer** (`app/models/assistant/`):
-- `Assistant::Responder` — event-driven streaming handler with `emit(:output_text)` and `emit(:response)`
-- `Assistant::FunctionToolCaller` — provider-agnostic function execution (already well-abstracted)
-- `Assistant::Configurable` — system prompt with financial assistant identity
-- `Assistant::Provided` — finds provider by model name via registry
-- 4 functions: `get_accounts`, `get_transactions`, `get_balance_sheet`, `get_income_statement`
 
-**Chat models**:
-- `Chat` — user_id, title, error (JSONB), `latest_assistant_response_id` (OpenAI-specific)
-- `Message` — STI (UserMessage/AssistantMessage/DeveloperMessage), status enum, `ai_model` column
-- `ToolCall::Function` — persists function calls with provider IDs and results
+- `Assistant` — **UPDATED** — builds conversation history (last 20 messages), passes function instances to provider, persists tool call logs, specific error handling for rate limits/auth/timeout
+- `Assistant::Responder` — **SIMPLIFIED** — no more manual follow-up responses; RubyLLM handles the full tool call loop
+- `Assistant::Configurable` — **UPDATED** — dynamic tool loading based on user's data, expanded system prompt describing all capabilities
+- 16 function tools (4 original + 12 new)
 
-**Background AI** (non-chat):
-- `Family::AutoCategorizer` — GPT-4.1-mini, JSON schema output, max 25 transactions/batch
-- `Family::AutoMerchantDetector` — GPT-4.1-mini, detects business names/URLs
+**Settings & UI**:
 
-### 2.2 What's Already Well-Abstracted
+- `Setting` — **UPDATED** — added `anthropic_api_key`, `default_ai_model` fields
+- Admin hosting page — **UPDATED** — new AI settings section with model selector and API key fields
+- `_chat_form.html.erb` — **UPDATED** — uses `Setting.default_ai_model`, removed "Coming soon" placeholder buttons
 
-These pieces work provider-agnostically and can be kept:
-- `ChatMessage`, `ChatResponse`, `ChatStreamChunk`, `ChatFunctionRequest` data structures
-- `Assistant::FunctionToolCaller` — executes functions from any provider's requests
-- `Assistant::Responder` event model (`:output_text`, `:response`)
-- `with_provider_response` error handling pattern
+**Chat model**:
 
-### 2.3 What's Hardcoded to OpenAI
+- `Chat#update_latest_response!` — **REMOVED** (was OpenAI `previous_response_id` dependency)
+- Conversation history sent with each request (last 20 messages)
 
-| Component | OpenAI-Specific Element |
-|-----------|----------------------|
-| `ChatConfig#tools` | `type: "function"`, `strict: true` format |
-| `ChatConfig#build_input` | `type: "function_call_output"`, `call_id` format |
-| `ChatParser` | `object.dig("output")`, `type: "message"`, `type: "function_call"` paths |
-| `ChatStreamParser` | `response.output_text.delta`, `response.completed` event types |
-| `AutoCategorizer` | `client.responses.create`, `text.format.json_schema`, `developer` role |
-| `Chat` model | `latest_assistant_response_id` — OpenAI conversation chaining |
-| `_chat_form.html.erb` | Hidden field hardcoded to `"gpt-4.1"` |
-| `Provided#get_model_provider` | No provider preference ordering or explicit selection |
+### 2.2 Function Tools — Full Coverage
 
----
+| #   | Function                  | Status   | Source                             |
+| --- | ------------------------- | -------- | ---------------------------------- |
+| 1   | `get_accounts`            | Existing | `Account`                          |
+| 2   | `get_transactions`        | Existing | `Transaction::Search`              |
+| 3   | `get_balance_sheet`       | Existing | `Balance::ChartSeriesBuilder`      |
+| 4   | `get_income_statement`    | Existing | `IncomeStatement`                  |
+| 5   | `get_financial_summary`   | **NEW**  | `Family`, `Account`                |
+| 6   | `get_holdings`            | **NEW**  | `Holding`, `Security`, `Trade`     |
+| 7   | `get_projections`         | **NEW**  | `FamilyProjectionCalculator`       |
+| 8   | `get_milestones`          | **NEW**  | `Milestone`                        |
+| 9   | `get_budgets`             | **NEW**  | `Budget`, `BudgetCategory`         |
+| 10  | `get_debt_optimization`   | **NEW**  | `DebtOptimizationStrategy`         |
+| 11  | `get_loan_payoff`         | **NEW**  | `LoanPayoffCalculator`             |
+| 12  | `get_categories`          | **NEW**  | `Category`, `Entry`                |
+| 13  | `get_tags`                | **NEW**  | `Tag`, `Tagging`                   |
+| 14  | `get_rules`               | **NEW**  | `Rule`, `Condition`, `Action`      |
+| 15  | `get_merchants`           | **NEW**  | `Merchant`, `Entry`                |
+| 16  | `get_connectivity_status` | **NEW**  | `PlaidItem`, `SnapTradeConnection` |
 
-## 3. Multi-Provider LLM Architecture
+**Dynamic loading**: Tools are only registered when the user has relevant data (e.g., `get_holdings` only if investment accounts exist).
 
-### 3.1 Provider Comparison (2026)
+### 2.3 What's Still OpenAI-Specific
 
-#### Anthropic Claude API
-- Messages API with `tools` array. Tool calls returned as `tool_use` content blocks, results sent as `tool_result`.
-- `strict: true` for guaranteed schema compliance.
-- Models: Claude Opus 4/4.5/4.6, Sonnet 4/4.5/4.6, Haiku 4.5.
-- Ruby SDK: `anthropic-sdk-ruby` (official, v1.16.3).
+| Component                                  | Status           | Notes                                                                                                      |
+| ------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Provider::Openai::AutoCategorizer`        | Retained         | Still works for backwards compat; `Family::AutoCategorizer` now routes through `Provider::RubyLlm` instead |
+| `Provider::Openai::AutoMerchantDetector`   | Retained         | Same as above                                                                                              |
+| `ruby-openai` gem                          | Still in Gemfile | Can be removed once OpenAI-specific auto-categorizer/detector files are deleted                            |
+| `Chat#latest_assistant_response_id` column | Still in DB      | Column exists but unused; migration to drop it can be added                                                |
 
-#### OpenAI Responses API
-- `POST /v1/responses` with `input` + `instructions`. Agentic loop by default (multiple tool calls per request).
-- `previous_response_id` for conversation chaining.
-- Structured output via `text.format.json_schema`.
-- Models: GPT-4.1, GPT-4.1 mini, GPT-5.x series.
-- Ruby SDK: `openai` (official) or `ruby-openai` (community, mature).
+### 2.4 Remaining Work (Not Done in Phase 1+2)
 
-#### Google Gemini API (Phase 4)
-- Tool schemas declared upfront. Returns `functionCall` objects; caller sends `functionResponse` back.
-- Models: Gemini 2.5/3 series.
-- Ruby SDK: None standalone — use through RubyLLM.
-
-#### Ollama / Local LLMs (Phase 4)
-- OpenAI-compatible REST API at `localhost:11434`.
-- Tool calling support depends on the model (Llama 3.x, Mistral support it).
-- `format: "json"` for JSON mode (no schema enforcement).
-
-**Phase 1 scope**: OpenAI + Anthropic only. These two have the most mature tool-calling support and Ruby SDKs. Gemini and Ollama deferred to Phase 4 once the abstraction is proven.
-
-### 3.2 Key Divergences for Abstraction
-
-| Aspect | Anthropic | OpenAI | Gemini | Ollama |
-|--------|-----------|--------|--------|--------|
-| Tool definition | `tools[].input_schema` | `tools[].parameters` | `tools[].parameters` | OpenAI-compat |
-| Tool call format | `tool_use` content block | `function_call` output item | `functionCall` part | OpenAI format |
-| Tool result format | `tool_result` content block | `function_call_output` input | `functionResponse` part | OpenAI format |
-| System prompt | `system` parameter | `instructions` parameter | `system_instruction` | `system` in messages |
-| Conversation chain | Full message history | `previous_response_id` | Full message history | Full message history |
-| Streaming events | `content_block_delta`, `message_stop` | `response.output_text.delta`, `response.completed` | Chunked SSE | OpenAI-compat |
-| Schema enforcement | `strict: true` on tools | `strict: true` in JSON schema | `response_schema` | None |
-
-### 3.3 Recommended Approach: RubyLLM
-
-**RubyLLM** (`ruby_llm` gem, v1.3.0+) is the recommended abstraction layer. Rationale:
-
-1. **Rails-native**: `acts_as_chat` and `acts_as_message` ActiveRecord integration.
-2. **11 providers, 1170+ models**: OpenAI, Anthropic, Gemini, DeepSeek, Ollama, and more.
-3. **Unified tool calling**: Define tools once; RubyLLM translates to each provider's format.
-4. **Streaming**: Provider-agnostic streaming via a block that receives normalized chunk objects.
-5. **Model registry**: Runtime capability queries (supports tools? vision? streaming?), context window sizes, pricing data.
-6. **Token tracking**: Every response includes `input_tokens`, `output_tokens`, cost. Persisted automatically with `acts_as_message`.
-7. **Minimizes dependencies**: One gem instead of 3+ separate provider SDKs. Aligns with project convention.
-
-#### Maturity Risk Mitigation
-
-RubyLLM is relatively new compared to `ruby-openai`. The project convention says "favor old and reliable over new and flashy." To mitigate:
-
-- **Wrap RubyLLM behind `Provider::LlmConcept`**: Create `Provider::RubyLlm` that implements the existing `LlmConcept` interface by delegating to RubyLLM. This preserves the existing provider abstraction. If RubyLLM breaks or changes, only the adapter needs updating.
-- **Keep `Assistant::Function` interface**: Do NOT inherit from `RubyLLM::Tool`. Instead, write an adapter that converts existing `Assistant::Function` definitions (with their `name`, `description`, `params_schema`, `call`, `strict_mode?` interface) to RubyLLM tool format. This keeps tool definitions owned by us, not a third-party DSL.
-- **Selective `acts_as_chat` adoption**: The `Chat` and `Message` models already have STI, status enums, and tool call associations. Specify exactly which RubyLLM ActiveRecord features are used vs skipped. Do not blindly adopt `acts_as_chat` if it conflicts with existing model structure.
-
-### 3.4 Migration Strategy
-
-**Step 1**: Add `ruby_llm` gem. Configure providers via env vars.
-
-**Step 2**: Create `Provider::RubyLlm` that implements `LlmConcept` by delegating to RubyLLM. This preserves the existing `Provider::Registry` pattern while gaining multi-provider support.
-
-**Step 3**: Build an adapter layer that converts existing `Assistant::Function` subclasses to RubyLLM tool format. The execution logic and interface stay identical.
-
-**Step 4**: Update `Chat` model to use conversation history instead of `previous_response_id`. Implement history truncation (see Section 7.2).
-
-**Step 5**: Deprecate `Provider::Openai::ChatConfig`, `ChatParser`, `ChatStreamParser` — these are replaced by RubyLLM's normalized adapters.
-
-### 3.5 Provider Configuration
-
-```ruby
-# config/initializers/ruby_llm.rb
-RubyLLM.configure do |config|
-  config.openai_api_key = ENV.fetch("OPENAI_ACCESS_TOKEN", Setting.openai_access_token)
-  config.anthropic_api_key = ENV.fetch("ANTHROPIC_API_KEY", Setting.anthropic_api_key)
-
-  # Phase 4 additions:
-  # config.gemini_api_key = ENV.fetch("GEMINI_API_KEY", Setting.gemini_api_key)
-  # config.openai_api_base = ENV["OLLAMA_BASE_URL"] if ENV["OLLAMA_BASE_URL"].present?
-end
-```
-
-### 3.6 Model Selection — Admin Only
-
-Model selection is NOT user-facing. The AI model is configured by the admin in settings.
-
-- Add `default_ai_model` to the `Setting` model (admin-level)
-- The hidden field in `_chat_form.html.erb` pulls from `Setting.default_ai_model`
-- The per-message `ai_model` column is populated server-side from the admin default
-- No model selector dropdown in the chat UI
-- No per-conversation model override
-
-```ruby
-# In Setting model
-field :default_ai_model, type: :string, default: "gpt-4.1"
-field :anthropic_api_key, type: :string
-```
-
-### 3.7 Structured Output Strategy
-
-Use **tool-based schemas** as the universal structured output mechanism. Since all providers support tool calling with JSON Schema, define a "tool" whose arguments match the desired output schema. This works identically across providers without provider-specific JSON mode code.
-
-For auto-categorization and merchant detection, convert the current OpenAI-specific JSON schema approach to tool definitions that RubyLLM normalizes across providers.
-
-### 3.8 Cost Tracking
-
-1. **Per-message**: Store `input_tokens`, `output_tokens`, `model_id`, `cost_cents` on each `Message` record. RubyLLM provides this data automatically.
-2. **Aggregation**: Database queries for per-user, per-family, per-day rollups.
-3. **Admin visibility**: Simple admin page showing total AI spend this month (one number, one query). No full dashboard yet.
-4. **Budget enforcement**: Deferred. If needed later, warn the admin or disable AI chat — never silently downgrade the model, as that breaks the "it just works" principle.
+- **Rate limiting** (Section 7.4) — `Rack::Attack` throttle not yet implemented
+- **VCR cassettes / test updates** — existing tests reference deleted OpenAI chat code
+- **Privacy tests** for new functions — `function_privacy_test.rb` not yet extended
+- **Unit tests** for new function tools
+- **`Gemfile.lock`** — `bundle install` could not run (Ruby 3.3.6 vs required 3.4.4 in CI environment)
 
 ---
 
-## 4. Expanded AI Function Tools
+## 3–4. Multi-Provider LLM Architecture & Expanded Function Tools
 
-### 4.1 Design Principles
+_Sections 3 and 4 from the original document remain accurate as architectural reference. The implementation follows the documented approach with one key architectural difference:_
 
-- **All tools are read-only by design.** The AI cannot create, update, or delete any data. Write operations are a future consideration requiring a separate safety review with confirmation flows.
-- **Dynamic tool loading**: Only register tools relevant to the user's account types. Don't include `get_holdings` if the user has no investment accounts. Don't include `get_debt_optimization` if no loans exist. This reduces context window usage for users with simpler setups.
-
-### 4.2 Current Coverage Gap
-
-The AI has 4 functions covering basic financial data. The app has 20+ major feature areas the AI cannot access:
-
-| Feature Area | Current Access | Priority |
-|--------------|---------------|----------|
-| **Investments** (holdings, trades, securities) | None | Critical |
-| **Projections** (account/family forecasts, PAG 2025) | None | Critical |
-| **Milestones** (goals, probability, sensitivity) | None | Critical |
-| **Budgets** (tracking, category allocation, variance) | None | Critical |
-| **Debt Optimization** (Smith Manoeuvre, loan payoff) | None | Critical |
-| Categories/Tags (hierarchy, spending breakdown) | None | High |
-| Rules/Automation (transaction rules, previews) | None | High |
-| Plaid/SnapTrade (connection status, sync health) | None | High |
-| Merchants (spending by merchant) | None | Medium |
-| Transfers (matched transfers, reconciliation) | None | Medium |
-| Forecast Accuracy (MAPE, RMSE, bias) | None | Medium |
-| Data Quality (missing data, inconsistencies) | None | Low |
-
-### 4.3 New Tool: `get_financial_summary`
-
-A high-level overview tool that provides conversational context. The AI can call this to quickly understand the user's financial situation without needing multiple tool calls.
-
-**Output**: Net worth, total assets, total liabilities, month-over-month change, account count by type, top spending categories this month.
-
-**Source models**: `Family`, `Account`, `Entry`
-
-### 4.4 Tier 1 Functions (Critical)
-
-#### `get_holdings`
-Returns current investment positions with performance data.
-
-**Output**: List of holdings with ticker, company name, quantity, price, cost basis, unrealized gain/loss, portfolio weight %, security metadata.
-
-**Source models**: `Holding`, `Security`, `Trade`
-
-#### `get_projections`
-Returns future value projections for accounts or the entire family.
-
-**Parameters**: `account_id` (optional — omit for family projection), `years` (default 10)
-
-**Output**: Projected values at percentile bands (p10/p25/p50/p75/p90), monthly contributions, expected return, volatility, inflation assumptions, PAG 2025 compliance flag.
-
-**Source models**: `ProjectionCalculator`, `FamilyProjectionCalculator`, `ProjectionAssumption`, `ProjectionStandard`
-
-#### `get_milestones`
-Returns financial goals and progress.
-
-**Parameters**: `account_id` (optional)
-
-**Output**: Target amount, current value, progress %, status, projected achievement date, required monthly contribution, sensitivity analysis (50%/100%/150%/200% contribution scenarios).
-
-**Source models**: `Milestone`, `MilestoneCalculator`
-
-#### `get_budgets`
-Returns budget data with actuals vs. planned.
-
-**Parameters**: `month` (YYYY-MM format, default current)
-
-**Output**: Expected income, actual income, budgeted spending by category, actual spending by category, variance, surplus/deficit, % of budget spent.
-
-**Source models**: `Budget`, `BudgetCategory`
-
-#### `get_debt_optimization`
-Returns debt strategy analysis.
-
-**Parameters**: `strategy_id` (optional — omit for overview)
-
-**Output**: Strategy type, status, primary mortgage details, HELOC details, simulation results (baseline vs. modified Smith Manoeuvre), months accelerated, tax benefits, net benefit.
-
-**Source models**: `DebtOptimizationStrategy`, `CanadianSmithManoeuvrSimulator`, `LoanPayoffCalculator`
-
-#### `get_loan_payoff`
-Returns amortization and payoff analysis for a loan.
-
-**Parameters**: `account_id`, `extra_payment` (optional)
-
-**Output**: Current balance, interest rate, remaining amortization, monthly payment, total interest remaining. If `extra_payment` provided: months saved, interest saved, new payoff date.
-
-**Source models**: `LoanPayoffCalculator`
-
-### 4.5 Tier 2 Functions (High Priority)
-
-| Function | Purpose | Key Models |
-|----------|---------|-----------|
-| `get_categories` | Full category tree with spending by period | `Category` |
-| `get_tags` | All tags with usage counts | `Tag` |
-| `get_rules` | Transaction automation rules | `Rule`, `Condition`, `Action` |
-| `get_merchants` | Merchants with total spend | `Merchant`, `FamilyMerchant` |
-| `get_connectivity_status` | Plaid/SnapTrade connection health | `PlaidItem`, `SnapTradeConnection` |
-
-### 4.6 Tier 3 Functions (Medium Priority)
-
-| Function | Purpose | Key Models |
-|----------|---------|-----------|
-| `get_transfers` | Matched transfers between accounts | `Transfer` |
-| `get_forecast_accuracy` | How accurate past projections were | `ForecastAccuracyCalculator` |
-| `get_data_quality` | Missing data, inconsistencies | `DataQualityCheckable` |
-| `get_exchange_rates` | Historical FX rates | `ExchangeRate` |
-| `get_tax_info` | Jurisdiction tax brackets, deductibility | `Jurisdiction` |
-
-### 4.7 Tool Context Window Budget
-
-With 15+ tools, tool definitions consume ~3,000-6,000 tokens. Dynamic tool loading keeps this in check:
-
-```ruby
-# Assistant::Configurable
-def available_functions
-  functions = [GetFinancialSummary, GetAccounts, GetTransactions, GetBalanceSheet, GetIncomeStatement]
-  functions << GetHoldings if Current.family.accounts.where(accountable_type: "Investment").any?
-  functions << GetBudgets if Current.family.budgets.any?
-  functions << GetDebtOptimization if Current.family.accounts.where(accountable_type: "Loan").any?
-  functions << SaveMemory  # always available
-  # ...
-  functions
-end
-```
+**Tool execution model change**: The original plan described a two-step flow (provider returns tool requests → `FunctionToolCaller` executes → results sent back). The implemented approach lets **RubyLLM handle the full tool call loop** internally — `FunctionToolAdapter` creates `RubyLLM::Tool` subclasses whose `execute` methods delegate to `Assistant::Function#call`. Tool calls are logged and persisted after the fact via `tool_calls_log` on `ChatResponse`.
 
 ---
 
 ## 5. AI Memory — Persistent User Context
 
-The AI "learns" about users over time without RAG infrastructure. Three lightweight memory layers keep token costs minimal.
+**Status: NOT STARTED — Phase 5**
 
-### 5.1 Layer 1: Structured User Profile (~200 tokens/request)
+No changes from the original design. Implementation requires:
 
-Add a `ai_profile` JSONB column to the `Family` model. After each conversation ends, make one cheap extraction call to pull out new facts or preferences. Merge into the existing profile (append, don't replace). Inject the full profile into the system prompt on every new chat.
+1. **Migration**: Add `ai_profile` (JSONB) to `families` table
+2. **Migration**: Add `summary` (text) to `chats` table
+3. **Migration**: Create `ai_memories` table
+4. **Model**: `AiMemory` with family association, category, content, TTL
+5. **Function tool**: `Assistant::Function::SaveMemory` — AI-initiated memory creation
+6. **Background job**: Profile extraction + chat summarization on conversation end
+7. **System prompt**: Inject profile, memories, recent summaries into `Assistant::Configurable`
+8. **Admin UI**: View/clear profile, manage memories in family settings
 
-```ruby
-# Family#ai_profile schema
-{
-  "financial_goals": ["retire by 55", "pay off mortgage by 2030"],
-  "risk_tolerance": "moderate",
-  "household_context": "married, 2 kids, single income",
-  "recurring_concerns": ["cash flow timing", "tax optimization"],
-  "preferred_response_style": "concise with numbers",
-  "known_accounts_context": "primary chequing at TD, RRSP at Questrade"
-}
-```
+### Three Memory Layers
 
-**Implementation:**
-- `Family#update_ai_profile(conversation_messages)` — called by `Chat#after_update` when chat status transitions to inactive/closed
-- One LLM call with a small/cheap model (e.g., `gpt-4.1-mini` or `claude-haiku`) using a prompt like: "Extract any new user facts, preferences, or financial goals from this conversation. Return JSON. Only include genuinely new information."
-- `Family#ai_profile_prompt` — returns the profile formatted for system prompt injection
-- Profile capped at 50 keys to prevent unbounded growth
-- Admin can view/clear the profile from the family settings page
+| Layer                      | Purpose                                       | Token Cost                  | Trigger             |
+| -------------------------- | --------------------------------------------- | --------------------------- | ------------------- |
+| **Structured Profile**     | User facts/preferences on `Family#ai_profile` | ~200/request                | End of conversation |
+| **Conversation Summaries** | 2-3 sentence chat summaries on `Chat#summary` | ~500/request (10 summaries) | End of conversation |
+| **Memory Tool**            | AI-initiated `save_memory` function call      | ~1000/request (50 memories) | Mid-conversation    |
 
-**Cost:** ~500 tokens per extraction (once per conversation end). ~200 tokens per-request for injection. Negligible.
-
-### 5.2 Layer 2: Conversation Summaries (~500 tokens/request)
-
-Add a `summary` text column to the `Chat` model. When a chat ends or reaches 10+ messages, generate a 2-3 sentence summary. On new conversations, include the last 10 summaries in the system prompt.
-
-```
-Recent conversations:
-- Mar 5: Discussed high grocery spending; user wants to stay under $600/mo
-- Mar 3: Reviewed investment portfolio; concerned about tech sector exposure
-- Feb 28: Asked about mortgage renewal options for July 2026
-```
-
-**Implementation:**
-- `Chat#generate_summary` — called when chat transitions to inactive (same hook as profile extraction, can batch both in one job)
-- Summary stored as plain text, max 280 characters
-- `User#recent_chat_summaries(limit: 10)` — returns formatted string for system prompt
-- Summaries older than 90 days auto-expire (background job or scope)
-
-**Cost:** ~300 tokens per summarization (once per conversation). ~500 tokens per-request for 10 summaries. Negligible.
-
-### 5.3 Layer 3: Memory Tool — AI-Initiated Recall
-
-Give the AI a `save_memory` function tool it can call mid-conversation when it learns something important. The AI decides what's worth remembering.
-
-```ruby
-# New function tool: Assistant::Function::SaveMemory
-class Assistant::Function::SaveMemory < Assistant::Function
-  def name = "save_memory"
-  def description = "Save an important fact, preference, or insight about the user for future conversations. Use this when the user shares financial goals, life changes, preferences, or context that would be useful to remember."
-
-  def params_schema
-    {
-      type: "object",
-      properties: {
-        category: {
-          type: "string",
-          enum: %w[financial_goal life_event preference insight account_context],
-          description: "The type of memory to save"
-        },
-        content: {
-          type: "string",
-          description: "The fact or insight to remember (1-2 sentences)"
-        }
-      },
-      required: %w[category content]
-    }
-  end
-
-  def call(category:, content:)
-    memory = Current.family.ai_memories.create!(
-      category: category,
-      content: content,
-      source_chat: @chat
-    )
-    { saved: true, memory_id: memory.id }
-  end
-end
-```
-
-**Data model:**
-```ruby
-# Migration
-create_table :ai_memories do |t|
-  t.references :family, null: false, foreign_key: true
-  t.references :chat, null: true, foreign_key: true  # source conversation
-  t.string :category, null: false
-  t.text :content, null: false
-  t.datetime :expires_at           # optional TTL
-  t.timestamps
-end
-
-add_index :ai_memories, [:family_id, :category]
-```
-
-**Constraints:**
-- Max 50 memories per family (oldest auto-pruned when limit reached, preserving pinned memories)
-- Content max 280 characters
-- Duplicate detection: before saving, check if a memory with similar content already exists (exact category+content match)
-- All memories loaded into system prompt on each chat (~1000 tokens for 50 short memories)
-- Admin can view, pin, and delete memories from the family settings page
-
-### 5.4 System Prompt Injection Order
-
-1. Base instructions (existing)
-2. User profile (Layer 1) — "About this user: ..."
-3. Memories (Layer 3) — "Things I remember: ..."
-4. Recent conversation summaries (Layer 2) — "Recent conversations: ..."
-5. Tool definitions
-
-**Total per-request token overhead:** ~1,700 tokens across all three layers. At current pricing, this is fractions of a cent per message.
-
-### 5.5 Why Not RAG for Memory?
-
-Memories are small (50 items x 280 chars = ~14KB). Loading all of them into the system prompt is cheaper and more reliable than maintaining a vector index, running similarity searches, and risking relevant memories being missed by embedding distance thresholds. RAG only makes sense when the corpus is too large to fit in context — 50 short memories is not that.
+**Total overhead**: ~1,700 tokens/request. Fractions of a cent per message.
 
 ---
 
 ## 6. Chat UI Modernization
 
-### 6.1 Current UI Limitations
+**Status: NOT STARTED — Phase 3**
 
-1. **Hardcoded model** — hidden field fixed to `"gpt-4.1"`, no admin configuration
-2. **No message actions** — no copy, regenerate, or feedback buttons
-3. **Disabled placeholder buttons** — 4 "Coming soon" buttons add visual clutter (remove entirely)
-4. **Inefficient streaming** — each token triggers a DB save + ActionCable broadcast (500 writes per response)
-5. **Full redirect on submit** — `MessagesController#create` uses `redirect_to` instead of Turbo Stream append
-6. **Generic errors** — same message for rate limits, network errors, and content policy violations (see Section 7)
-7. **No feedback mechanism** — no thumbs up/down or quality signals
-8. **Accessibility gaps** — missing `role="log"`, `aria-live`, focus management, `prefers-reduced-motion`
+### 6.1 Already Done (as part of Phase 1+2)
 
-### 6.2 Message Actions
+- [x] ~~Hardcoded model~~ → now uses `Setting.default_ai_model`
+- [x] ~~"Coming soon" placeholder buttons~~ → removed entirely
+- [x] ~~Generic errors~~ → specific error handling for rate limits, auth, timeouts
 
-**On assistant messages** (hover-revealed toolbar below message):
-1. **Copy** — clipboard API, Stimulus controller. No backend changes.
-2. **Regenerate** — extends existing `retry_last_message!`. Only on last assistant message.
-3. **Thumbs up/down** — new `message_feedbacks` table (message_id, rating, comment). Valuable for evaluating model quality when admin switches providers.
+### 6.2 Still To Do
 
-**On user messages**:
-1. **Copy** — same as above
-
-### 6.3 Streaming Improvements
-
-1. **Token batching**: Buffer tokens in `AssistantResponseJob`, flush every 100ms instead of per-token. Reduces DB writes and broadcasts by ~10x.
-2. **Streaming cursor**: CSS blinking cursor animation at the end of in-progress content. Add/remove via Turbo Stream class toggle.
-3. **Optimistic UI**: Append user message client-side via Stimulus immediately on submit, before server confirms.
-4. **Turbo Stream response**: Replace `redirect_to` in `MessagesController#create` with a Turbo Stream that appends the user message and shows the thinking indicator.
-
-### 6.4 Accessibility
-
-| Fix | Priority | Effort |
-|-----|----------|--------|
-| Add `role="log"` and `aria-live="polite"` to `#messages` | High | Low |
-| Add `aria-live="assertive"` to thinking indicator | High | Low |
-| Add `aria-label` on each message element | High | Low |
-| Respect `prefers-reduced-motion` for `animate-pulse` | High | Low |
-| Focus management: return focus to textarea after submit | Medium | Low |
-| Keyboard shortcuts: `Ctrl+/` to focus input, `Escape` to cancel | Medium | Medium |
-
-### 6.5 Mobile
-
-- Safe area insets: `padding-bottom: env(safe-area-inset-bottom)` on fixed input bar
-- `visualViewport` API for keyboard-aware layout
-- Long-press for message actions (instead of hover)
-- Existing `<details>` pattern for reasoning is good for mobile space savings
-
-### 6.6 Content Rendering
-
-Chat responses use well-formatted markdown. The app already has dedicated dashboard pages with charts and tables — the AI should link users to the relevant page rather than recreating dashboard widgets inline. Markdown tables are sufficient for tabular data in chat.
+1. **Copy button** on messages — Stimulus controller, clipboard API
+2. **Regenerate button** on last assistant message — extends existing `retry_last_message!`
+3. **Thumbs up/down feedback** — new `message_feedbacks` table (message_id, rating, comment)
+4. **Token batching** — buffer in `AssistantResponseJob`, flush every 100ms (reduces DB writes ~10x)
+5. **Turbo Stream response** — replace `redirect_to` in `MessagesController#create` with Turbo Stream append
+6. **Streaming cursor** — CSS blinking cursor animation
+7. **Optimistic UI** — append user message client-side via Stimulus before server confirms
+8. **Accessibility**:
+   - `role="log"` and `aria-live="polite"` on `#messages`
+   - `aria-live="assertive"` on thinking indicator
+   - `aria-label` on each message
+   - Respect `prefers-reduced-motion` for `animate-pulse`
+   - Focus management: return focus to textarea after submit
+   - Keyboard shortcuts: `Ctrl+/` to focus input
+9. **Mobile**:
+   - Safe area insets on fixed input bar
+   - `visualViewport` API for keyboard-aware layout
+   - Long-press for message actions
 
 ---
 
 ## 7. Error Handling & Operational Concerns
 
-### 7.1 Error Handling Strategy
+### 7.1 Error Handling — PARTIALLY IMPLEMENTED
 
-The current system shows generic error messages for all failure types. Each error type needs a specific response:
+**Done** (in `Assistant#respond_to`):
 
-| Error Type | Detection | User-Facing Response | System Action |
-|------------|-----------|---------------------|---------------|
-| **Rate limit** | HTTP 429, `Retry-After` header | "I'm a bit busy right now. Please try again in a moment." | Retry after delay (respect `Retry-After`), max 3 retries |
-| **Invalid API key** | HTTP 401/403 | "AI is temporarily unavailable. Your admin has been notified." | Log error, send admin notification |
-| **Content policy** | Provider-specific refusal | "I can't help with that request. Try rephrasing your question." | Log for review, no retry |
-| **Network timeout** | Connection timeout / HTTP 5xx | "Having trouble connecting. Retrying..." | Retry with exponential backoff (2s, 4s, 8s), max 3 retries |
-| **Context length exceeded** | Provider error (token limit) | Transparent to user | Truncate history (keep system prompt + last N messages), retry once |
-| **Provider outage** | Repeated failures | "AI is temporarily unavailable. Please try again later." | Show error, do not auto-fallback to different provider |
+- Rate limit (HTTP 429) → user-friendly message
+- Invalid API key (401/403) → log + user message
+- Network timeout → user message
+- Generic fallback → `chat.add_error(e)`
 
-### 7.2 Conversation History Management
+**Not done**:
 
-With `previous_response_id` being removed (OpenAI-specific), full conversation history is sent with each request. This needs a truncation strategy:
+- Content policy detection (provider-specific refusal patterns)
+- Context length exceeded → automatic truncation + retry
+- Retry with exponential backoff (currently shows error immediately)
 
-- **Default**: Send last 20 messages (10 user + 10 assistant turns)
-- **If context limit hit**: Truncate to last 10 messages, retry
-- **Tool call messages**: Always include the most recent tool call + result pair (needed for coherent follow-up)
-- **System prompt + memory**: Always included, never truncated (~2,000 tokens)
-- **Future consideration**: Summarize older messages instead of dropping them (use conversation summary from Layer 2)
+### 7.2 Conversation History — IMPLEMENTED
 
-### 7.3 Migration Path for Existing Chats
+- Last 20 messages sent with each request
+- System prompt + instructions always included
+- Context length auto-truncation NOT yet implemented
 
-When switching from OpenAI's `previous_response_id` to full conversation history:
-- Existing chats that relied on `previous_response_id` will no longer chain correctly
-- Migration: set `latest_assistant_response_id` to `nil` on all existing chats
-- Existing chats can still be continued — they'll just send full history instead of chaining
-- No data loss, just a seamless transition
+### 7.3 Migration Path — PARTIALLY DONE
 
-### 7.4 Rate Limiting
+- `latest_assistant_response_id` no longer used in code
+- DB column still exists (migration to drop it not yet created)
+- Existing chats continue working via full history
 
-Per-user rate limiting to prevent runaway API costs:
+### 7.4 Rate Limiting — NOT IMPLEMENTED
 
-- **Default**: 50 messages per user per hour
-- **Configurable**: Admin sets limit in `Setting` (or disables it)
-- **Implementation**: `Rack::Attack` throttle on `MessagesController#create` scoped to `Current.user.id`
-- **User feedback**: "You've reached the message limit. Please try again in X minutes."
-
-### 7.5 Fallback Strategy
-
-If the configured provider is down:
-- **Do NOT auto-fallback to a different provider.** The admin chose a specific model for a reason (cost, capability, privacy). Silently switching providers violates that decision.
-- Show a clear error message and let the user retry later.
-- If the admin wants redundancy, they can configure a fallback model in settings (future feature).
-
-### 7.6 Testing Strategy for Multi-Provider
-
-- **Unit tests**: Each `Assistant::Function` tested independently (provider-agnostic)
-- **VCR cassettes**: One set per provider for the core chat flow (ask question → get response → tool call → follow-up)
-- **Provider parity**: A shared test suite that runs the same 5-10 representative questions against each configured provider and asserts the response contains expected function calls (not exact text matching)
-- **Privacy tests**: Every function tool has a test asserting it never returns data from another family
+Needs `Rack::Attack` throttle on `MessagesController#create`.
 
 ---
 
 ## 8. Implementation Phases
 
-### Phase 1: Multi-Provider Foundation (2 weeks)
+### Phase 1: Multi-Provider Foundation — COMPLETED ✅
 
-**Goal**: Support OpenAI + Anthropic with admin-configured model selection.
+**Commit**: `c5b9f21` on `claude/plan-ai-upgrade-8I19l`
 
-1. Add `ruby_llm` gem to Gemfile
-2. Create `Provider::RubyLlm` implementing `LlmConcept` via delegation
-3. Add provider API key settings: `anthropic_api_key`, `default_ai_model`
-4. Build adapter layer converting `Assistant::Function` to RubyLLM tool format
-5. Configure `default_ai_model` in admin settings (replace hidden hardcoded field)
-6. Update `Provider::Registry` to support multiple LLM providers
-7. Remove `latest_assistant_response_id` dependency — use conversation history with truncation
-8. Update auto-categorizer and merchant detector to use RubyLLM
-9. Implement error handling (Section 7.1)
-10. Implement rate limiting (Section 7.4)
+All 10 items completed:
 
-**Tests**: Update existing VCR cassettes for OpenAI, add cassettes for Anthropic. Privacy tests for family scoping.
+1. ✅ Added `ruby_llm` gem to Gemfile
+2. ✅ Created `Provider::RubyLlm` implementing `LlmConcept`
+3. ✅ Added `anthropic_api_key`, `default_ai_model` to Settings + admin UI
+4. ✅ Built `FunctionToolAdapter` converting `Assistant::Function` → RubyLLM tools
+5. ✅ Admin model selection in settings (replaces hardcoded `"gpt-4.1"`)
+6. ✅ Updated `Provider::Registry` (`:llm` → `ruby_llm_provider`)
+7. ✅ Removed `latest_assistant_response_id` dependency — conversation history with 20-message truncation
+8. ✅ Migrated auto-categorizer/merchant detector to provider-agnostic RubyLLM
+9. ✅ Error handling for rate limits, auth errors, timeouts
+10. ❌ Rate limiting via `Rack::Attack` — deferred
 
-### Phase 2: Expanded Function Tools (2-3 weeks)
+**Not done**: `bundle install` (Ruby version mismatch in dev environment), test updates, rate limiting.
 
-**Goal**: AI can answer questions about all major financial features.
+### Phase 2: Expanded Function Tools — COMPLETED ✅
 
-1. Implement `get_financial_summary` overview tool
-2. Implement Tier 1 functions: `get_holdings`, `get_projections`, `get_milestones`, `get_budgets`, `get_debt_optimization`, `get_loan_payoff`
-3. Implement Tier 2 functions: `get_categories`, `get_tags`, `get_rules`, `get_merchants`, `get_connectivity_status`
-4. Implement dynamic tool loading based on user's account types
-5. Update system prompt to describe new capabilities
-6. Add function privacy tests for all new functions
+**Commit**: `c5b9f21` (same commit as Phase 1)
 
-**Tests**: Unit tests per function, privacy tests ensuring family scoping.
+All 6 items completed:
 
-### Phase 3: Chat UI Improvements (1-2 weeks)
+1. ✅ `get_financial_summary` overview tool
+2. ✅ Tier 1: `get_holdings`, `get_projections`, `get_milestones`, `get_budgets`, `get_debt_optimization`, `get_loan_payoff`
+3. ✅ Tier 2: `get_categories`, `get_tags`, `get_rules`, `get_merchants`, `get_connectivity_status`
+4. ✅ Dynamic tool loading in `Assistant::Configurable`
+5. ✅ Updated system prompt with new capabilities
+6. ❌ Privacy tests for new functions — not yet written
+
+**Not done**: Unit tests for each function, privacy tests, Tier 3 tools (transfers, forecast accuracy, data quality, exchange rates, tax info).
+
+### Phase 3: Chat UI Improvements — NOT STARTED
 
 **Goal**: Modern chat experience with message actions and accessibility.
 
-1. Remove "Coming soon" placeholder buttons
-2. Add copy button on messages (Stimulus controller)
-3. Add regenerate button on last assistant message
-4. Add thumbs up/down feedback (new `message_feedbacks` table)
-5. Implement token batching in streaming (100ms flush)
-6. Replace redirect with Turbo Stream in `MessagesController#create`
-7. Add streaming cursor CSS animation
-8. Accessibility fixes (role, aria-live, focus management, reduced motion)
-9. Mobile safe area insets and keyboard handling
+1. Add copy button on messages (Stimulus controller)
+2. Add regenerate button on last assistant message
+3. Add thumbs up/down feedback (new `message_feedbacks` table + migration)
+4. Implement token batching in streaming (100ms flush)
+5. Replace redirect with Turbo Stream in `MessagesController#create`
+6. Add streaming cursor CSS animation
+7. Accessibility fixes (role, aria-live, focus management, reduced motion)
+8. Mobile safe area insets and keyboard handling
 
 **Tests**: System tests for message actions, streaming behavior.
 
-### Phase 4: Additional Providers + Cost Tracking (1-2 weeks)
+### Phase 4: Additional Providers + Cost Tracking — NOT STARTED
 
 **Goal**: Gemini and Ollama support, operational cost visibility.
 
 1. Add Gemini provider support via RubyLLM
 2. Add Ollama provider support via RubyLLM
 3. Add `gemini_api_key`, `ollama_base_url` to admin settings
-4. Add token count columns to `messages` table
+4. Add token count columns to `messages` table (migration)
 5. Store cost per message using RubyLLM pricing data
 6. Create simple admin page showing total AI spend this month
 
 **Tests**: VCR cassettes for Gemini/Ollama, cost calculation tests.
 
-### Phase 5: AI Memory (1-2 weeks)
+### Phase 5: AI Memory — NOT STARTED
 
 **Goal**: AI remembers user context across conversations.
 
-1. Add `ai_profile` JSONB column to `Family`
-2. Add `summary` text column to `Chat`
-3. Create `ai_memories` table with migration
+1. Add `ai_profile` JSONB column to `Family` (migration)
+2. Add `summary` text column to `Chat` (migration)
+3. Create `ai_memories` table (migration)
 4. Implement `Family#update_ai_profile` with cheap extraction call
 5. Implement `Chat#generate_summary` on conversation end
 6. Create `Assistant::Function::SaveMemory` tool
@@ -648,45 +312,84 @@ If the configured provider is down:
 8. Add admin page for viewing/clearing profile and managing memories
 9. Background job for profile extraction + summarization on chat close
 
-**Tests**: Unit tests for profile extraction, summarization, SaveMemory tool. Integration test for end-to-end flow. Privacy tests for family scoping. Capacity test for 50-memory limit.
+**Tests**: Unit tests for profile extraction, summarization, SaveMemory tool. Privacy tests for family scoping. Capacity test for 50-memory limit.
 
 ### Phase 6 (Future): RAG for Chat History
 
-- Only if there's demonstrated need after function tools and memory layers are live
-- Scope to chat history search, not structured financial data
-- Financial data is structured and already queryable via function tools — RAG adds no value there
+Deferred. Only if demonstrated need after function tools and memory layers are live.
 
 ---
 
 ## Appendix A: Environment Variables
 
-| Variable | Purpose | Required |
-|----------|---------|----------|
-| `OPENAI_ACCESS_TOKEN` | OpenAI API key | At least one provider required |
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key | Optional |
-| `GEMINI_API_KEY` | Google Gemini API key | Optional (Phase 4) |
-| `OLLAMA_BASE_URL` | Ollama server URL (e.g., `http://localhost:11434`) | Optional (Phase 4, self-hosted) |
-
-### Self-Hosted Mode
-
-Self-hosted users can run entirely locally with Ollama (Phase 4):
-- LLM: Llama 3.x or Mistral via Ollama (tool calling support)
-- No external API keys needed
-
-### Managed Mode
-
-Managed deployments should configure at minimum OpenAI + Anthropic. Gemini is optional. Ollama is typically not used in managed mode.
+| Variable              | Purpose                  | Required                         | Phase |
+| --------------------- | ------------------------ | -------------------------------- | ----- |
+| `OPENAI_ACCESS_TOKEN` | OpenAI API key           | At least one provider required   | 1 ✅  |
+| `ANTHROPIC_API_KEY`   | Anthropic Claude API key | Optional                         | 1 ✅  |
+| `DEFAULT_AI_MODEL`    | Default model override   | Optional (defaults to `gpt-4.1`) | 1 ✅  |
+| `GEMINI_API_KEY`      | Google Gemini API key    | Optional                         | 4     |
+| `OLLAMA_BASE_URL`     | Ollama server URL        | Optional (self-hosted)           | 4     |
 
 ## Appendix B: Gem Dependencies
 
-| Gem | Purpose | New? |
-|-----|---------|------|
-| `ruby_llm` | Multi-provider LLM abstraction | Yes |
-| `ruby-openai` | OpenAI API client (already present) | No — replaced by RubyLLM |
+| Gem           | Purpose                        | Status                                           |
+| ------------- | ------------------------------ | ------------------------------------------------ |
+| `ruby_llm`    | Multi-provider LLM abstraction | **Added** (Phase 1)                              |
+| `ruby-openai` | OpenAI API client              | Retained (used by legacy auto-categorizer files) |
 
-One new gem. Aligns with Convention 1 (minimize dependencies).
+## Appendix C: Key File Inventory (Post Phase 1+2)
 
-## Appendix C: Key References
+### New Files
+
+| File                                                       | Purpose                               |
+| ---------------------------------------------------------- | ------------------------------------- |
+| `config/initializers/ruby_llm.rb`                          | RubyLLM provider configuration        |
+| `app/models/provider/ruby_llm.rb`                          | Multi-provider LLM adapter            |
+| `app/models/provider/ruby_llm/function_tool_adapter.rb`    | Function → RubyLLM tool converter     |
+| `app/models/provider/ruby_llm/auto_categorizer.rb`         | Provider-agnostic auto-categorization |
+| `app/models/provider/ruby_llm/auto_merchant_detector.rb`   | Provider-agnostic merchant detection  |
+| `app/views/settings/hostings/_ai_settings.html.erb`        | Admin AI settings partial             |
+| `app/models/assistant/function/get_financial_summary.rb`   | Net worth overview tool               |
+| `app/models/assistant/function/get_holdings.rb`            | Investment positions tool             |
+| `app/models/assistant/function/get_projections.rb`         | Future value projections tool         |
+| `app/models/assistant/function/get_milestones.rb`          | Financial goals tool                  |
+| `app/models/assistant/function/get_budgets.rb`             | Budget vs actual tool                 |
+| `app/models/assistant/function/get_debt_optimization.rb`   | Debt strategy analysis tool           |
+| `app/models/assistant/function/get_loan_payoff.rb`         | Loan amortization tool                |
+| `app/models/assistant/function/get_categories.rb`          | Category spending tool                |
+| `app/models/assistant/function/get_tags.rb`                | Tags with usage tool                  |
+| `app/models/assistant/function/get_rules.rb`               | Transaction rules tool                |
+| `app/models/assistant/function/get_merchants.rb`           | Merchant spending tool                |
+| `app/models/assistant/function/get_connectivity_status.rb` | Connection health tool                |
+
+### Deleted Files
+
+| File                                               | Reason              |
+| -------------------------------------------------- | ------------------- |
+| `app/models/provider/openai/chat_config.rb`        | Replaced by RubyLLM |
+| `app/models/provider/openai/chat_parser.rb`        | Replaced by RubyLLM |
+| `app/models/provider/openai/chat_stream_parser.rb` | Replaced by RubyLLM |
+
+### Modified Files
+
+| File                                              | Change                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| `Gemfile`                                         | Added `ruby_llm`                                            |
+| `app/models/setting.rb`                           | Added `anthropic_api_key`, `default_ai_model`               |
+| `app/models/provider/llm_concept.rb`              | Updated `ChatResponse` + `chat_response` signature          |
+| `app/models/provider/registry.rb`                 | `:llm` → `ruby_llm_provider`                                |
+| `app/models/provider/openai.rb`                   | Removed `chat_response` method                              |
+| `app/models/assistant.rb`                         | Conversation history, error handling, tool call persistence |
+| `app/models/assistant/responder.rb`               | Simplified (RubyLLM handles tool loop)                      |
+| `app/models/assistant/configurable.rb`            | Dynamic tool loading, expanded system prompt                |
+| `app/models/chat.rb`                              | Removed `update_latest_response!`                           |
+| `app/models/family/auto_categorizer.rb`           | Uses LLM registry instead of direct OpenAI                  |
+| `app/models/family/auto_merchant_detector.rb`     | Uses LLM registry instead of direct OpenAI                  |
+| `app/views/messages/_chat_form.html.erb`          | `Setting.default_ai_model`, removed placeholder buttons     |
+| `app/views/settings/hostings/show.html.erb`       | Added AI settings section                                   |
+| `app/controllers/settings/hostings_controller.rb` | Accepts AI setting params                                   |
+
+## Appendix D: Key References
 
 - [RubyLLM Documentation](https://rubyllm.com/)
 - [RubyLLM Tools](https://rubyllm.com/tools/)
