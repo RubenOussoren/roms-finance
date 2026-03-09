@@ -21,12 +21,16 @@ class TradesTest < ApplicationSystemTestCase
 
     open_new_trade_modal
 
-    fill_in "Ticker symbol", with: "AAPL"
-    fill_in "Date", with: Date.current
-    fill_in "Quantity", with: shares_qty
-    fill_in "model[price]", with: 214.23
+    within "dialog" do
+      fill_in "Ticker symbol", with: "AAPL"
+      fill_in "Date", with: Date.current.iso8601
+      fill_in "Quantity", with: shares_qty
+      fill_in "model[price]", with: 214.23
 
-    click_button "Add transaction"
+      click_button "Add transaction"
+    end
+
+    assert_text "Entry created"
 
     visit_trades
 
@@ -39,15 +43,18 @@ class TradesTest < ApplicationSystemTestCase
     qty = 10
     aapl = @account.holdings.find { |h| h.security.ticker == "AAPL" }
 
-    open_new_trade_modal
+    open_new_trade_modal(type: "sell")
 
-    select "Sell", from: "Type"
-    fill_in "Ticker symbol", with: "AAPL"
-    fill_in "Date", with: Date.current
-    fill_in "Quantity", with: qty
-    fill_in "model[price]", with: 215.33
+    within "dialog" do
+      fill_in "Ticker symbol", with: "AAPL"
+      fill_in "Date", with: Date.current.iso8601
+      fill_in "Quantity", with: qty
+      fill_in "model[price]", with: 215.33
 
-    click_button "Add transaction"
+      click_button "Add transaction"
+    end
+
+    assert_text "Entry created"
 
     visit_trades
 
@@ -57,8 +64,19 @@ class TradesTest < ApplicationSystemTestCase
   end
 
   private
-    def open_new_trade_modal
+    def open_new_trade_modal(type: "buy")
       click_on "New transaction"
+      assert_selector "dialog[open]"
+
+      if type != "buy"
+        within "dialog" do
+          select type.capitalize, from: "Type"
+        end
+        # The type change triggers a Turbo frame reload. Wait for it to complete
+        # by checking the frame is no longer busy, then re-verify dialog is open.
+        assert_no_selector "turbo-frame#modal[busy]"
+        assert_selector "dialog[open]"
+      end
     end
 
     def within_trades(&block)
