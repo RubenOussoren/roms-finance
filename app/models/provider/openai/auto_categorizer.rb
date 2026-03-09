@@ -7,7 +7,7 @@ class Provider::Openai::AutoCategorizer
 
   def auto_categorize
     response = client.responses.create(parameters: {
-      model: "gpt-4.1-mini",
+      model: "gpt-5.1-mini",
       input: [ { role: "developer", content: developer_message } ],
       text: {
         format: {

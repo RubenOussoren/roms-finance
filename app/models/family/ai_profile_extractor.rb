@@ -34,8 +34,8 @@ class Family::AiProfileExtractor
 
   private
 
-  def extraction_prompt(transcript)
-    <<~PROMPT
+    def extraction_prompt(transcript)
+      <<~PROMPT
       Extract key facts about the user from this conversation. Return a JSON object with any of these keys (only include keys where you found relevant information):
 
       - "name": user's name
@@ -49,17 +49,17 @@ class Family::AiProfileExtractor
       Conversation:
       #{transcript}
     PROMPT
-  end
+    end
 
-  def deep_merge(base, overlay)
-    base.merge(overlay) do |_key, old_val, new_val|
-      if old_val.is_a?(Hash) && new_val.is_a?(Hash)
-        deep_merge(old_val, new_val)
-      elsif old_val.is_a?(Array) && new_val.is_a?(Array)
-        (old_val + new_val).uniq
-      else
-        new_val
+    def deep_merge(base, overlay)
+      base.merge(overlay) do |_key, old_val, new_val|
+        if old_val.is_a?(Hash) && new_val.is_a?(Hash)
+          deep_merge(old_val, new_val)
+        elsif old_val.is_a?(Array) && new_val.is_a?(Array)
+          (old_val + new_val).uniq
+        else
+          new_val
+        end
       end
     end
-  end
 end

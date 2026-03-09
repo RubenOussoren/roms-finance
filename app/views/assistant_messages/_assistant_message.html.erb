@@ -19,7 +19,7 @@
       <div class="flex items-start gap-3">
         <%= render "chats/ai_avatar" %>
 
-        <div class="prose prose--ai-chat <%= 'streaming-cursor' if assistant_message.pending? %>"><%= markdown(assistant_message.content) %></div>
+        <div class="prose prose--ai-chat <%= "streaming-cursor" if assistant_message.pending? %>"><%= markdown(assistant_message.content) %></div>
       </div>
 
       <% if assistant_message.complete? %>

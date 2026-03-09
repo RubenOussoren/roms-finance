@@ -64,7 +64,7 @@ Rails.application.routes.draw do
     resource :hosting, only: %i[show update] do
       delete :clear_cache, on: :collection
     end
-    resource :ai_usage, only: :show, controller: "settings/ai_usages"
+    resource :ai_usage, only: :show, controller: "ai_usages"
     resource :ai_memory, only: :show, controller: "ai_memories" do
       delete :clear, on: :collection
     end

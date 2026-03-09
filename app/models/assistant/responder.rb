@@ -22,7 +22,9 @@ class Assistant::Responder
         response = chunk.data
         emit(:response, {
           id: response.id,
-          tool_calls_log: response.tool_calls_log
+          tool_calls_log: response.tool_calls_log,
+          input_tokens: response.input_tokens,
+          output_tokens: response.output_tokens
         })
       end
     end

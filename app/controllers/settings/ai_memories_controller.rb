@@ -24,7 +24,7 @@ class Settings::AiMemoriesController < ApplicationController
 
   private
 
-  def ensure_admin
-    redirect_to settings_hosting_path, alert: "Not authorized" unless Current.user.admin?
-  end
+    def ensure_admin
+      redirect_to settings_hosting_path, alert: "Not authorized" unless Current.user.admin?
+    end
 end

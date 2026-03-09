@@ -14,10 +14,10 @@ class AiMemory < ApplicationRecord
 
   private
 
-  def enforce_limit
-    excess = family.ai_memories.count - MAX_PER_FAMILY + 1
-    if excess > 0
-      family.ai_memories.order(created_at: :asc).limit(excess).destroy_all
+    def enforce_limit
+      excess = family.ai_memories.count - MAX_PER_FAMILY + 1
+      if excess > 0
+        family.ai_memories.order(created_at: :asc).limit(excess).destroy_all
+      end
     end
-  end
 end

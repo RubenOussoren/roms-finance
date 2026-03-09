@@ -8,14 +8,14 @@ class AssistantTest < ActiveSupport::TestCase
     @message = @chat.messages.create!(
       type: "UserMessage",
       content: "What is my net worth?",
-      ai_model: "gpt-4.1"
+      ai_model: "gpt-5.4"
     )
     @assistant = Assistant.for_chat(@chat)
     @provider = mock
   end
 
   test "errors get added to chat" do
-    @assistant.expects(:get_model_provider).with("gpt-4.1").returns(@provider)
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider)
 
     error = StandardError.new("test error")
     @provider.expects(:chat_response).returns(provider_error_response(error))
@@ -28,7 +28,7 @@ class AssistantTest < ActiveSupport::TestCase
   end
 
   test "responds to basic prompt" do
-    @assistant.expects(:get_model_provider).with("gpt-4.1").returns(@provider)
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider)
 
     text_chunks = [
       provider_text_chunk("I do not "),
@@ -38,7 +38,7 @@ class AssistantTest < ActiveSupport::TestCase
 
     response_chunk = provider_response_chunk(
       id: "1",
-      model: "gpt-4.1",
+      model: "gpt-5.4",
       messages: [ provider_message(id: "1", text: text_chunks.join) ],
       function_requests: []
     )
@@ -63,7 +63,7 @@ class AssistantTest < ActiveSupport::TestCase
   end
 
   test "responds with tool function calls" do
-    @assistant.expects(:get_model_provider).with("gpt-4.1").returns(@provider).once
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider).once
 
     # RubyLLM handles tool calls internally in a single chat_response call.
     # The response includes tool_calls_log with executed function details.
@@ -78,7 +78,7 @@ class AssistantTest < ActiveSupport::TestCase
 
     response_chunk = provider_response_chunk(
       id: "1",
-      model: "gpt-4.1",
+      model: "gpt-5.4",
       messages: [ provider_message(id: "1", text: text_chunks.join) ],
       function_requests: [],
       tool_calls_log: tool_calls_log

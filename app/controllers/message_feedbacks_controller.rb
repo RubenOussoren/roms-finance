@@ -1,4 +1,6 @@
 class MessageFeedbacksController < ApplicationController
+  include ActionView::RecordIdentifier
+
   guard_feature unless: -> { Current.user.ai_enabled? }
 
   before_action :set_message
@@ -23,11 +25,11 @@ class MessageFeedbacksController < ApplicationController
 
   private
 
-  def set_message
-    @message = Current.user.chats.joins(:messages).find_by!(messages: { id: params[:message_id] }).messages.find(params[:message_id])
-  end
+    def set_message
+      @message = Current.user.chats.joins(:messages).find_by!(messages: { id: params[:message_id] }).messages.find(params[:message_id])
+    end
 
-  def feedback_params
-    params.require(:message_feedback).permit(:rating)
-  end
+    def feedback_params
+      params.require(:message_feedback).permit(:rating)
+    end
 end

@@ -39,8 +39,8 @@ class AssistantMessage < Message
 
   private
 
-  def should_flush?
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - (@last_flush || 0)
-    elapsed >= FLUSH_INTERVAL
-  end
+    def should_flush?
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - (@last_flush || 0)
+      elapsed >= FLUSH_INTERVAL
+    end
 end

@@ -14,12 +14,12 @@
                          } do |form| %>
       <%= form.select :default_ai_model,
                       [
-                        ["GPT-4.1 (OpenAI)", "gpt-4.1"],
-                        ["GPT-4.1 Mini (OpenAI)", "gpt-4.1-mini"],
-                        ["Claude Sonnet 4 (Anthropic)", "claude-sonnet-4-20250514"],
-                        ["Claude Haiku 3.5 (Anthropic)", "claude-haiku-4-5-20251001"],
-                        ["Gemini 2.5 Flash (Google)", "gemini-2.5-flash-preview-05-20"],
-                        ["Gemini 2.5 Pro (Google)", "gemini-2.5-pro-preview-05-06"]
+                        ["GPT-5.1 Mini (OpenAI)", "gpt-5.1-mini"],
+                        ["GPT-5.4 (OpenAI)", "gpt-5.4"],
+                        ["Claude Haiku 4.5 (Anthropic)", "claude-haiku-4-5-20251001"],
+                        ["Claude Sonnet 4.6 (Anthropic)", "claude-sonnet-4-6"],
+                        ["Gemini 3.1 Flash-Lite (Google)", "gemini-3.1-flash-lite"],
+                        ["Gemini 3.1 Pro (Google)", "gemini-3.1-pro"]
                       ],
                       { selected: Setting.default_ai_model },
                       { label: "Default AI Model",

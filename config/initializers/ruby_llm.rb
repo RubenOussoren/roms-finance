@@ -5,6 +5,8 @@ Rails.application.config.after_initialize do
     config.gemini_api_key = ENV.fetch("GEMINI_API_KEY", nil) || Setting.gemini_api_key
     config.ollama_api_base = ENV.fetch("OLLAMA_API_BASE", nil) || Setting.ollama_api_base
   end
+
+  RubyLLM.models.refresh!
 rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
   # Database not yet created — configure with ENV only
   RubyLLM.configure do |config|
