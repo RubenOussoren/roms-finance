@@ -22,7 +22,8 @@ class Assistant
     assistant_message = AssistantMessage.new(
       chat: chat,
       content: "",
-      ai_model: message.ai_model
+      ai_model: message.ai_model,
+      status: :pending
     )
 
     function_instances = build_function_instances
@@ -61,17 +62,22 @@ class Assistant
 
     conversation_history = build_conversation_history(message)
     responder.respond(messages: conversation_history)
+    assistant_message.update!(status: :complete) if assistant_message.persisted?
   rescue Faraday::TooManyRequestsError => e
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(Provider::Error.new("I'm a bit busy right now. Please try again in a moment."))
   rescue Faraday::UnauthorizedError, Faraday::ForbiddenError => e
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     Rails.logger.error("AI provider authentication error: #{e.message}")
     chat.add_error(Provider::Error.new("AI is temporarily unavailable. Your admin has been notified."))
   rescue Faraday::TimeoutError, Faraday::ConnectionFailed => e
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(Provider::Error.new("Having trouble connecting to the AI provider. Please try again."))
   rescue => e
+    assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(e)
   end
