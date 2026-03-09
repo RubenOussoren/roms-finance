@@ -42,10 +42,10 @@ class AccountsTest < ApplicationSystemTestCase
     # Step 3: Enter address information
     assert_text "Address"
     fill_in "Address Line 1", with: "123 Main St"
-    fill_in "City", with: "San Francisco"
-    fill_in "State/Region", with: "CA"
-    fill_in "Postal Code", with: "94101"
-    fill_in "Country", with: "US"
+    fill_in "City", with: "Toronto"
+    fill_in "State/Region", with: "ON"
+    fill_in "Postal Code", with: "M5V 3L9"
+    fill_in "Country", with: "CA"
 
     click_button "Save"
 
@@ -56,7 +56,7 @@ class AccountsTest < ApplicationSystemTestCase
     assert_equal "active", created_account.status
     assert_equal 500000, created_account.balance
     assert_equal "123 Main St", created_account.property.address.line1
-    assert_equal "San Francisco", created_account.property.address.locality
+    assert_equal "Toronto", created_account.property.address.locality
   end
 
   test "can create vehicle account" do

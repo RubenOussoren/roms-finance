@@ -18,7 +18,7 @@ Rails.application.configure do
 
   # Ensures that a master key has been made available in ENV["RAILS_MASTER_KEY"], config/master.key, or an environment
   # key such as config/credentials/production.key. This key is used to decrypt credentials (and other encrypted files).
-  # config.require_master_key = true
+  config.require_master_key = true
 
   # Disable serving static files from `public/`, relying on NGINX/Apache to do so instead.
   # config.public_file_server.enabled = false
@@ -78,11 +78,13 @@ Rails.application.configure do
   config.action_mailer.default_url_options = { host: ENV["APP_DOMAIN"] }
   config.action_mailer.delivery_method = :smtp
   config.action_mailer.smtp_settings = {
-    address:   ENV["SMTP_ADDRESS"],
-    port:      ENV["SMTP_PORT"],
-    user_name: ENV["SMTP_USERNAME"],
-    password:  ENV["SMTP_PASSWORD"],
-    tls:       ENV["SMTP_TLS_ENABLED"] == "true"
+    address:              ENV["SMTP_ADDRESS"],
+    port:                 ENV["SMTP_PORT"],
+    user_name:            ENV["SMTP_USERNAME"],
+    password:             ENV["SMTP_PASSWORD"],
+    authentication:       ENV.fetch("SMTP_AUTHENTICATION", "plain"),
+    enable_starttls_auto: ENV["SMTP_TLS_ENABLED"] != "true",
+    tls:                  ENV["SMTP_TLS_ENABLED"] == "true"
   }
 
   # Ignore bad email addresses and do not raise email delivery errors.
@@ -100,12 +102,10 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  if ENV["APP_DOMAIN"].present?
+    config.hosts = [ ENV["APP_DOMAIN"], /.*\.#{Regexp.escape(ENV["APP_DOMAIN"])}/ ]
+    config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  end
 
   # set REDIS_URL for Sidekiq to use Redis
   config.active_job.queue_adapter = :sidekiq

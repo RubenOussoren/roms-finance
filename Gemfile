@@ -24,9 +24,7 @@ gem "stimulus-rails"
 gem "turbo-rails"
 gem "view_component"
 
-# https://github.com/lookbook-hq/lookbook/issues/712
-# TODO: Remove max version constraint when fixed
-gem "lookbook", "2.3.11"
+gem "lookbook", "~> 2.3"
 
 gem "hotwire_combobox"
 
@@ -110,6 +108,7 @@ end
 group :test do
   gem "capybara"
   gem "selenium-webdriver"
+  gem "minitest", "~> 5.25"
   gem "mocha"
   gem "vcr"
   gem "webmock"

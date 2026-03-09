@@ -32,10 +32,13 @@ class ChatsTest < ApplicationSystemTestCase
 
     click_on @user.chats.first.title
 
-    # Page refresh
+    # Wait for Turbo frame navigation to complete
+    within "#chat-container" do
+      assert_selector "h1", text: @user.chats.first.title
+    end
+
     visit root_url
 
-    # After page refresh, we're still on the last chat we were viewing
     within "#chat-container" do
       assert_selector "h1", text: @user.chats.first.title
     end
