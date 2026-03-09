@@ -32,6 +32,12 @@ export default class extends Controller {
     }, 200);
   }
 
+  clearInput() {
+    this.inputTarget.value = "";
+    this.inputTarget.style.height = "auto";
+    this.inputTarget.focus();
+  }
+
   // Newlines require shift+enter, otherwise submit the form (same functionality as ChatGPT and others)
   handleInputKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {

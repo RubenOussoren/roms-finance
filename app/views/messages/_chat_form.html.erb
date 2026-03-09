@@ -5,7 +5,7 @@
 
   <%= form_with model: model,
                 class: "flex lg:flex-col gap-2 bg-container px-2 py-1.5 rounded-full lg:rounded-lg shadow-border-xs",
-                data: { chat_target: "form" } do |f| %>
+                data: { chat_target: "form", action: "turbo:submit-end->chat#clearInput" } do |f| %>
 
     <%= f.hidden_field :ai_model, value: Setting.default_ai_model %>
 
