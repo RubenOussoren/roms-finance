@@ -643,6 +643,7 @@ DEPENDENCIES
   capybara
   capybara-playwright-driver
   climate_control
+  connection_pool (< 3.0)
   csv
   debug
   derailed_benchmarks
