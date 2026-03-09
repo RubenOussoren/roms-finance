@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_09_155050) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_09_181325) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -422,7 +422,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_155050) do
     t.string "status", default: "pending", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "export_type", default: "full_data", null: false
+    t.uuid "requested_by_user_id"
     t.index ["family_id"], name: "index_family_exports_on_family_id"
+    t.index ["requested_by_user_id"], name: "index_family_exports_on_requested_by_user_id"
   end
 
   create_table "holdings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1150,6 +1153,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_155050) do
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
   add_foreign_key "family_exports", "families"
+  add_foreign_key "family_exports", "users", column: "requested_by_user_id"
   add_foreign_key "holdings", "accounts"
   add_foreign_key "holdings", "securities"
   add_foreign_key "impersonation_session_logs", "impersonation_sessions"

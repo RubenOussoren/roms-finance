@@ -71,6 +71,18 @@ module Assistant::Configurable
           functions << Assistant::Function::GetConnectivityStatus
         end
 
+        # Report generation — always available
+        functions.push(
+          Assistant::Function::GenerateNetWorthReport,
+          Assistant::Function::GenerateSpendingReport,
+          Assistant::Function::GenerateTaxReport
+        )
+
+        # Investment report — only if investment accounts exist
+        if family.accounts.where(accountable_type: "Investment").exists?
+          functions << Assistant::Function::GenerateInvestmentReport
+        end
+
         functions
       end
 
@@ -147,6 +159,12 @@ module Assistant::Configurable
           - When a user asks about investments, use get_holdings. For projections, use get_projections. For budgets, use get_budgets.
           - Start with get_financial_summary if the user asks a broad question about their finances.
           - **save_memory** — save user preferences, goals, or facts for future conversations
+          - **generate_net_worth_report** — downloadable CSV of net worth over time
+          - **generate_spending_report** — downloadable CSV of transactions with categories
+          - **generate_investment_report** — downloadable CSV of holdings and trades
+          - **generate_tax_report** — downloadable CSV for tax preparation (income, expenses, deductible interest, capital gains)
+
+          When a report function returns a download_path, present it as a markdown link like: [Download Report](download_path)
         PROMPT
       end
 
