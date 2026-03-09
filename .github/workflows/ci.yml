@@ -101,7 +101,7 @@ jobs:
 
     steps:
       - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl libvips postgresql-client libpq-dev
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y curl libvips postgresql-client libpq-dev
 
       - name: Checkout code
         uses: actions/checkout@v6
@@ -111,6 +111,11 @@ jobs:
         with:
           ruby-version: .ruby-version
           bundler-cache: true
+
+      - name: Install Playwright browsers
+        run: |
+          PLAYWRIGHT_CLI_VERSION=$(bundle exec ruby -e 'require "playwright"; puts Playwright::COMPATIBLE_PLAYWRIGHT_VERSION.strip')
+          npx "playwright@${PLAYWRIGHT_CLI_VERSION}" install --with-deps chromium
 
       - name: DB setup and smoke test
         run: |

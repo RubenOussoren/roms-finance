@@ -2,10 +2,12 @@ require "test_helper"
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   setup do
-    Capybara.default_max_wait_time = 5
+    Capybara.default_max_wait_time = 15
   end
 
-  driven_by :selenium, using: ENV["CI"].present? ? :headless_chrome : ENV.fetch("E2E_BROWSER", :chrome).to_sym, screen_size: [ 1400, 1400 ]
+  driven_by :playwright, using: :chromium, screen_size: [ 1400, 1400 ], options: {
+    headless: ENV["CI"].present?
+  }
 
   private
 
