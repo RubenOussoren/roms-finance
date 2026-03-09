@@ -108,7 +108,7 @@ end
 group :test do
   gem "capybara"
   gem "selenium-webdriver"
-  gem "minitest-mock", require: "minitest/mock"
+  gem "minitest", "~> 5.25"
   gem "mocha"
   gem "vcr"
   gem "webmock"
