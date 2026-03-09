@@ -54,7 +54,8 @@ module Assistant::Configurable
         functions.push(
           Assistant::Function::GetCategories,
           Assistant::Function::GetTags,
-          Assistant::Function::GetMerchants
+          Assistant::Function::GetMerchants,
+          Assistant::Function::SaveMemory
         )
 
         # Rules — only if rules exist
