@@ -35,6 +35,8 @@ class Assistant
       llm: get_model_provider(message.ai_model)
     )
 
+    assistant_message.start_streaming!
+
     responder.on(:output_text) do |text|
       if assistant_message.content.blank?
         stop_thinking
@@ -45,6 +47,8 @@ class Assistant
     end
 
     responder.on(:response) do |data|
+      assistant_message.flush_buffer!
+
       # Persist any tool calls that RubyLLM executed during the conversation
       if data[:tool_calls_log].present?
         data[:tool_calls_log].each do |log_entry|
@@ -64,19 +68,23 @@ class Assistant
     responder.respond(messages: conversation_history)
     assistant_message.update!(status: :complete) if assistant_message.persisted?
   rescue Faraday::TooManyRequestsError => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
     assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(Provider::Error.new("I'm a bit busy right now. Please try again in a moment."))
   rescue Faraday::UnauthorizedError, Faraday::ForbiddenError => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
     assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     Rails.logger.error("AI provider authentication error: #{e.message}")
     chat.add_error(Provider::Error.new("AI is temporarily unavailable. Your admin has been notified."))
   rescue Faraday::TimeoutError, Faraday::ConnectionFailed => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
     assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(Provider::Error.new("Having trouble connecting to the AI provider. Please try again."))
   rescue => e
+    assistant_message.flush_buffer! if assistant_message.persisted?
     assistant_message.update!(status: :failed) if assistant_message.persisted?
     stop_thinking
     chat.add_error(e)
