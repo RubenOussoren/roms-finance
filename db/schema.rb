@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_09_151903) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_09_155050) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -237,7 +237,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_151903) do
     t.string "title", null: false
     t.string "instructions"
     t.jsonb "error"
-    t.string "latest_assistant_response_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "summary"
