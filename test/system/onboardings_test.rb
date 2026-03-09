@@ -29,7 +29,7 @@ class OnboardingsTest < ApplicationSystemTestCase
 
     # Fill out preferences form
     select "English (en)", from: "user_family_attributes_locale"
-    select "United States Dollar (USD)", from: "user_family_attributes_currency"
+    select "Canadian Dollar (CAD)", from: "user_family_attributes_currency"
     select "MM/DD/YYYY", from: "user_family_attributes_date_format"
     select "Light", from: "user_theme"
 
@@ -111,7 +111,7 @@ class OnboardingsTest < ApplicationSystemTestCase
 
     # Fill out form with specific values
     select "Spanish (es)", from: "user_family_attributes_locale"
-    select "Euro (EUR)", from: "user_family_attributes_currency"
+    select "Canadian Dollar (CAD)", from: "user_family_attributes_currency"
     select "DD/MM/YYYY", from: "user_family_attributes_date_format"
     select "Dark", from: "user_theme"
 
@@ -125,7 +125,7 @@ class OnboardingsTest < ApplicationSystemTestCase
     @user.reload
 
     assert_equal "es", @family.locale
-    assert_equal "EUR", @family.currency
+    assert_equal "CAD", @family.currency
     assert_equal "%d/%m/%Y", @family.date_format
     assert_equal "dark", @user.theme
     assert_not_nil @user.set_onboarding_preferences_at
@@ -157,7 +157,7 @@ class OnboardingsTest < ApplicationSystemTestCase
 
     # Complete preferences
     select "English (en)", from: "user_family_attributes_locale"
-    select "United States Dollar (USD)", from: "user_family_attributes_currency"
+    select "Canadian Dollar (CAD)", from: "user_family_attributes_currency"
     select "MM/DD/YYYY", from: "user_family_attributes_date_format"
     click_button "Complete"
 
