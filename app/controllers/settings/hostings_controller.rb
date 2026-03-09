@@ -21,6 +21,18 @@ class Settings::HostingsController < ApplicationController
       Setting.alpha_vantage_api_key = hosting_params[:alpha_vantage_api_key]
     end
 
+    if hosting_params.key?(:openai_access_token)
+      Setting.openai_access_token = hosting_params[:openai_access_token]
+    end
+
+    if hosting_params.key?(:anthropic_api_key)
+      Setting.anthropic_api_key = hosting_params[:anthropic_api_key]
+    end
+
+    if hosting_params.key?(:default_ai_model)
+      Setting.default_ai_model = hosting_params[:default_ai_model]
+    end
+
     redirect_to settings_hosting_path, notice: t(".success")
   rescue ActiveRecord::RecordInvalid => error
     flash.now[:alert] = t(".failure")
@@ -37,7 +49,10 @@ class Settings::HostingsController < ApplicationController
       params.require(:setting).permit(
         :require_invite_for_signup,
         :require_email_confirmation,
-        :alpha_vantage_api_key
+        :alpha_vantage_api_key,
+        :openai_access_token,
+        :anthropic_api_key,
+        :default_ai_model
       )
     end
 

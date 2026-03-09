@@ -15,10 +15,14 @@ module Provider::LlmConcept
 
   ChatMessage = Data.define(:id, :output_text)
   ChatStreamChunk = Data.define(:type, :data)
-  ChatResponse = Data.define(:id, :model, :messages, :function_requests)
+  ChatResponse = Data.define(:id, :model, :messages, :function_requests, :tool_calls_log) do
+    def initialize(id:, model:, messages:, function_requests:, tool_calls_log: [])
+      super
+    end
+  end
   ChatFunctionRequest = Data.define(:id, :call_id, :function_name, :function_args)
 
-  def chat_response(prompt, model:, instructions: nil, functions: [], function_results: [], streamer: nil, previous_response_id: nil)
+  def chat_response(prompt, model:, instructions: nil, function_instances: [], messages: [], streamer: nil)
     raise NotImplementedError, "Subclasses must implement #chat_response"
   end
 end

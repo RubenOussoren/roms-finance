@@ -86,6 +86,12 @@ class Provider::Registry
 
         Provider::Openai.new(access_token)
       end
+
+      def ruby_llm_provider
+        # RubyLLM is configured via its initializer with all provider API keys.
+        # It supports any model from any configured provider.
+        Provider::RubyLlm.new
+      end
   end
 
   def initialize(concept)
@@ -115,7 +121,7 @@ class Provider::Registry
       when :securities
         %i[market_data_provider]
       when :llm
-        %i[openai]
+        %i[ruby_llm_provider]
       else
         %i[alpha_vantage plaid_us plaid_eu github openai]
       end
