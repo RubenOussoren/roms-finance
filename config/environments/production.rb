@@ -103,7 +103,7 @@ Rails.application.configure do
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   if ENV["APP_DOMAIN"].present?
-    config.hosts = [ENV["APP_DOMAIN"], /.*\.#{Regexp.escape(ENV["APP_DOMAIN"])}/]
+    config.hosts = [ ENV["APP_DOMAIN"], /.*\.#{Regexp.escape(ENV["APP_DOMAIN"])}/ ]
     config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
   end
 

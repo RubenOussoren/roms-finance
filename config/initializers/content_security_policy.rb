@@ -10,7 +10,7 @@ Rails.application.configure do
     policy.font_src    :self, :data
     policy.img_src     :self, :https, :data
     policy.object_src  :none
-    policy.script_src  :self, :nonce, "https://cdn.plaid.com"
+    policy.script_src  :self, "https://cdn.plaid.com"
     policy.style_src   :self, :unsafe_inline
     policy.connect_src :self
     policy.frame_src   :self, "https://*.snaptrade.com"
