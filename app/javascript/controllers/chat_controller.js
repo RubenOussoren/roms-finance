@@ -5,12 +5,15 @@ export default class extends Controller {
 
   connect() {
     this.#configureAutoScroll();
+    this.#boundHandleKeyboard = this.#handleKeyboardShortcut.bind(this);
+    document.addEventListener("keydown", this.#boundHandleKeyboard);
   }
 
   disconnect() {
     if (this.messagesObserver) {
       this.messagesObserver.disconnect();
     }
+    document.removeEventListener("keydown", this.#boundHandleKeyboard);
   }
 
   autoResize() {
@@ -63,4 +66,13 @@ export default class extends Controller {
   #scrollToBottom = () => {
     this.messagesTarget.scrollTop = this.messagesTarget.scrollHeight;
   };
+
+  #handleKeyboardShortcut(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+      e.preventDefault();
+      if (this.hasInputTarget) {
+        this.inputTarget.focus();
+      }
+    }
+  }
 }

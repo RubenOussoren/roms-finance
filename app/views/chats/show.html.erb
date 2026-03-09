@@ -9,7 +9,7 @@
         <%= render "chats/chat_nav", chat: @chat %>
       </div>
 
-      <div id="messages" class="grow overflow-y-auto p-4 space-y-6 pb-24 lg:pb-4" data-chat-target="messages">
+      <div id="messages" class="grow overflow-y-auto p-4 space-y-6 pb-24 lg:pb-4" data-chat-target="messages" role="log" aria-live="polite">
         <% if @chat.conversation_messages.any? %>
           <% @chat.conversation_messages.ordered.each do |message| %>
             <%= render message %>

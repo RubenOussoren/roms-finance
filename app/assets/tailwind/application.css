@@ -186,4 +186,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .streaming-cursor::after { animation: none; }
+  .animate-pulse { animation: none; }
 }
