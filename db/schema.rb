@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_09_145822) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_09_151903) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -139,6 +139,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_145822) do
     t.index ["addressable_type", "addressable_id"], name: "index_addresses_on_addressable"
   end
 
+  create_table "ai_memories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.string "category", null: false
+    t.text "content", null: false
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_ai_memories_on_expires_at"
+    t.index ["family_id", "category"], name: "index_ai_memories_on_family_id_and_category"
+    t.index ["family_id"], name: "index_ai_memories_on_family_id"
+  end
+
   create_table "api_keys", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
     t.uuid "user_id", null: false
@@ -228,6 +240,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_145822) do
     t.string "latest_assistant_response_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "summary"
     t.index ["user_id"], name: "index_chats_on_user_id"
   end
 
@@ -402,6 +415,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_145822) do
     t.datetime "latest_sync_completed_at", default: -> { "CURRENT_TIMESTAMP" }
     t.string "snaptrade_user_id"
     t.string "snaptrade_user_secret"
+    t.jsonb "ai_profile", default: {}
   end
 
   create_table "family_exports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1119,6 +1133,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_145822) do
   add_foreign_key "accounts", "users", column: "created_by_user_id"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_memories", "families"
   add_foreign_key "api_keys", "users"
   add_foreign_key "balances", "accounts", on_delete: :cascade
   add_foreign_key "budget_categories", "budgets"
