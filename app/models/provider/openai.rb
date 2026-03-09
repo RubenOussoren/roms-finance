@@ -4,7 +4,7 @@ class Provider::Openai < Provider
   # Subclass so errors caught in this provider are raised as Provider::Openai::Error
   Error = Class.new(Provider::Error)
 
-  MODELS = %w[gpt-5.4 gpt-5.1-mini]
+  MODELS = %w[gpt-5.4 gpt-5-mini]
 
   def initialize(access_token)
     @client = ::OpenAI::Client.new(access_token: access_token)

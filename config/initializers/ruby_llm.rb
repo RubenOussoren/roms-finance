@@ -4,6 +4,7 @@ Rails.application.config.after_initialize do
     config.anthropic_api_key = ENV.fetch("ANTHROPIC_API_KEY", nil) || Setting.anthropic_api_key
     config.gemini_api_key = ENV.fetch("GEMINI_API_KEY", nil) || Setting.gemini_api_key
     config.ollama_api_base = ENV.fetch("OLLAMA_API_BASE", nil) || Setting.ollama_api_base
+    config.use_new_acts_as = true
   end
 
   RubyLLM.models.refresh!
@@ -14,5 +15,6 @@ rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
     config.anthropic_api_key = ENV.fetch("ANTHROPIC_API_KEY", nil)
     config.gemini_api_key = ENV.fetch("GEMINI_API_KEY", nil)
     config.ollama_api_base = ENV.fetch("OLLAMA_API_BASE", nil)
+    config.use_new_acts_as = true
   end
 end

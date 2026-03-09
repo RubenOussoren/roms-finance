@@ -1,7 +1,7 @@
 # Provider-agnostic auto-merchant detector using RubyLLM.
 # Uses a cheap/fast model to detect business names and URLs from transaction data.
 class Provider::RubyLlm::AutoMerchantDetector
-  DETECTION_MODEL = "gpt-5.1-mini"
+  DETECTION_MODEL = "gpt-5-mini"
 
   def initialize(transactions: [], user_merchants: [])
     @transactions = transactions

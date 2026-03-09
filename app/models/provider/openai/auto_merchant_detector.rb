@@ -7,7 +7,7 @@ class Provider::Openai::AutoMerchantDetector
 
   def auto_detect_merchants
     response = client.responses.create(parameters: {
-      model: "gpt-5.1-mini",
+      model: "gpt-5-mini",
       input: [ { role: "developer", content: developer_message } ],
       text: {
         format: {

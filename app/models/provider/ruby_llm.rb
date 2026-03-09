@@ -14,7 +14,7 @@ class Provider::RubyLlm < Provider
   # and continues the conversation automatically.
   #
   # @param prompt [String] the user's message
-  # @param model [String] model identifier (e.g., "gpt-5.1-mini", "claude-sonnet-4-6")
+  # @param model [String] model identifier (e.g., "gpt-5-mini", "claude-sonnet-4-6")
   # @param instructions [String] system prompt
   # @param function_instances [Array<Assistant::Function>] function objects for tool execution
   # @param messages [Array<Hash>] conversation history [{role:, content:}]
