@@ -24,4 +24,14 @@ class AssistantMessageTest < ActiveSupport::TestCase
     msg.flush_buffer!
     assert_equal "", msg.content
   end
+
+  test "calculate_cost returns 0 for unknown model" do
+    msg = AssistantMessage.new(ai_model: "nonexistent-model", input_tokens: 1000, output_tokens: 500)
+    assert_equal 0, msg.calculate_cost
+  end
+
+  test "calculate_cost returns 0 when tokens are nil" do
+    msg = AssistantMessage.new(ai_model: "gpt-4.1", input_tokens: nil, output_tokens: nil)
+    assert_equal 0, msg.calculate_cost
+  end
 end

@@ -49,6 +49,11 @@ class Assistant
     responder.on(:response) do |data|
       assistant_message.flush_buffer!
 
+      # Track token usage
+      assistant_message.input_tokens = data[:input_tokens] || 0
+      assistant_message.output_tokens = data[:output_tokens] || 0
+      assistant_message.cost_cents = assistant_message.calculate_cost
+
       # Persist any tool calls that RubyLLM executed during the conversation
       if data[:tool_calls_log].present?
         data[:tool_calls_log].each do |log_entry|

@@ -15,8 +15,8 @@ module Provider::LlmConcept
 
   ChatMessage = Data.define(:id, :output_text)
   ChatStreamChunk = Data.define(:type, :data)
-  ChatResponse = Data.define(:id, :model, :messages, :function_requests, :tool_calls_log) do
-    def initialize(id:, model:, messages:, function_requests:, tool_calls_log: [])
+  ChatResponse = Data.define(:id, :model, :messages, :function_requests, :tool_calls_log, :input_tokens, :output_tokens) do
+    def initialize(id:, model:, messages:, function_requests:, tool_calls_log: [], input_tokens: 0, output_tokens: 0)
       super
     end
   end
