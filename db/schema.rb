@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_09_144127) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -599,6 +599,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.index ["type"], name: "index_merchants_on_type"
   end
 
+  create_table "message_feedbacks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "message_id", null: false
+    t.uuid "user_id", null: false
+    t.integer "rating", null: false
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "user_id"], name: "index_message_feedbacks_on_message_id_and_user_id", unique: true
+    t.index ["message_id"], name: "index_message_feedbacks_on_message_id"
+    t.index ["user_id"], name: "index_message_feedbacks_on_user_id"
+  end
+
   create_table "messages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "chat_id", null: false
     t.string "type", null: false
@@ -1132,6 +1144,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
   add_foreign_key "invitations", "families"
   add_foreign_key "invitations", "users", column: "inviter_id"
   add_foreign_key "merchants", "families"
+  add_foreign_key "message_feedbacks", "messages"
+  add_foreign_key "message_feedbacks", "users"
   add_foreign_key "messages", "chats"
   add_foreign_key "milestones", "accounts"
   add_foreign_key "mobile_devices", "users"

@@ -24,6 +24,10 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :messages, only: [] do
+    resource :feedback, only: :create, controller: "message_feedbacks"
+  end
+
   resources :family_exports, only: %i[new create index] do
     member do
       get :download
