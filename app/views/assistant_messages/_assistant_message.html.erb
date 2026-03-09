@@ -15,10 +15,35 @@
       <%= render "assistant_messages/tool_calls", message: assistant_message %>
     <% end %>
 
-    <div class="flex items-start gap-3 mb-6">
-      <%= render "chats/ai_avatar" %>
+    <div class="group">
+      <div class="flex items-start gap-3">
+        <%= render "chats/ai_avatar" %>
 
-      <div class="prose prose--ai-chat <%= 'streaming-cursor' if assistant_message.pending? %>"><%= markdown(assistant_message.content) %></div>
+        <div class="prose prose--ai-chat <%= 'streaming-cursor' if assistant_message.pending? %>"><%= markdown(assistant_message.content) %></div>
+      </div>
+
+      <% if assistant_message.complete? %>
+        <div class="flex items-center gap-1 mt-1 ml-8 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div data-controller="clipboard">
+            <div data-clipboard-target="source" class="hidden"><%= assistant_message.content %></div>
+            <button data-action="click->clipboard#copy"
+                    class="p-1 rounded text-secondary hover:text-primary"
+                    aria-label="Copy message">
+              <span data-clipboard-target="iconDefault"><%= icon("copy", size: "sm") %></span>
+              <span data-clipboard-target="iconSuccess" class="hidden"><%= icon("check", size: "sm") %></span>
+            </button>
+          </div>
+
+          <% if assistant_message == assistant_message.chat.messages.where(type: "AssistantMessage").order(:created_at).last %>
+            <%= button_to retry_chat_path(assistant_message.chat),
+                method: :post,
+                class: "p-1 rounded text-secondary hover:text-primary",
+                aria: { label: "Regenerate response" } do %>
+              <%= icon("refresh-cw", size: "sm") %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
   <% end %>
 </div>
