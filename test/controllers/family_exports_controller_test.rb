@@ -60,7 +60,10 @@ class FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     )
 
     get download_family_export_path(export)
-    assert_redirected_to(/rails\/active_storage/)
+    assert_response :success
+    assert_equal "test zip content", response.body
+    assert_equal "application/zip", response.content_type
+    assert_match "attachment", response.headers["Content-Disposition"]
   end
 
   test "cannot download incomplete export" do

@@ -27,7 +27,10 @@ class FamilyExportsController < ApplicationController
 
   def download
     if @export.downloadable?
-      redirect_to @export.export_file, allow_other_host: true
+      send_data @export.export_file.download,
+                filename: @export.filename,
+                type: @export.export_file.content_type,
+                disposition: "attachment"
     else
       redirect_to settings_profile_path, alert: "Export not ready for download"
     end
