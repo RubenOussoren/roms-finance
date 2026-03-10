@@ -51,7 +51,7 @@ class Provider
           details: error.response&.dig(:body),
         )
       else
-        self.class::Error.new(error.message)
+        self.class::Error.new(error.message, details: error.backtrace&.first(5)&.join("\n"))
       end
     end
 end

@@ -50,18 +50,18 @@ class Assistant::Function::GetBudgets < Assistant::Function
     {
       month: start_date.strftime("%B %Y"),
       currency: family.currency,
-      expected_income: budget.estimated_income&.format,
-      actual_income: budget.actual_income&.format,
-      budgeted_spending: budget.allocated_spending&.format,
-      actual_spending: budget.actual_spending&.format,
-      available_to_spend: budget.available_to_spend&.format,
+      expected_income: budget.estimated_income_money&.format,
+      actual_income: budget.actual_income_money&.format,
+      budgeted_spending: budget.allocated_spending_money&.format,
+      actual_spending: budget.actual_spending_money&.format,
+      available_to_spend: budget.available_to_spend_money&.format,
       percent_spent: budget.percent_of_budget_spent&.round(1),
       categories: expense_categories.map { |bc|
         {
           name: bc.name,
           budgeted: Money.new(bc.budgeted_spending, family.currency).format,
-          actual: bc.actual_spending&.format,
-          remaining: bc.available_to_spend&.format,
+          actual: bc.actual_spending_money&.format,
+          remaining: bc.available_to_spend_money&.format,
           percent_spent: bc.percent_of_budget_spent&.round(1)
         }
       }

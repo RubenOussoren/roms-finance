@@ -41,7 +41,7 @@ class Assistant::Function::GetProjections < Assistant::Function
     {
       as_of_date: Date.current,
       currency: result[:currency],
-      current_net_worth: summary[:current_net_worth]&.format,
+      current_net_worth: format_value(summary[:current_net_worth], result[:currency]),
       projection_years: years,
       projected_values: result[:projections]&.last(12)&.map { |p|
         {
