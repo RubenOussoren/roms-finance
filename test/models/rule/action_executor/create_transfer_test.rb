@@ -13,7 +13,7 @@ class Rule::ActionExecutor::CreateTransferTest < ActiveSupport::TestCase
     @txn2 = create_transaction(date: Date.current, account: @source_account, amount: 200, name: "Bonus deposit").transaction
   end
 
-  test "creates transfers for matched transactions" do
+  test "creates transfers using original transactions as outflow side" do
     action = Rule::Action.new(
       rule: @rule,
       action_type: "create_transfer",
@@ -21,29 +21,23 @@ class Rule::ActionExecutor::CreateTransferTest < ActiveSupport::TestCase
     )
 
     assert_difference "Transfer.count", 2 do
-      action.apply(@source_account.transactions)
+      assert_difference "Entry.count", 2 do
+        action.apply(@source_account.transactions)
+      end
     end
+
+    # Original transactions are now the outflow side
+    @txn1.reload
+    @txn2.reload
+    assert @txn1.transfer_as_outflow.present?
+    assert @txn2.transfer_as_outflow.present?
 
     # Verify destination account received inflow entries
     destination_entries = @destination_account.entries.where(date: Date.current)
     assert_equal 2, destination_entries.count
   end
 
-  test "skips transactions that already have a transfer" do
-    # Create a pre-existing transfer from source to destination
-    Transfer::Creator.new(
-      family: @family,
-      source_account_id: @source_account.id,
-      destination_account_id: @destination_account.id,
-      date: @txn1.entry.date,
-      amount: @txn1.entry.amount.abs
-    ).create
-
-    initial_transfer_count = Transfer.count
-
-    # Now the source account has txn1, txn2, AND the outflow transaction from the transfer above.
-    # The outflow transaction already has a transfer, so it should be skipped.
-    # txn1 and txn2 don't have transfers, so they should get new ones.
+  test "original transaction kind is updated for transfer analytics" do
     action = Rule::Action.new(
       rule: @rule,
       action_type: "create_transfer",
@@ -52,8 +46,50 @@ class Rule::ActionExecutor::CreateTransferTest < ActiveSupport::TestCase
 
     action.apply(@source_account.transactions)
 
-    # txn1 and txn2 get transfers, but the existing outflow transaction is skipped
-    assert_equal initial_transfer_count + 2, Transfer.count
+    @txn1.reload
+    assert_equal "funds_movement", @txn1.kind
+  end
+
+  test "original transaction name is preserved" do
+    action = Rule::Action.new(
+      rule: @rule,
+      action_type: "create_transfer",
+      value: @destination_account.id
+    )
+
+    action.apply(@source_account.transactions)
+
+    @txn1.reload
+    assert_equal "Salary deposit", @txn1.entry.name
+  end
+
+  test "idempotent — running twice creates no duplicates" do
+    action = Rule::Action.new(
+      rule: @rule,
+      action_type: "create_transfer",
+      value: @destination_account.id
+    )
+
+    action.apply(@source_account.transactions)
+
+    assert_no_difference [ "Transfer.count", "Entry.count" ] do
+      action.apply(@source_account.transactions)
+    end
+  end
+
+  test "corrects negative amount on original entry to positive for outflow" do
+    txn_negative = create_transaction(date: Date.current, account: @source_account, amount: -500, name: "Negative amount").transaction
+
+    action = Rule::Action.new(
+      rule: @rule,
+      action_type: "create_transfer",
+      value: @destination_account.id
+    )
+
+    action.apply(Transaction.where(id: txn_negative.id))
+
+    txn_negative.entry.reload
+    assert txn_negative.entry.amount.positive?, "Original entry amount should be positive (outflow)"
   end
 
   test "skips when source account equals destination account" do
@@ -92,6 +128,46 @@ class Rule::ActionExecutor::CreateTransferTest < ActiveSupport::TestCase
     assert_difference "Transfer.count", 3 do
       action.apply(@source_account.transactions)
     end
+  end
+
+  test "sets correct kind for liability destination" do
+    cc_account = @family.accounts.create!(name: "Credit Card", balance: 0, currency: "USD", accountable: CreditCard.new)
+
+    action = Rule::Action.new(
+      rule: @rule,
+      action_type: "create_transfer",
+      value: cc_account.id
+    )
+
+    action.apply(Transaction.where(id: @txn1.id))
+
+    @txn1.reload
+    assert_equal "cc_payment", @txn1.kind
+  end
+
+  test "converts currency for cross-currency transfer" do
+    cad_account = @family.accounts.create!(name: "CAD savings", balance: 1000, currency: "CAD", accountable: Depository.new)
+
+    ExchangeRate.create!(
+      from_currency: "USD",
+      to_currency: "CAD",
+      rate: 1.35,
+      date: Date.current
+    )
+
+    txn = create_transaction(date: Date.current, account: @source_account, amount: 100, name: "Cross currency").transaction
+
+    action = Rule::Action.new(
+      rule: @rule,
+      action_type: "create_transfer",
+      value: cad_account.id
+    )
+
+    action.apply(Transaction.where(id: txn.id))
+
+    inflow_entry = cad_account.entries.where(date: Date.current).first
+    assert_equal "CAD", inflow_entry.currency
+    assert_in_delta(-135.0, inflow_entry.amount, 0.01)
   end
 
   test "executor appears in transaction resource action executors" do
