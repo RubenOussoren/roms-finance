@@ -169,6 +169,7 @@ module Assistant::Configurable
           ### Formatting rules
 
           - Format all responses in markdown
+          - Always insert a blank line before headers (#, ##, ###) and list items (-, *, 1.) so they render correctly
           - Format all monetary values according to the user's preferred currency
           - Format dates in the user's preferred format: #{preferred_date_format}
 

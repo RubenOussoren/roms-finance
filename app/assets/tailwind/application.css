@@ -122,6 +122,22 @@
 .prose--ai-chat {
   @apply break-words;
 
+  h1 {
+    @apply text-lg font-semibold text-primary mt-4 mb-2;
+  }
+
+  h2 {
+    @apply text-base font-semibold text-primary mt-4 mb-2;
+  }
+
+  h3 {
+    @apply text-sm font-semibold text-primary mt-3 mb-1;
+  }
+
+  h4 {
+    @apply text-sm font-medium text-primary mt-3 mb-1;
+  }
+
   p, li {
     @apply text-sm text-primary;
   }
