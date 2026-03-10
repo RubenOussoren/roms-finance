@@ -1,6 +1,80 @@
 module Assistant::Configurable
   extend ActiveSupport::Concern
 
+  CORE_FUNCTIONS = [
+    Assistant::Function::GetFinancialSummary,
+    Assistant::Function::GetAccounts,
+    Assistant::Function::GetTransactions,
+    Assistant::Function::GetBalanceSheet,
+    Assistant::Function::SaveMemory
+  ].freeze
+
+  EXTENDED_GROUPS = {
+    investments: {
+      pattern: /invest|hold|stock|portfolio|etf|securit/i,
+      functions: ->(flags) {
+        fns = []
+        fns << Assistant::Function::GetHoldings if flags[:has_investments]
+        fns << Assistant::Function::GetProjections
+        fns
+      }
+    },
+    debt: {
+      pattern: /debt|loan|mortgage|heloc|payoff|smith/i,
+      functions: ->(flags) {
+        fns = []
+        fns << Assistant::Function::GetDebtOptimization if flags[:debt_strategies]
+        fns << Assistant::Function::GetLoanPayoff if flags[:has_loans]
+        fns
+      }
+    },
+    budget: {
+      pattern: /budget|spend|expense|income/i,
+      functions: ->(flags) {
+        fns = [ Assistant::Function::GetIncomeStatement ]
+        fns << Assistant::Function::GetBudgets if flags[:budgets]
+        fns << Assistant::Function::GetCategories
+        fns
+      }
+    },
+    reports: {
+      pattern: /report|generate|download|export|csv|tax/i,
+      functions: ->(flags) {
+        fns = [
+          Assistant::Function::GenerateNetWorthReport,
+          Assistant::Function::GenerateSpendingReport,
+          Assistant::Function::GenerateTaxReport
+        ]
+        fns << Assistant::Function::GenerateInvestmentReport if flags[:has_investments]
+        fns
+      }
+    },
+    metadata: {
+      pattern: /tag|merchant|rule|category|automat/i,
+      functions: ->(flags) {
+        fns = [
+          Assistant::Function::GetCategories,
+          Assistant::Function::GetTags,
+          Assistant::Function::GetMerchants
+        ]
+        fns << Assistant::Function::GetRules if flags[:rules]
+        fns
+      }
+    },
+    connections: {
+      pattern: /connect|plaid|snaptrade|bank|sync|link/i,
+      functions: ->(flags) {
+        flags[:connections] ? [ Assistant::Function::GetConnectivityStatus ] : []
+      }
+    },
+    goals: {
+      pattern: /goal|milestone|target|progress/i,
+      functions: ->(flags) {
+        flags[:milestones] ? [ Assistant::Function::GetMilestones ] : []
+      }
+    }
+  }.freeze
+
   class_methods do
     def config_for(chat)
       preferred_currency = Money::Currency.new(chat.user.family.currency)
@@ -11,79 +85,50 @@ module Assistant::Configurable
 
       {
         instructions: instructions,
-        functions: available_functions(chat.user.family)
+        family: chat.user.family
       }
     end
 
     private
-      def available_functions(family)
-        functions = [
-          Assistant::Function::GetFinancialSummary,
-          Assistant::Function::GetAccounts,
-          Assistant::Function::GetTransactions,
-          Assistant::Function::GetBalanceSheet,
-          Assistant::Function::GetIncomeStatement
-        ]
-
-        # Investment tools — only if user has investment accounts
-        if family.accounts.where(accountable_type: "Investment").exists?
-          functions << Assistant::Function::GetHoldings
-        end
-
-        # Projections — always available
-        functions << Assistant::Function::GetProjections
-
-        # Milestones — only if any milestones exist
-        if Milestone.joins(:account).where(accounts: { family_id: family.id }).exists?
-          functions << Assistant::Function::GetMilestones
-        end
-
-        # Budget — only if budgets have been set up
-        if family.budgets.exists?
-          functions << Assistant::Function::GetBudgets
-        end
-
-        # Debt optimization — only if strategies exist
-        if family.debt_optimization_strategies.exists?
-          functions << Assistant::Function::GetDebtOptimization
-        end
-
-        # Loan payoff — only if loan accounts exist
-        if family.accounts.where(accountable_type: "Loan").exists?
-          functions << Assistant::Function::GetLoanPayoff
-        end
-
-        # Always available utility tools
-        functions.push(
-          Assistant::Function::GetCategories,
-          Assistant::Function::GetTags,
-          Assistant::Function::GetMerchants,
-          Assistant::Function::SaveMemory
+      def available_functions(family, message_content = "")
+        account_types = family.accounts.distinct.pluck(:accountable_type).to_set
+        feature_flags = batch_feature_checks(family).merge(
+          has_investments: account_types.include?("Investment"),
+          has_loans: account_types.include?("Loan")
         )
 
-        # Rules — only if rules exist
-        if family.rules.exists?
-          functions << Assistant::Function::GetRules
+        functions = CORE_FUNCTIONS.dup
+
+        EXTENDED_GROUPS.each do |_name, group|
+          if message_content.match?(group[:pattern])
+            functions.concat(group[:functions].call(feature_flags))
+          end
         end
 
-        # Connectivity status — only if connected accounts exist
-        if PlaidItem.where(family: family).exists? || SnapTradeConnection.where(family: family).exists?
-          functions << Assistant::Function::GetConnectivityStatus
-        end
+        functions.uniq
+      end
 
-        # Report generation — always available
-        functions.push(
-          Assistant::Function::GenerateNetWorthReport,
-          Assistant::Function::GenerateSpendingReport,
-          Assistant::Function::GenerateTaxReport
-        )
+      # Batches 5 existence checks into a single query using SELECT EXISTS subqueries
+      def batch_feature_checks(family)
+        sql = ActiveRecord::Base.sanitize_sql_array([ <<~SQL, { fid: family.id } ])
+          SELECT
+            EXISTS(SELECT 1 FROM milestones JOIN accounts ON accounts.id = milestones.account_id WHERE accounts.family_id = :fid) AS has_milestones,
+            EXISTS(SELECT 1 FROM budgets WHERE budgets.family_id = :fid) AS has_budgets,
+            EXISTS(SELECT 1 FROM debt_optimization_strategies WHERE debt_optimization_strategies.family_id = :fid) AS has_debt_strategies,
+            EXISTS(SELECT 1 FROM rules WHERE rules.family_id = :fid) AS has_rules,
+            (EXISTS(SELECT 1 FROM plaid_items WHERE plaid_items.family_id = :fid) OR EXISTS(SELECT 1 FROM snaptrade_connections WHERE snaptrade_connections.family_id = :fid)) AS has_connections
+        SQL
 
-        # Investment report — only if investment accounts exist
-        if family.accounts.where(accountable_type: "Investment").exists?
-          functions << Assistant::Function::GenerateInvestmentReport
-        end
+        result = ActiveRecord::Base.connection.select_one(sql, "Feature Checks") || {}
+        bool = ActiveModel::Type::Boolean.new
 
-        functions
+        {
+          milestones: bool.cast(result["has_milestones"]),
+          budgets: bool.cast(result["has_budgets"]),
+          debt_strategies: bool.cast(result["has_debt_strategies"]),
+          rules: bool.cast(result["has_rules"]),
+          connections: bool.cast(result["has_connections"])
+        }
       end
 
       def default_instructions(preferred_currency, preferred_date_format)
@@ -101,16 +146,13 @@ module Assistant::Configurable
           You have access to tools that let you query the user's financial data in real-time. Use them proactively:
           - **get_financial_summary** — quick overview of net worth, assets, liabilities
           - **get_accounts** / **get_transactions** — account details and transaction history
-          - **get_balance_sheet** / **get_income_statement** — financial statements with trends
-          - **get_holdings** — investment portfolio with performance data
-          - **get_projections** — future value projections with confidence bands
-          - **get_milestones** — financial goals and progress
-          - **get_budgets** — budget vs actual spending by category
-          - **get_debt_optimization** — Smith Manoeuvre and debt strategy analysis
-          - **get_loan_payoff** — loan amortization and extra payment scenarios
-          - **get_categories** / **get_tags** / **get_merchants** — spending breakdowns
-          - **get_rules** — transaction automation rules
-          - **get_connectivity_status** — bank/brokerage connection health
+          - **get_balance_sheet** — financial overview with trends
+
+          You also have access to specialized tools for: investments & holdings, projections, debt strategies,
+          budgets & income statements, milestones, reports (net worth, spending, tax, investment), categories,
+          tags, merchants, rules, and bank connections. These tools are loaded automatically when your
+          conversation is about those topics. If you need data from a specialized area, ask the user to
+          be specific about what they need.
 
           ## Your rules
 
@@ -159,10 +201,6 @@ module Assistant::Configurable
           - When a user asks about investments, use get_holdings. For projections, use get_projections. For budgets, use get_budgets.
           - Start with get_financial_summary if the user asks a broad question about their finances.
           - **save_memory** — save user preferences, goals, or facts for future conversations
-          - **generate_net_worth_report** — downloadable CSV of net worth over time
-          - **generate_spending_report** — downloadable CSV of transactions with categories
-          - **generate_investment_report** — downloadable CSV of holdings and trades
-          - **generate_tax_report** — downloadable CSV for tax preparation (income, expenses, deductible interest, capital gains)
 
           When a report function returns a download_path, present it as a markdown link like: [Download Report](download_path)
         PROMPT

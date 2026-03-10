@@ -3,7 +3,7 @@
 <nav class="flex items-center justify-between">
   <% path = chat.new_record? ? chats_path : chats_path(previous_chat_id: chat.id) %>
 
-  <div class="flex items-center gap-2 grow">
+  <div class="flex items-center gap-2 grow min-w-0">
     <%= render DS::Link.new(
       id: "chat-nav-back",
       variant: "icon",
@@ -13,7 +13,7 @@
       text: "All chats"
     ) %>
 
-    <div class="grow">
+    <div class="grow min-w-0">
       <%= render "chats/chat_title", chat: chat, ctx: "chat" %>
     </div>
   </div>

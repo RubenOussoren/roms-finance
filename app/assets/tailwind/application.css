@@ -126,6 +126,38 @@
     @apply text-sm text-primary;
   }
 
+  ul, ol {
+    @apply my-2 pl-5;
+  }
+
+  ul {
+    @apply list-disc;
+  }
+
+  ol {
+    @apply list-decimal;
+  }
+
+  li {
+    @apply my-1;
+  }
+
+  li > ul, li > ol {
+    @apply my-1;
+  }
+
+  code {
+    @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-xs;
+  }
+
+  a {
+    @apply text-link underline;
+  }
+
+  strong {
+    @apply font-semibold text-primary;
+  }
+
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
 
@@ -139,7 +171,15 @@
 
   ::-webkit-scrollbar-thumb {
     background-color: rgba(156, 163, 175, 0.5);
-    border-radius: 3px; 
+    border-radius: 3px;
+  }
+}
+
+@variant theme-dark {
+  .prose--ai-chat {
+    code {
+      @apply bg-gray-800 text-gray-200;
+    }
   }
 }
 
