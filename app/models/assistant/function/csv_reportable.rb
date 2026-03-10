@@ -27,8 +27,10 @@ module Assistant::Function::CsvReportable
     end
 
     def report_result(export:, summary:)
+      path = "/family_exports/#{export.id}/download"
       {
-        download_path: "/family_exports/#{export.id}/download",
+        download_path: path,
+        download_link: "[Download Report](#{path})",
         filename: export.filename,
         summary: summary
       }

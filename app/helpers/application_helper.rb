@@ -83,14 +83,32 @@ module ApplicationHelper
     cookies[:admin] == "true"
   end
 
+  # Custom Redcarpet renderer that keeps internal links in the same tab
+  # and blocks dangerous URI schemes (javascript:, data:, vbscript:)
+  class SmartLinkRenderer < Redcarpet::Render::HTML
+    def link(link, title, content)
+      safe_href = CGI.escapeHTML(link.to_s)
+      return content unless safe_href.match?(%r{\Ahttps?://|\A/})
+
+      if link.start_with?("/")
+        %(<a href="#{safe_href}"#{title_attr(title)}>#{content}</a>)
+      else
+        %(<a href="#{safe_href}" target="_blank" rel="noopener noreferrer"#{title_attr(title)}>#{content}</a>)
+      end
+    end
+
+    private
+
+      def title_attr(title)
+        title ? %( title="#{CGI.escapeHTML(title)}") : ""
+      end
+  end
+
   # Renders Markdown text using Redcarpet
   def markdown(text)
     return "" if text.blank?
 
-    renderer = Redcarpet::Render::HTML.new(
-      hard_wrap: true,
-      link_attributes: { target: "_blank", rel: "noopener noreferrer" }
-    )
+    renderer = SmartLinkRenderer.new(hard_wrap: true)
 
     markdown = Redcarpet::Markdown.new(
       renderer,
@@ -118,6 +136,11 @@ module ApplicationHelper
       # Split headers glued to preceding text onto their own lines
       # e.g. "some text### Header" → "some text\n### Header"
       text = text.gsub(/([^\s#])(\#{1,4}\s)/, "\\1\n\\2")
+
+      # Split concatenated pseudo-list items where a word char is followed by "- " and a letter/bracket
+      # e.g. "Summary- Period:" → "Summary\n- Period:"
+      # Avoids splitting negative numbers (-$500), date ranges, or URLs
+      text = text.gsub(/(\w)(-\s+[A-Za-z\[*#])/, "\\1\n\\2")
 
       # Ensure headers and the first list item in a group have a blank line before them
       lines = text.split("\n", -1)

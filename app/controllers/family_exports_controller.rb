@@ -34,6 +34,8 @@ class FamilyExportsController < ApplicationController
     else
       redirect_to settings_profile_path, alert: "Export not ready for download"
     end
+  rescue ActiveStorage::FileNotFoundError, Errno::ENOENT
+    redirect_to settings_profile_path, alert: "This export file is no longer available. Please generate a new report."
   end
 
   private
