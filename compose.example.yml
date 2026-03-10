@@ -88,6 +88,8 @@ services:
     image: ghcr.io/rubenoussoren/roms-finance:latest
     command: bundle exec sidekiq
     restart: unless-stopped
+    volumes:
+      - app-storage:/rails/storage
     depends_on:
       db:
         condition: service_healthy
