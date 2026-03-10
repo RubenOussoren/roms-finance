@@ -8,7 +8,7 @@
       method: :post,
       class: "p-1 rounded #{current_rating == 'thumbs_up' ? 'text-primary' : 'text-secondary'} hover:text-primary",
       aria: { label: "Thumbs up" },
-      data: { turbo_stream: true } do %>
+      form: { data: { turbo_stream: true } } do %>
     <%= icon("thumbs-up", size: "sm") %>
   <% end %>
 
@@ -17,7 +17,7 @@
       method: :post,
       class: "p-1 rounded #{current_rating == 'thumbs_down' ? 'text-primary' : 'text-secondary'} hover:text-primary",
       aria: { label: "Thumbs down" },
-      data: { turbo_stream: true } do %>
+      form: { data: { turbo_stream: true } } do %>
     <%= icon("thumbs-down", size: "sm") %>
   <% end %>
 </div>

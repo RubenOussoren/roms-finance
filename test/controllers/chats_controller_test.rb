@@ -33,6 +33,19 @@ class ChatsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to chats_url
   end
 
+  test "retries last message" do
+    chat = chats(:one)
+
+    # Add a user message as the last conversation message so retry enqueues a job
+    chat.messages.create!(type: "UserMessage", content: "Retry this", ai_model: "gpt-5.4")
+
+    assert_enqueued_with(job: AssistantResponseJob) do
+      post retry_chat_url(chat)
+    end
+
+    assert_redirected_to chat_path(chat)
+  end
+
   test "should not allow access to other user's chats" do
     other_user = users(:family_member)
     other_chat = Chat.create!(user: other_user, title: "Other User's Chat")
