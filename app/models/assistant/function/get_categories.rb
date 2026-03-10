@@ -62,13 +62,12 @@ class Assistant::Function::GetCategories < Assistant::Function
 
   private
     def category_spending(category, account_ids, period_range)
-      Entry.joins(:transaction)
-           .where(account_id: account_ids)
-           .where(date: period_range)
-           .where(transactions: { category_id: category.id })
-           .where("entries.amount > 0")
-           .sum(:amount)
-           .then { |sum| Money.new(sum, family.currency).format }
+      Transaction.joins(:entry)
+                 .where(entries: { account_id: account_ids, date: period_range })
+                 .where(category_id: category.id)
+                 .where("entries.amount > 0")
+                 .sum("entries.amount")
+                 .then { |sum| Money.new(sum, family.currency).format }
     end
 
     def resolve_period(period_name)
