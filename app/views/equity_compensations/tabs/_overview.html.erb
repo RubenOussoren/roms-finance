@@ -1,0 +1,38 @@
+<%# locals: (account:) %>
+
+<% ec = account.accountable %>
+<% ec.equity_grants.includes(:security).load %>
+
+<div class="grid grid-cols-3 gap-2">
+  <%= summary_card title: "Vested Value" do %>
+    <%= format_money Money.new(ec.total_vested_value, account.currency) %>
+  <% end %>
+
+  <%= summary_card title: "Unvested Value" do %>
+    <%= format_money Money.new(ec.total_unvested_value, account.currency) %>
+  <% end %>
+
+  <%= summary_card title: "Next Vesting" do %>
+    <% if (next_date = ec.next_vesting_event) %>
+      <%= next_date.strftime("%b %d, %Y") %>
+    <% else %>
+      Fully vested
+    <% end %>
+  <% end %>
+
+  <%= summary_card title: "Vested Units" do %>
+    <%= number_with_delimiter(ec.total_vested_units.to_f.round(2)) %>
+  <% end %>
+
+  <%= summary_card title: "Unvested Units" do %>
+    <%= number_with_delimiter(ec.total_unvested_units.to_f.round(2)) %>
+  <% end %>
+
+  <%= summary_card title: "Total Grants" do %>
+    <%= ec.equity_grants.size %>
+  <% end %>
+</div>
+
+<p class="text-xs text-secondary mt-4">
+  Tax estimates are approximate. Consult a tax advisor for ISO AMT implications and jurisdiction-specific rates.
+</p>

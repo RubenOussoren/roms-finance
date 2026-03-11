@@ -1,0 +1,6 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Add Equity Compensation") %>
+  <% dialog.with_body do %>
+    <%= render "equity_compensations/form", account: @account, url: equity_compensations_path %>
+  <% end %>
+<% end %>

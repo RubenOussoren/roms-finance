@@ -4,6 +4,7 @@ class Security < ApplicationRecord
   before_validation :upcase_symbols
 
   has_many :trades, dependent: :nullify, class_name: "Trade"
+  has_many :equity_grants, dependent: :restrict_with_error
   has_many :prices, dependent: :destroy
 
   validates :ticker, presence: true
@@ -15,6 +16,10 @@ class Security < ApplicationRecord
     @current_price ||= find_or_fetch_price
     return nil if @current_price.nil?
     Money.new(@current_price.price, @current_price.currency)
+  end
+
+  def to_combobox_display
+    ticker
   end
 
   def to_combobox_option

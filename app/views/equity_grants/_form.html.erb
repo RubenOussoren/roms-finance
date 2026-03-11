@@ -1,0 +1,63 @@
+<%# locals: (equity_grant:, account:) %>
+
+<% url = equity_grant.persisted? ? account_equity_grant_path(account, equity_grant) : account_equity_grants_path(account) %>
+
+<%= styled_form_with model: equity_grant, url: url, data: { controller: "equity-grant-form", turbo: false }, class: "flex flex-col gap-4 justify-between grow text-primary" do |form| %>
+  <div class="grow space-y-2">
+    <% if equity_grant.errors.any? %>
+      <%= render "shared/form_errors", model: equity_grant %>
+    <% end %>
+
+    <%= form.select :grant_type,
+                   options_for_select([["RSU", "rsu"], ["Stock Option", "stock_option"]], equity_grant.grant_type),
+                   { label: "Grant type", include_blank: "Select type..." },
+                   { required: true, data: { action: "equity-grant-form#toggleOptionFields", equity_grant_form_target: "grantType" } } %>
+
+    <%= form.text_field :name, label: "Name", placeholder: "e.g. 2024 Annual Refresh" %>
+
+    <% if Security.provider.present? %>
+      <div class="form-field combobox">
+        <%= form.combobox :security_id,
+                        securities_path(country_code: Current.family.country),
+                        label: "Security",
+                        placeholder: "Search for a stock...",
+                        required: true,
+                        value: equity_grant.security_id %>
+      </div>
+    <% else %>
+      <%= form.collection_select :security_id, Security.all.order(:ticker), :id, :ticker, { label: "Security", include_blank: "Select..." }, { required: true } %>
+    <% end %>
+
+    <%= form.date_field :grant_date, label: "Grant date", value: equity_grant.grant_date || Date.current, required: true %>
+
+    <%= form.number_field :total_units, label: "Total units", placeholder: "1000", min: 0.0001, step: "any", required: true %>
+
+    <%= form.number_field :cliff_months, label: "Cliff (months)", value: equity_grant.cliff_months || 12, min: 0, step: 1 %>
+
+    <%= form.number_field :vesting_period_months, label: "Vesting period (months)", placeholder: "48", min: 1, step: 1, required: true %>
+
+    <%= form.select :vesting_frequency,
+                   options_for_select([["Monthly", "monthly"], ["Quarterly", "quarterly"], ["Annually", "annually"]], equity_grant.vesting_frequency || "monthly"),
+                   { label: "Vesting frequency" } %>
+
+    <div data-equity-grant-form-target="optionFields" class="<%= 'hidden' unless equity_grant.stock_option? %> space-y-2">
+      <%= form.number_field :strike_price, label: "Strike price", placeholder: "150.00", min: 0, step: "0.01" %>
+
+      <%= form.date_field :expiration_date, label: "Expiration date" %>
+
+      <%= form.select :option_type,
+                     options_for_select([["ISO (Incentive Stock Option)", "iso"], ["NSO (Non-Qualified Stock Option)", "nso"]], equity_grant.option_type),
+                     { label: "Option type", include_blank: "Select..." } %>
+    </div>
+
+    <%= form.date_field :termination_date, label: "Termination date (if you left this company)" %>
+
+    <%= form.number_field :estimated_tax_rate, label: "Tax rate override (%)", placeholder: "Leave blank to use default", min: 0, max: 100, step: "0.01" %>
+
+    <p class="text-xs text-secondary">
+      Tax estimates are approximate. Consult a tax advisor for accurate calculations.
+    </p>
+  </div>
+
+  <%= form.submit equity_grant.persisted? ? "Update grant" : "Add grant" %>
+<% end %>

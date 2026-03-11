@@ -1,0 +1,10 @@
+<%# locals: (account:, url:) %>
+
+<%= render "accounts/form", account: account, url: url do |form| %>
+  <%= form.select :subtype,
+                 options_for_select(
+                   EquityCompensation::SUBTYPES.map { |k, v| [v[:long], k] },
+                   account.subtype
+                 ),
+                 { label: "Type", include_blank: "Select type..." } %>
+<% end %>

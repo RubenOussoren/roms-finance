@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_09_181325) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_11_100002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -383,6 +383,33 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_181325) do
     t.index ["date"], name: "index_entries_on_date"
     t.index ["entryable_type"], name: "index_entries_on_entryable_type"
     t.index ["import_id"], name: "index_entries_on_import_id"
+  end
+
+  create_table "equity_compensations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.jsonb "locked_attributes", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "equity_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "equity_compensation_id", null: false
+    t.uuid "security_id", null: false
+    t.string "grant_type", null: false
+    t.string "name"
+    t.date "grant_date", null: false
+    t.decimal "total_units", precision: 19, scale: 4, null: false
+    t.integer "cliff_months", default: 12
+    t.integer "vesting_period_months", null: false
+    t.string "vesting_frequency", default: "monthly"
+    t.decimal "strike_price", precision: 19, scale: 4
+    t.date "expiration_date"
+    t.string "option_type"
+    t.decimal "estimated_tax_rate", precision: 5, scale: 2
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.date "termination_date"
+    t.index ["equity_compensation_id"], name: "index_equity_grants_on_equity_compensation_id"
+    t.index ["security_id"], name: "index_equity_grants_on_security_id"
   end
 
   create_table "exchange_rates", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1152,6 +1179,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_09_181325) do
   add_foreign_key "debt_optimization_strategies", "jurisdictions"
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
+  add_foreign_key "equity_grants", "equity_compensations", on_delete: :cascade
+  add_foreign_key "equity_grants", "securities", on_delete: :cascade
   add_foreign_key "family_exports", "families"
   add_foreign_key "family_exports", "users", column: "requested_by_user_id"
   add_foreign_key "holdings", "accounts"

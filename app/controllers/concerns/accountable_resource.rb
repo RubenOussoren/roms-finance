@@ -67,10 +67,11 @@ module AccountableResource
   private
     def set_link_options
       is_brokerage = %w[Investment Crypto].include?(accountable_type.name)
+      is_manual_only = %w[EquityCompensation].include?(accountable_type.name)
 
-      @show_us_link = !is_brokerage && Current.family.can_connect_plaid_us?
-      @show_eu_link = !is_brokerage && Current.family.can_connect_plaid_eu?
-      @show_snaptrade_link = is_brokerage && Current.family.can_connect_snaptrade?
+      @show_us_link = !is_brokerage && !is_manual_only && Current.family.can_connect_plaid_us?
+      @show_eu_link = !is_brokerage && !is_manual_only && Current.family.can_connect_plaid_eu?
+      @show_snaptrade_link = is_brokerage && !is_manual_only && Current.family.can_connect_snaptrade?
     end
 
     def accountable_type

@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.frankfurter.dev/v1/2026-01-15..2026-02-14?base=USD&symbols=GBP
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.2
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"amount":1.0,"base":"USD","start_date":"2026-01-15","end_date":"2026-02-13","rates":{"2026-01-15":{"GBP":0.8121},"2026-01-16":{"GBP":0.8098},"2026-01-19":{"GBP":0.8105},"2026-01-20":{"GBP":0.8052},"2026-01-21":{"GBP":0.8034},"2026-01-22":{"GBP":0.8045},"2026-01-23":{"GBP":0.8060},"2026-01-26":{"GBP":0.8072},"2026-01-27":{"GBP":0.8050},"2026-01-28":{"GBP":0.8038},"2026-01-29":{"GBP":0.8025},"2026-01-30":{"GBP":0.8010},"2026-02-02":{"GBP":0.8015},"2026-02-03":{"GBP":0.8002},"2026-02-04":{"GBP":0.7998},"2026-02-05":{"GBP":0.7985},"2026-02-06":{"GBP":0.7990},"2026-02-09":{"GBP":0.7975},"2026-02-10":{"GBP":0.7982},"2026-02-11":{"GBP":0.7970},"2026-02-12":{"GBP":0.7965},"2026-02-13":{"GBP":0.7958}}}'
+  recorded_at: Tue, 11 Mar 2026 12:00:00 GMT
+recorded_with: VCR 6.3.1

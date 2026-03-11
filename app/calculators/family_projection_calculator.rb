@@ -183,7 +183,7 @@ class FamilyProjectionCalculator
 
     def asset_class_for(account)
       case account.accountable_type
-      when "Investment", "Crypto" then :equity
+      when "Investment", "Crypto", "EquityCompensation" then :equity
       when "Depository" then :fixed_income
       else :equity
       end
@@ -207,6 +207,8 @@ class FamilyProjectionCalculator
       when "Depository"
         savings_rate = account.projection_assumption&.effective_return || DEFAULT_SAVINGS_RATE
         account.balance * (1 + savings_rate / 12) ** month
+      when "EquityCompensation"
+        project_equity_compensation_balance(account, month)
       else
         # Other accounts stay relatively flat
         account.balance
@@ -253,6 +255,21 @@ class FamilyProjectionCalculator
         extra_payment = assumption&.extra_monthly_payment || 0
         calculator = LoanPayoffCalculator.new(account, extra_payment: extra_payment)
         calculator.amortization_schedule.index_by { |e| e[:month] }
+      end
+    end
+
+    def project_equity_compensation_balance(account, month)
+      ec = equity_compensation_with_grants(account)
+      return account.balance if ec.nil?
+      ec.total_vested_value(as_of: Date.current + month.months)
+    end
+
+    def equity_compensation_with_grants(account)
+      @ec_cache ||= {}
+      @ec_cache[account.id] ||= begin
+        ec = account.accountable
+        ec&.equity_grants&.includes(:security)&.load
+        ec
       end
     end
 

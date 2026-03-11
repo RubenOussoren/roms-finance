@@ -102,6 +102,17 @@ crypto:
   accountable: one
   status: active
 
+equity_compensation:
+  family: dylan_family
+  created_by_user: family_admin
+  name: Employer Equity
+  balance: 5000
+  currency: USD
+  subtype: rsu
+  accountable_type: EquityCompensation
+  accountable: one
+  status: active
+
 smith_primary_mortgage:
   family: dylan_family
   created_by_user: family_admin

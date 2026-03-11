@@ -21,6 +21,10 @@ class Settings::HostingsController < ApplicationController
       Setting.alpha_vantage_api_key = hosting_params[:alpha_vantage_api_key]
     end
 
+    if hosting_params.key?(:financial_data_api_key)
+      Setting.financial_data_api_key = hosting_params[:financial_data_api_key]
+    end
+
     if hosting_params.key?(:openai_access_token)
       Setting.openai_access_token = hosting_params[:openai_access_token]
     end
@@ -58,6 +62,7 @@ class Settings::HostingsController < ApplicationController
         :require_invite_for_signup,
         :require_email_confirmation,
         :alpha_vantage_api_key,
+        :financial_data_api_key,
         :openai_access_token,
         :anthropic_api_key,
         :gemini_api_key,

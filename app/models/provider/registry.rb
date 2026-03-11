@@ -45,7 +45,18 @@ class Provider::Registry
       end
 
       def market_data_provider
-        alpha_vantage
+        case ENV.fetch("MARKET_DATA_PROVIDER", "financial_data")
+        when "alpha_vantage" then alpha_vantage
+        else financial_data
+        end
+      end
+
+      def financial_data
+        api_key = ENV.fetch("FINANCIAL_DATA_API_KEY", Setting.financial_data_api_key)
+
+        return nil unless api_key.present?
+
+        Provider::FinancialData.new(api_key)
       end
 
       def plaid_us
@@ -73,6 +84,10 @@ class Provider::Registry
           client_id: config[:client_id],
           consumer_key: config[:consumer_key]
         )
+      end
+
+      def frankfurter
+        Provider::Frankfurter.new
       end
 
       def github
@@ -117,7 +132,7 @@ class Provider::Registry
     def available_providers
       case concept
       when :exchange_rates
-        %i[market_data_provider]
+        %i[frankfurter]
       when :securities
         %i[market_data_provider]
       when :llm

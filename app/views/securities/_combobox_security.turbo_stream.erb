@@ -1,5 +1,9 @@
 <div class="flex items-center">
-  <%= image_tag(combobox_security.logo_url, class: "rounded-full h-8 w-8 inline-block mr-2" ) %>
+  <% if combobox_security.logo_url.present? %>
+    <%= image_tag(combobox_security.logo_url, class: "rounded-full h-8 w-8 inline-block mr-2" ) %>
+  <% else %>
+    <div class="rounded-full h-8 w-8 inline-block mr-2 bg-container-inset flex items-center justify-center text-xs font-medium text-secondary"><%= combobox_security.symbol&.first %></div>
+  <% end %>
   <div class="flex items-center justify-between w-full">
     <div class="flex flex-col">
       <span class="text-sm font-medium">

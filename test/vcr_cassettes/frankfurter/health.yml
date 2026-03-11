@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.frankfurter.dev/v1/latest?base=USD&symbols=CAD
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.2
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"amount":1.0,"base":"USD","date":"2026-03-06","rates":{"CAD":1.3651}}'
+  recorded_at: Tue, 11 Mar 2026 12:00:00 GMT
+recorded_with: VCR 6.3.1

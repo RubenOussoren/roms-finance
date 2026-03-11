@@ -1,0 +1,99 @@
+<%# locals: (account:) %>
+
+<div class="bg-container space-y-4 p-5 rounded-xl shadow-border-xs">
+  <div class="flex items-center justify-between">
+    <%= tag.h2 "Grants", class: "font-medium text-lg" %>
+    <%= link_to new_account_equity_grant_path(account),
+                data: { turbo_frame: :modal },
+                class: "flex gap-1 font-medium items-center bg-surface-inset text-primary p-2 rounded-lg" do %>
+      <span class="text-primary">
+        <%= icon("plus", color: "current") %>
+      </span>
+      <%= tag.span "New grant", class: "text-sm" %>
+    <% end %>
+  </div>
+
+  <% grants = account.accountable.equity_grants.includes(:security) %>
+
+  <% if grants.any? %>
+    <div class="bg-container-inset rounded-xl p-1">
+      <div class="grid grid-cols-12 items-center uppercase text-xs font-medium text-secondary px-4 py-2">
+        <%= tag.p "Name", class: "col-span-3" %>
+        <%= tag.p "Type", class: "col-span-1" %>
+        <%= tag.p "Progress", class: "col-span-3" %>
+        <%= tag.p "Vested", class: "col-span-2 justify-self-end" %>
+        <%= tag.p "Value", class: "col-span-2 justify-self-end" %>
+        <%= tag.p "", class: "col-span-1" %>
+      </div>
+
+      <div class="bg-container rounded-lg shadow-border-xs divide-y divide-primary">
+        <% grants.each do |grant| %>
+          <div class="grid grid-cols-12 items-center px-4 py-3 text-sm">
+            <div class="col-span-3">
+              <p class="font-medium text-primary"><%= grant.name || grant.security.ticker %></p>
+              <p class="text-xs text-secondary"><%= grant.security.ticker %> &middot; <%= grant.grant_date.strftime("%b %Y") %></p>
+            </div>
+
+            <div class="col-span-1">
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                <%= grant.rsu? ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700' %>">
+                <%= grant.rsu? ? "RSU" : "Option" %>
+              </span>
+              <% if grant.terminated? %>
+                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 mt-0.5">
+                  Terminated
+                </span>
+              <% end %>
+            </div>
+
+            <div class="col-span-3 px-2">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-surface-inset rounded-full h-2">
+                  <div class="bg-violet-500 h-2 rounded-full" style="width: <%= grant.vesting_progress %>%"></div>
+                </div>
+                <span class="text-xs text-secondary whitespace-nowrap"><%= grant.vesting_progress %>%</span>
+              </div>
+            </div>
+
+            <div class="col-span-2 justify-self-end text-right">
+              <p><%= number_with_delimiter(grant.vested_units.to_f.round(2)) %> / <%= number_with_delimiter(grant.total_units.to_f.round(2)) %></p>
+            </div>
+
+            <div class="col-span-2 justify-self-end text-right">
+              <p class="font-medium"><%= format_money Money.new(grant.vested_value, account.currency) %></p>
+              <% if grant.stock_option? && grant.intrinsic_value_per_unit %>
+                <p class="text-xs text-secondary">Strike: <%= format_money Money.new(grant.strike_price, account.currency) %></p>
+              <% end %>
+              <% if grant.terminated? && grant.stock_option? && grant.exercise_deadline %>
+                <p class="text-xs text-red-600">Exercise by: <%= grant.exercise_deadline.strftime("%b %d, %Y") %></p>
+              <% end %>
+            </div>
+
+            <div class="col-span-1 justify-self-end flex gap-1">
+              <%= link_to edit_account_equity_grant_path(account, grant),
+                          data: { turbo_frame: :modal },
+                          class: "p-1 rounded hover:bg-surface-hover" do %>
+                <%= icon("pencil-line", size: "sm", color: "current") %>
+              <% end %>
+              <%= button_to account_equity_grant_path(account, grant),
+                            method: :delete,
+                            data: { turbo_confirm: "Delete this grant?" },
+                            class: "p-1 rounded hover:bg-surface-hover text-secondary" do %>
+                <%= icon("trash-2", size: "sm", color: "current") %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="flex flex-col items-center justify-center py-12 text-secondary">
+      <%= icon("award", size: "lg") %>
+      <p class="mt-2 text-sm">No equity grants yet</p>
+      <%= link_to "Add your first grant",
+                  new_account_equity_grant_path(account),
+                  data: { turbo_frame: :modal },
+                  class: "mt-2 text-sm font-medium text-primary hover:underline" %>
+    </div>
+  <% end %>
+</div>

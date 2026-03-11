@@ -1,0 +1,6 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Edit #{@account.name}") %>
+  <% dialog.with_body do %>
+    <%= render "equity_compensations/form", account: @account, url: equity_compensation_path(@account) %>
+  <% end %>
+<% end %>

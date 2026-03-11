@@ -78,11 +78,15 @@
 
 ### Market Data
 
-ROMS Finance uses Alpha Vantage for stock prices and exchange rates. Set the API key in **Settings > Self-Hosting** after login, or via an environment variable.
+ROMS Finance uses [financialdata.net](https://financialdata.net) for stock and crypto prices, and [Frankfurter](https://frankfurter.dev) (ECB data) for exchange rates. Exchange rates work out of the box with no API key. Stock prices require a financialdata.net key — set it in **Settings > Self-Hosting** after login, or via an environment variable.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ALPHA_VANTAGE_API_KEY` | _(none)_ | [Alpha Vantage](https://www.alphavantage.co/) API key. Free tier: 25 calls/day, includes TSX. Get a key at [alphavantage.co](https://www.alphavantage.co/support/#api-key). Can also be set in Settings. |
+| `FINANCIAL_DATA_API_KEY` | _(none)_ | [financialdata.net](https://financialdata.net) API key for stock/crypto prices. Free tier: 300 calls/day. Get a key at [financialdata.net](https://financialdata.net). Can also be set in Settings. |
+| `MARKET_DATA_PROVIDER` | `financial_data` | Set to `alpha_vantage` to use Alpha Vantage instead. |
+| `ALPHA_VANTAGE_API_KEY` | _(none)_ | [Alpha Vantage](https://www.alphavantage.co/) API key (alternative provider). Free tier: 25 calls/day, includes TSX. |
+
+Exchange rates are provided by [Frankfurter](https://frankfurter.dev) (European Central Bank data). No API key or configuration is needed — rates for 30+ currencies are fetched automatically.
 
 ### Account Connectivity
 

@@ -3,6 +3,7 @@ class Setting < RailsSettings::Base
   cache_prefix { "v1" }
 
   field :alpha_vantage_api_key, type: :string, default: ENV["ALPHA_VANTAGE_API_KEY"]
+  field :financial_data_api_key, type: :string, default: ENV["FINANCIAL_DATA_API_KEY"]
   field :openai_access_token, type: :string, default: ENV["OPENAI_ACCESS_TOKEN"]
   field :anthropic_api_key, type: :string, default: ENV["ANTHROPIC_API_KEY"]
   field :gemini_api_key, type: :string, default: ENV["GEMINI_API_KEY"]

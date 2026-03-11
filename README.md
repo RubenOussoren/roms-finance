@@ -88,13 +88,15 @@ For reverse proxy setup, SMTP configuration, and provider API keys, see the [ful
 
 ## Optional Integrations
 
-All providers auto-disable when unconfigured. Set the relevant environment variables in your `compose.yml` to enable them. Alpha Vantage can also be configured in Settings > Self-Hosting.
+All providers auto-disable when unconfigured. Set the relevant environment variables in your `compose.yml` to enable them. Market data keys can also be configured in Settings > Self-Hosting.
 
 | Provider                                     | Region | Connects                                                         | Guide                                  |
 | -------------------------------------------- | ------ | ---------------------------------------------------------------- | -------------------------------------- |
 | [SnapTrade](https://snaptrade.com)           | Canada | Investment and crypto brokerages (Wealthsimple, Questrade, etc.) | [Docker guide](docs/hosting/docker.md) |
 | [Plaid](https://plaid.com)                   | US, EU | Bank accounts, credit cards, loans                               | [Docker guide](docs/hosting/docker.md) |
-| [Alpha Vantage](https://www.alphavantage.co) | Global | Stock prices, exchange rates (25 free calls/day)                 | [Docker guide](docs/hosting/docker.md) |
+| [financialdata.net](https://financialdata.net) | Global | Stock and crypto prices, symbol search (300 free calls/day)      | [Docker guide](docs/hosting/docker.md) |
+| [Frankfurter](https://frankfurter.dev)       | Global | Exchange rates via ECB data (free, no API key, 30+ currencies)   | Built-in, no setup needed              |
+| [Alpha Vantage](https://www.alphavantage.co) | Global | Stock prices (25 free calls/day, alternative)                    | [Docker guide](docs/hosting/docker.md) |
 | [OpenAI](https://platform.openai.com)        | Global | AI-powered financial assistant                                   | [Docker guide](docs/hosting/docker.md) |
 
 ## Development Setup
