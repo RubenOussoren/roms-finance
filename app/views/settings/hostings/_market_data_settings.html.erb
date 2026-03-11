@@ -1,37 +1,88 @@
 <div class="space-y-4">
   <div>
     <h2 class="font-medium mb-1">Market Data</h2>
-    <p class="text-secondary text-sm mb-4">financialdata.net provides security prices, company info, and symbol search. Exchange rates are provided automatically via Frankfurter (ECB data) — no API key needed.</p>
+    <p class="text-secondary text-sm mb-4">Security prices, company info, and symbol search. Exchange rates are provided automatically via Frankfurter (ECB data) — no API key needed.</p>
   </div>
 
   <div class="mt-4 space-y-4">
-    <% if ENV["FINANCIAL_DATA_API_KEY"].present? %>
-      <p class="text-sm text-secondary">You have successfully configured your financialdata.net API key through the FINANCIAL_DATA_API_KEY environment variable.</p>
-    <% end %>
+    <% selected_provider = ENV.fetch("MARKET_DATA_PROVIDER", Setting.market_data_provider) %>
+    <% provider_locked = ENV["MARKET_DATA_PROVIDER"].present? %>
 
     <%= styled_form_with model: Setting.new,
                          url: settings_hosting_path,
                          method: :patch,
                          data: {
-                           controller: "auto-submit-form",
-                           "auto-submit-form-trigger-event-value": "blur"
+                           controller: "auto-submit-form"
                          } do |form| %>
-      <%= form.text_field :financial_data_api_key,
-                          label: "financialdata.net API Key",
-                          type: "password",
-                          placeholder: "Enter your financialdata.net API key",
-                          value: ENV.fetch("FINANCIAL_DATA_API_KEY", Setting.financial_data_api_key),
-                          disabled: ENV["FINANCIAL_DATA_API_KEY"].present?,
-                          data: { "auto-submit-form-target": "auto" } %>
+      <%= form.select :market_data_provider,
+                      [
+                        ["financialdata.net (Recommended)", "financial_data"],
+                        ["Alpha Vantage", "alpha_vantage"]
+                      ],
+                      { selected: selected_provider },
+                      { label: "Market Data Provider",
+                        disabled: provider_locked,
+                        data: { "auto-submit-form-target": "auto" } } %>
     <% end %>
 
-    <p class="text-sm text-secondary">
-      financialdata.net free tier allows 300 API calls per day. Each security price or symbol lookup uses 1 call.
-      Get a free key at <a href="https://financialdata.net" target="_blank" class="text-primary underline">financialdata.net</a>.
-    </p>
+    <% if provider_locked %>
+      <p class="text-sm text-secondary">Provider is set via the MARKET_DATA_PROVIDER environment variable.</p>
+    <% end %>
 
-    <p class="text-sm text-secondary">
-      To use Alpha Vantage instead (25 calls/day), set <code class="text-xs">MARKET_DATA_PROVIDER=alpha_vantage</code> and <code class="text-xs">ALPHA_VANTAGE_API_KEY</code>.
-    </p>
+    <% if selected_provider == "financial_data" %>
+      <% api_key_locked = ENV["MARKET_DATA_FINANCIAL_DATA_API_KEY"].present? %>
+
+      <% if api_key_locked %>
+        <p class="text-sm text-secondary">API key is configured via the MARKET_DATA_FINANCIAL_DATA_API_KEY environment variable.</p>
+      <% end %>
+
+      <%= styled_form_with model: Setting.new,
+                           url: settings_hosting_path,
+                           method: :patch,
+                           data: {
+                             controller: "auto-submit-form",
+                             "auto-submit-form-trigger-event-value": "blur"
+                           } do |form| %>
+        <%= form.text_field :market_data_financial_data_api_key,
+                            label: "financialdata.net API Key",
+                            type: "password",
+                            placeholder: "Enter your financialdata.net API key",
+                            value: ENV.fetch("MARKET_DATA_FINANCIAL_DATA_API_KEY", Setting.market_data_financial_data_api_key),
+                            disabled: api_key_locked,
+                            data: { "auto-submit-form-target": "auto" } %>
+      <% end %>
+
+      <p class="text-sm text-secondary">
+        Free tier: 300 API calls per day. Each security price or symbol lookup uses 1 call.
+        Get a free key at <a href="https://financialdata.net" target="_blank" class="text-primary underline">financialdata.net</a>.
+      </p>
+    <% else %>
+      <% api_key_locked = ENV["MARKET_DATA_ALPHA_VANTAGE_API_KEY"].present? %>
+
+      <% if api_key_locked %>
+        <p class="text-sm text-secondary">API key is configured via the MARKET_DATA_ALPHA_VANTAGE_API_KEY environment variable.</p>
+      <% end %>
+
+      <%= styled_form_with model: Setting.new,
+                           url: settings_hosting_path,
+                           method: :patch,
+                           data: {
+                             controller: "auto-submit-form",
+                             "auto-submit-form-trigger-event-value": "blur"
+                           } do |form| %>
+        <%= form.text_field :market_data_alpha_vantage_api_key,
+                            label: "Alpha Vantage API Key",
+                            type: "password",
+                            placeholder: "Enter your Alpha Vantage API key",
+                            value: ENV.fetch("MARKET_DATA_ALPHA_VANTAGE_API_KEY", Setting.market_data_alpha_vantage_api_key),
+                            disabled: api_key_locked,
+                            data: { "auto-submit-form-target": "auto" } %>
+      <% end %>
+
+      <p class="text-sm text-secondary">
+        Free tier: 25 API calls per day. Includes TSX support for Canadian securities.
+        Get a free key at <a href="https://www.alphavantage.co/support/#api-key" target="_blank" class="text-primary underline">alphavantage.co</a>.
+      </p>
+    <% end %>
   </div>
 </div>

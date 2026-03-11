@@ -2,8 +2,9 @@
 class Setting < RailsSettings::Base
   cache_prefix { "v1" }
 
-  field :alpha_vantage_api_key, type: :string, default: ENV["ALPHA_VANTAGE_API_KEY"]
-  field :financial_data_api_key, type: :string, default: ENV["FINANCIAL_DATA_API_KEY"]
+  field :market_data_alpha_vantage_api_key, type: :string, default: ENV["MARKET_DATA_ALPHA_VANTAGE_API_KEY"]
+  field :market_data_financial_data_api_key, type: :string, default: ENV["MARKET_DATA_FINANCIAL_DATA_API_KEY"]
+  field :market_data_provider, type: :string, default: ENV.fetch("MARKET_DATA_PROVIDER", "financial_data")
   field :openai_access_token, type: :string, default: ENV["OPENAI_ACCESS_TOKEN"]
   field :anthropic_api_key, type: :string, default: ENV["ANTHROPIC_API_KEY"]
   field :gemini_api_key, type: :string, default: ENV["GEMINI_API_KEY"]

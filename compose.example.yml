@@ -46,10 +46,10 @@ x-rails-env: &rails_env
   SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-roms}
 # Market data — stock prices and exchange rates. Set key in Settings > Self-Hosting or here.
 # Default: financialdata.net (300 calls/day free). Get a key: https://financialdata.net
-# FINANCIAL_DATA_API_KEY: ${FINANCIAL_DATA_API_KEY}
+# MARKET_DATA_FINANCIAL_DATA_API_KEY: ${MARKET_DATA_FINANCIAL_DATA_API_KEY}
 # To use Alpha Vantage instead (25 calls/day), uncomment below:
 # MARKET_DATA_PROVIDER: alpha_vantage
-# ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
+# MARKET_DATA_ALPHA_VANTAGE_API_KEY: ${MARKET_DATA_ALPHA_VANTAGE_API_KEY}
 # AI Providers — powers AI assistant (chat, rules). Costs apply for cloud providers.
 # At least one provider is needed. Can also be set in Settings > Self-Hosting.
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN}

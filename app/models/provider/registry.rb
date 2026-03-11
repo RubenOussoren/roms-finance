@@ -37,7 +37,7 @@ class Provider::Registry
       end
 
       def alpha_vantage
-        api_key = ENV.fetch("ALPHA_VANTAGE_API_KEY", Setting.alpha_vantage_api_key)
+        api_key = ENV.fetch("MARKET_DATA_ALPHA_VANTAGE_API_KEY", Setting.market_data_alpha_vantage_api_key)
 
         return nil unless api_key.present?
 
@@ -45,14 +45,14 @@ class Provider::Registry
       end
 
       def market_data_provider
-        case ENV.fetch("MARKET_DATA_PROVIDER", "financial_data")
+        case ENV.fetch("MARKET_DATA_PROVIDER", Setting.market_data_provider)
         when "alpha_vantage" then alpha_vantage
         else financial_data
         end
       end
 
       def financial_data
-        api_key = ENV.fetch("FINANCIAL_DATA_API_KEY", Setting.financial_data_api_key)
+        api_key = ENV.fetch("MARKET_DATA_FINANCIAL_DATA_API_KEY", Setting.market_data_financial_data_api_key)
 
         return nil unless api_key.present?
 

@@ -93,9 +93,9 @@ ROMS Finance uses [financialdata.net](https://financialdata.net) for stock and c
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FINANCIAL_DATA_API_KEY` | _(none)_ | [financialdata.net](https://financialdata.net) API key for stock/crypto prices. Free tier: 300 calls/day. Get a key at [financialdata.net](https://financialdata.net). Can also be set in Settings. |
-| `MARKET_DATA_PROVIDER` | `financial_data` | Set to `alpha_vantage` to use Alpha Vantage instead. |
-| `ALPHA_VANTAGE_API_KEY` | _(none)_ | [Alpha Vantage](https://www.alphavantage.co/) API key (alternative provider). Free tier: 25 calls/day, includes TSX. |
+| `MARKET_DATA_FINANCIAL_DATA_API_KEY` | _(none)_ | [financialdata.net](https://financialdata.net) API key for stock/crypto prices. Free tier: 300 calls/day. Get a key at [financialdata.net](https://financialdata.net). Can also be set in Settings. |
+| `MARKET_DATA_PROVIDER` | `financial_data` | Set to `alpha_vantage` to use Alpha Vantage instead. Can also be switched in Settings > Self-Hosting. |
+| `MARKET_DATA_ALPHA_VANTAGE_API_KEY` | _(none)_ | [Alpha Vantage](https://www.alphavantage.co/) API key (alternative provider). Free tier: 25 calls/day, includes TSX. |
 
 Exchange rates are provided by [Frankfurter](https://frankfurter.dev) (European Central Bank data). No API key or configuration is needed — rates for 30+ currencies are fetched automatically.
 

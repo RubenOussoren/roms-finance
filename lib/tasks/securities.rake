@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 namespace :securities do
-  desc "Backfill exchange_operating_mic for securities using market data provider (requires ALPHA_VANTAGE_API_KEY)"
+  desc "Backfill exchange_operating_mic for securities using market data provider (requires MARKET_DATA_ALPHA_VANTAGE_API_KEY)"
   task backfill_exchange_mic: :environment do
     puts "Starting exchange_operating_mic backfill..."
 
     provider = Provider::Registry.get_provider(:market_data_provider)
     unless provider.present?
-      puts "ERROR: No market data provider configured. Please set ALPHA_VANTAGE_API_KEY env var or configure it in Settings for self-hosted mode."
+      puts "ERROR: No market data provider configured. Please set MARKET_DATA_FINANCIAL_DATA_API_KEY or MARKET_DATA_ALPHA_VANTAGE_API_KEY env var, or configure it in Settings > Self-Hosting."
       exit 1
     end
 

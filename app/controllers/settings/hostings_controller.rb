@@ -17,12 +17,16 @@ class Settings::HostingsController < ApplicationController
       Setting.require_email_confirmation = hosting_params[:require_email_confirmation]
     end
 
-    if hosting_params.key?(:alpha_vantage_api_key)
-      Setting.alpha_vantage_api_key = hosting_params[:alpha_vantage_api_key]
+    if hosting_params.key?(:market_data_provider)
+      Setting.market_data_provider = hosting_params[:market_data_provider]
     end
 
-    if hosting_params.key?(:financial_data_api_key)
-      Setting.financial_data_api_key = hosting_params[:financial_data_api_key]
+    if hosting_params.key?(:market_data_alpha_vantage_api_key)
+      Setting.market_data_alpha_vantage_api_key = hosting_params[:market_data_alpha_vantage_api_key]
+    end
+
+    if hosting_params.key?(:market_data_financial_data_api_key)
+      Setting.market_data_financial_data_api_key = hosting_params[:market_data_financial_data_api_key]
     end
 
     if hosting_params.key?(:openai_access_token)
@@ -61,8 +65,9 @@ class Settings::HostingsController < ApplicationController
       params.require(:setting).permit(
         :require_invite_for_signup,
         :require_email_confirmation,
-        :alpha_vantage_api_key,
-        :financial_data_api_key,
+        :market_data_provider,
+        :market_data_alpha_vantage_api_key,
+        :market_data_financial_data_api_key,
         :openai_access_token,
         :anthropic_api_key,
         :gemini_api_key,
