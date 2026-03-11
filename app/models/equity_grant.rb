@@ -59,24 +59,45 @@ class EquityGrant < ApplicationRecord
     cp.respond_to?(:amount) ? cp.amount : cp.to_d
   end
 
-  def vested_value(as_of: Date.current)
+  def vested_value(as_of: Date.current, price: nil)
     return 0 if expired_at?(as_of)
     units = vested_units(as_of: as_of)
+    unit_price = price || price_amount
     if stock_option?
-      units * [ price_amount - (strike_price || 0), 0 ].max
+      units * [ unit_price - (strike_price || 0), 0 ].max
     else
-      units * price_amount
+      units * unit_price
     end
   end
 
-  def unvested_value(as_of: Date.current)
+  def unvested_value(as_of: Date.current, price: nil)
     return 0 if expired_at?(as_of)
     units = unvested_units(as_of: as_of)
+    unit_price = price || price_amount
     if stock_option?
-      units * [ price_amount - (strike_price || 0), 0 ].max
+      units * [ unit_price - (strike_price || 0), 0 ].max
     else
-      units * price_amount
+      units * unit_price
     end
+  end
+
+  def vesting_dates(up_to: Date.current)
+    return [] if up_to < grant_date
+
+    freq = frequency_in_months
+    periods_total = (vesting_period_months / freq.to_f).ceil
+    dates = []
+
+    (1..periods_total).each do |period|
+      date = grant_date + (period * freq).months
+      break if date > up_to
+      break if terminated? && date > termination_date
+      next if period * freq < cliff_months
+
+      dates << date
+    end
+
+    dates
   end
 
   def intrinsic_value_per_unit

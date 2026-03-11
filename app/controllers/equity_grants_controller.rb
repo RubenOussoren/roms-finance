@@ -52,9 +52,7 @@ class EquityGrantsController < ApplicationController
   private
 
     def update_account_balance!
-      ec = @account.accountable
-      ec.reload
-      @account.update!(balance: ec.total_vested_value)
+      @account.accountable.reload.regenerate_vesting_valuations!
     end
 
     def set_account

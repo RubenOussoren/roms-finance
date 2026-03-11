@@ -322,11 +322,16 @@ class Provider::FinancialData < Provider
 
       results = (exact + prefix + name_match).first(20)
 
+      tickers = results.map { |s| s[:symbol].upcase }
+      logo_map = ::Security.where(ticker: tickers)
+                           .where.not(logo_url: nil)
+                           .pluck(:ticker, :logo_url).to_h
+
       results.map do |s|
         Security.new(
           symbol: s[:symbol],
           name: s[:name],
-          logo_url: nil,
+          logo_url: logo_map[s[:symbol].upcase],
           exchange_operating_mic: s[:exchange_mic],
           country_code: s[:country_code]
         )

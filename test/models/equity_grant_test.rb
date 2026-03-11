@@ -295,4 +295,65 @@ class EquityGrantTest < ActiveSupport::TestCase
   test "fully_vested? returns false during vesting" do
     assert_not @rsu_grant.fully_vested?(as_of: @rsu_grant.grant_date + 24.months)
   end
+
+  # === Vesting Dates ===
+
+  test "vesting_dates returns dates after cliff" do
+    dates = @rsu_grant.vesting_dates(up_to: @rsu_grant.grant_date + 24.months)
+    # Monthly vesting, 12-month cliff: first vest at 12 months, then 13..24
+    assert_equal 13, dates.length
+    assert_equal @rsu_grant.grant_date + 12.months, dates.first
+    assert_equal @rsu_grant.grant_date + 24.months, dates.last
+  end
+
+  test "vesting_dates is empty before cliff" do
+    dates = @rsu_grant.vesting_dates(up_to: @rsu_grant.grant_date + 6.months)
+    assert_empty dates
+  end
+
+  test "vesting_dates respects termination" do
+    @rsu_grant.termination_date = @rsu_grant.grant_date + 18.months
+    dates = @rsu_grant.vesting_dates(up_to: @rsu_grant.grant_date + 36.months)
+    assert dates.all? { |d| d <= @rsu_grant.termination_date }
+  end
+
+  test "vesting_dates for quarterly vesting" do
+    grant = EquityGrant.new(
+      grant_type: "rsu",
+      grant_date: Date.new(2024, 1, 1),
+      total_units: 1200,
+      cliff_months: 0,
+      vesting_period_months: 12,
+      vesting_frequency: "quarterly",
+      equity_compensation: equity_compensations(:one),
+      security: securities(:goog)
+    )
+    dates = grant.vesting_dates(up_to: Date.new(2025, 1, 1))
+    assert_equal 4, dates.length
+    assert_equal Date.new(2024, 4, 1), dates.first
+  end
+
+  # === Price parameter ===
+
+  test "vested_value uses provided price when given" do
+    as_of = @rsu_grant.grant_date + 24.months
+    value = @rsu_grant.vested_value(as_of: as_of, price: 100)
+    units = @rsu_grant.vested_units(as_of: as_of)
+    assert_equal units * 100, value
+  end
+
+  test "unvested_value uses provided price when given" do
+    as_of = @rsu_grant.grant_date + 24.months
+    value = @rsu_grant.unvested_value(as_of: as_of, price: 100)
+    units = @rsu_grant.unvested_units(as_of: as_of)
+    assert_equal units * 100, value
+  end
+
+  test "stock option vested_value with price param respects strike_price" do
+    @option_grant.strike_price = 150
+    as_of = @option_grant.grant_date + 24.months
+    value = @option_grant.vested_value(as_of: as_of, price: 200)
+    units = @option_grant.vested_units(as_of: as_of)
+    assert_equal units * 50, value
+  end
 end
