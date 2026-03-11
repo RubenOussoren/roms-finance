@@ -29,6 +29,7 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to account_path(@account, tab: :grants)
+    assert_equal @account.accountable.reload.total_vested_value, @account.reload.balance
   end
 
   test "creates stock option grant" do
@@ -65,6 +66,7 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to account_path(@account, tab: :grants)
     assert_equal "Updated Grant Name", @grant.reload.name
+    assert_equal @account.accountable.reload.total_vested_value, @account.reload.balance
   end
 
   test "destroys grant" do
@@ -73,6 +75,7 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to account_path(@account, tab: :grants)
+    assert_equal @account.accountable.reload.total_vested_value, @account.reload.balance
   end
 
   test "creates grant with combobox composite security_id" do

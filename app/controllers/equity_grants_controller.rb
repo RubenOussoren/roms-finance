@@ -14,10 +14,13 @@ class EquityGrantsController < ApplicationController
     resolved_params = resolve_security_params(equity_grant_params)
     @equity_grant = @account.accountable.equity_grants.new(resolved_params)
 
-    if @equity_grant.save
-      redirect_to account_path(@account, tab: :grants), notice: "Grant created successfully."
-    else
-      render :new, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+      if @equity_grant.save
+        update_account_balance!
+        redirect_to account_path(@account, tab: :grants), notice: "Grant created successfully."
+      else
+        render :new, status: :unprocessable_entity
+      end
     end
   end
 
@@ -28,19 +31,31 @@ class EquityGrantsController < ApplicationController
     resolved_params = resolve_security_params(equity_grant_params)
     @equity_grant.assign_attributes(resolved_params)
 
-    if @equity_grant.save
-      redirect_to account_path(@account, tab: :grants), notice: "Grant updated successfully."
-    else
-      render :edit, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+      if @equity_grant.save
+        update_account_balance!
+        redirect_to account_path(@account, tab: :grants), notice: "Grant updated successfully."
+      else
+        render :edit, status: :unprocessable_entity
+      end
     end
   end
 
   def destroy
-    @equity_grant.destroy
+    ActiveRecord::Base.transaction do
+      @equity_grant.destroy!
+      update_account_balance!
+    end
     redirect_to account_path(@account, tab: :grants), notice: "Grant deleted successfully."
   end
 
   private
+
+    def update_account_balance!
+      ec = @account.accountable
+      ec.reload
+      @account.update!(balance: ec.total_vested_value)
+    end
 
     def set_account
       @account = scoped_accounts.find(params[:account_id])

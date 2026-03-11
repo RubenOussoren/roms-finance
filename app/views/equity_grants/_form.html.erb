@@ -18,7 +18,7 @@
     <% if Security.provider.present? %>
       <div class="form-field combobox">
         <%= form.combobox :security_id,
-                        securities_path(country_code: Current.family.country),
+                        securities_path,
                         label: "Security",
                         placeholder: "Search for a stock...",
                         required: true,
