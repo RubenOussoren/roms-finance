@@ -41,7 +41,7 @@ class EquityGrant < ApplicationRecord
 
     freq = frequency_in_months
     periods_total = (vesting_period_months / freq.to_f).ceil
-    periods_elapsed = [elapsed / freq, periods_total].min
+    periods_elapsed = [ elapsed / freq, periods_total ].min
     (total_units * periods_elapsed / periods_total.to_d).floor(4)
   end
 
@@ -63,7 +63,7 @@ class EquityGrant < ApplicationRecord
     return 0 if expired_at?(as_of)
     units = vested_units(as_of: as_of)
     if stock_option?
-      units * [price_amount - (strike_price || 0), 0].max
+      units * [ price_amount - (strike_price || 0), 0 ].max
     else
       units * price_amount
     end
@@ -73,7 +73,7 @@ class EquityGrant < ApplicationRecord
     return 0 if expired_at?(as_of)
     units = unvested_units(as_of: as_of)
     if stock_option?
-      units * [price_amount - (strike_price || 0), 0].max
+      units * [ price_amount - (strike_price || 0), 0 ].max
     else
       units * price_amount
     end
@@ -81,7 +81,7 @@ class EquityGrant < ApplicationRecord
 
   def intrinsic_value_per_unit
     return nil unless stock_option?
-    [price_amount - (strike_price || 0), 0].max
+    [ price_amount - (strike_price || 0), 0 ].max
   end
 
   def exercise_cost

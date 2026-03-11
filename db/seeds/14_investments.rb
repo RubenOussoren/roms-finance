@@ -48,11 +48,11 @@ securities_data.each do |sec_data|
   price = sec_data[:base_price]
   daily_drift = sec_data[:drift] / 252.0
   daily_vol = case sec_data[:ticker]
-              when "BTC", "ETH" then 0.03
-              when "GOOG" then 0.015
-              when "AAPL" then 0.013
-              else 0.012
-              end
+  when "BTC", "ETH" then 0.03
+  when "GOOG" then 0.015
+  when "AAPL" then 0.013
+  else 0.012
+  end
 
   (price_start..Date.current).each do |date|
     next if date.saturday? || date.sunday?

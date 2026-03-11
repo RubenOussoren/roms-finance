@@ -19,6 +19,10 @@ class MarketDataImporterTest < ActiveSupport::TestCase
                       .stubs(:get_provider)
                       .with(:market_data_provider)
                       .returns(@provider)
+    Provider::Registry.any_instance
+                      .stubs(:get_provider)
+                      .with(:frankfurter)
+                      .returns(@provider)
   end
 
   test "syncs required exchange rates" do

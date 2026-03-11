@@ -40,7 +40,7 @@
                    options_for_select([["Monthly", "monthly"], ["Quarterly", "quarterly"], ["Annually", "annually"]], equity_grant.vesting_frequency || "monthly"),
                    { label: "Vesting frequency" } %>
 
-    <div data-equity-grant-form-target="optionFields" class="<%= 'hidden' unless equity_grant.stock_option? %> space-y-2">
+    <div data-equity-grant-form-target="optionFields" class="<%= "hidden" unless equity_grant.stock_option? %> space-y-2">
       <%= form.number_field :strike_price, label: "Strike price", placeholder: "150.00", min: 0, step: "0.01" %>
 
       <%= form.date_field :expiration_date, label: "Expiration date" %>
