@@ -38,8 +38,8 @@ module Assistant::Function::CsvReportable
 
     def parse_date_range(params)
       [
-        Date.parse(params["start_date"]),
-        Date.parse(params["end_date"])
+        safe_parse_date(params["start_date"]),
+        safe_parse_date(params["end_date"])
       ]
     end
 
