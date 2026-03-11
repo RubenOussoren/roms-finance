@@ -1,4 +1,5 @@
 require "test_helper"
+require_relative "../../support/plaid_sandbox"
 
 class Provider::PlaidTest < ActiveSupport::TestCase
   setup do

@@ -94,14 +94,6 @@ class Provider::Registry
         Provider::Github.new
       end
 
-      def openai
-        access_token = ENV.fetch("OPENAI_ACCESS_TOKEN", Setting.openai_access_token)
-
-        return nil unless access_token.present?
-
-        Provider::Openai.new(access_token)
-      end
-
       def ruby_llm_provider
         # RubyLLM is configured via its initializer with all provider API keys.
         # It supports any model from any configured provider.
@@ -138,7 +130,7 @@ class Provider::Registry
       when :llm
         %i[ruby_llm_provider]
       else
-        %i[alpha_vantage plaid_us plaid_eu github openai]
+        raise Error, "Unknown concept: #{concept}"
       end
     end
 end

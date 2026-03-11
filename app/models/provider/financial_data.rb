@@ -162,19 +162,7 @@ class Provider::FinancialData < Provider
     attr_reader :api_key
 
     def client
-      @client ||= Faraday.new do |faraday|
-        faraday.options.timeout = 15
-        faraday.options.open_timeout = 5
-
-        faraday.request(:retry, {
-          max: 2,
-          interval: 0.05,
-          interval_randomness: 0.5,
-          backoff_factor: 2
-        })
-
-        faraday.response :raise_error
-      end
+      provider_client
     end
 
     def validate_response!(parsed)
