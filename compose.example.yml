@@ -50,8 +50,14 @@ x-rails-env: &rails_env
 # To use Alpha Vantage instead (25 calls/day), uncomment below:
 # MARKET_DATA_PROVIDER: alpha_vantage
 # ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
-# NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
+# AI Providers — powers AI assistant (chat, rules). Costs apply for cloud providers.
+# At least one provider is needed. Can also be set in Settings > Self-Hosting.
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN}
+# ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+# GEMINI_API_KEY: ${GEMINI_API_KEY}
+# OLLAMA_API_BASE: ${OLLAMA_API_BASE}
+# DEFAULT_AI_MODEL: ${DEFAULT_AI_MODEL:-gpt-5-mini}
+
 # Plaid — bank account connectivity (US & EU). Get credentials at https://dashboard.plaid.com
 # PLAID_CLIENT_ID: ${PLAID_CLIENT_ID}
 # PLAID_SECRET: ${PLAID_SECRET}

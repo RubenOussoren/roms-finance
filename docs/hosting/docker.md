@@ -59,11 +59,22 @@
 | `CACHE_REDIS_URL` | `redis://redis:6379/2` | Redis URL for Rails cache store |
 | `SIDEKIQ_WEB_USERNAME` | `roms` | Username for the `/sidekiq` web dashboard |
 | `SIDEKIQ_WEB_PASSWORD` | `roms` | Password for the `/sidekiq` web dashboard |
-| `OPENAI_ACCESS_TOKEN` | _(none)_ | OpenAI API key for AI features (chat, rules). Costs apply. |
 | `INVITE_ONLY` | `true` | When true, only admin-invited users can register |
 | `APP_DOMAIN` | _(none)_ | Domain for email links (e.g. `finance.example.com`) |
 | `RAILS_FORCE_SSL` | `false` | Force SSL connections |
 | `RAILS_ASSUME_SSL` | `false` | Assume SSL behind a reverse proxy |
+
+### AI Providers
+
+ROMS Finance includes an AI financial assistant powered by [RubyLLM](https://rubyllm.com) with support for multiple providers. At least one provider must be configured for AI features to work. Keys can also be set in **Settings > Self-Hosting** after login.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_ACCESS_TOKEN` | _(none)_ | [OpenAI](https://platform.openai.com) API key. Costs apply. |
+| `ANTHROPIC_API_KEY` | _(none)_ | [Anthropic](https://console.anthropic.com) API key for Claude models. Costs apply. |
+| `GEMINI_API_KEY` | _(none)_ | [Google Gemini](https://ai.google.dev) API key. Free tier available. |
+| `OLLAMA_API_BASE` | _(none)_ | Base URL for a local [Ollama](https://ollama.com) server (e.g. `http://localhost:11434`). Free, runs locally. |
+| `DEFAULT_AI_MODEL` | `gpt-5-mini` | Default LLM model for chat and rules. Can be changed in Settings. |
 
 ### SMTP (for email features)
 

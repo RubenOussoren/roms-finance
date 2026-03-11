@@ -34,7 +34,7 @@
 | Tax-Aware Calculations     | Federal + provincial Canadian tax brackets (all provinces)                  |
 | Per-User Privacy           | Household and personal views with granular account visibility               |
 | Dark Mode                  | Full dark theme with system preference detection                            |
-| AI Assistant               | Natural language queries about your finances (OpenAI)                       |
+| AI Assistant               | Natural language queries about your finances (OpenAI, Anthropic, Gemini, Ollama) |
 | Self-Hostable              | Single Docker Compose file, runs on x86 and arm64 (Raspberry Pi)            |
 
 ## Screenshots
@@ -97,7 +97,10 @@ All providers auto-disable when unconfigured. Set the relevant environment varia
 | [financialdata.net](https://financialdata.net) | Global | Stock and crypto prices, symbol search (300 free calls/day)      | [Docker guide](docs/hosting/docker.md) |
 | [Frankfurter](https://frankfurter.dev)       | Global | Exchange rates via ECB data (free, no API key, 30+ currencies)   | Built-in, no setup needed              |
 | [Alpha Vantage](https://www.alphavantage.co) | Global | Stock prices (25 free calls/day, alternative)                    | [Docker guide](docs/hosting/docker.md) |
-| [OpenAI](https://platform.openai.com)        | Global | AI-powered financial assistant                                   | [Docker guide](docs/hosting/docker.md) |
+| [OpenAI](https://platform.openai.com)        | Global | AI assistant (default provider)                                  | [Docker guide](docs/hosting/docker.md) |
+| [Anthropic](https://console.anthropic.com)   | Global | AI assistant via Claude models                                   | [Docker guide](docs/hosting/docker.md) |
+| [Gemini](https://ai.google.dev)              | Global | AI assistant via Google Gemini (free tier available)              | [Docker guide](docs/hosting/docker.md) |
+| [Ollama](https://ollama.com)                 | Local  | AI assistant via local LLM (free, self-hosted)                   | [Docker guide](docs/hosting/docker.md) |
 
 ## Development Setup
 
