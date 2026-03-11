@@ -27,7 +27,9 @@ securities_data = [
   { ticker: "XEF",  name: "iShares Core MSCI EAFE IMI Index ETF",         exchange: "XTSE", base_price: 35.00, drift: 0.06 },
   { ticker: "XEC",  name: "iShares Core MSCI Emerging Markets IMI Index ETF", exchange: "XTSE", base_price: 28.00, drift: 0.05 },
   { ticker: "BTC",  name: "Bitcoin",   exchange: nil, base_price: 55_000.00, drift: 0.15 },
-  { ticker: "ETH",  name: "Ethereum",  exchange: nil, base_price: 3_200.00,  drift: 0.10 }
+  { ticker: "ETH",  name: "Ethereum",  exchange: nil, base_price: 3_200.00,  drift: 0.10 },
+  { ticker: "GOOG", name: "Alphabet Inc", exchange: "XNAS", base_price: 140.00, drift: 0.12, country: "US", currency: "USD" },
+  { ticker: "AAPL", name: "Apple Inc",    exchange: "XNAS", base_price: 175.00, drift: 0.10, country: "US", currency: "USD" }
 ]
 
 securities = {}
@@ -37,7 +39,7 @@ securities_data.each do |sec_data|
   security = Security.create!(
     ticker: sec_data[:ticker],
     name: sec_data[:name],
-    country_code: sec_data[:exchange] ? "CA" : nil,
+    country_code: sec_data[:country] || (sec_data[:exchange] ? "CA" : nil),
     exchange_operating_mic: sec_data[:exchange]
   )
   securities[sec_data[:ticker]] = security
@@ -45,7 +47,12 @@ securities_data.each do |sec_data|
   # Generate daily prices with random walk + drift
   price = sec_data[:base_price]
   daily_drift = sec_data[:drift] / 252.0
-  daily_vol = sec_data[:ticker].in?([ "BTC", "ETH" ]) ? 0.03 : 0.012
+  daily_vol = case sec_data[:ticker]
+              when "BTC", "ETH" then 0.03
+              when "GOOG" then 0.015
+              when "AAPL" then 0.013
+              else 0.012
+              end
 
   (price_start..Date.current).each do |date|
     next if date.saturday? || date.sunday?
@@ -58,7 +65,7 @@ securities_data.each do |sec_data|
       security: security,
       date: date,
       price: price.round(4),
-      currency: "CAD"
+      currency: sec_data[:currency] || "CAD"
     )
   end
 
