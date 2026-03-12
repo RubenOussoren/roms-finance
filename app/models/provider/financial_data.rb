@@ -311,7 +311,7 @@ class Provider::FinancialData < Provider
         break if items.size < 500 # Last page
       end
 
-      symbols.uniq { |s| [s[:symbol].upcase, s[:exchange_mic]] }
+      symbols.uniq { |s| [ s[:symbol].upcase, s[:exchange_mic] ] }
     end
 
     def mic_to_country(mic)
