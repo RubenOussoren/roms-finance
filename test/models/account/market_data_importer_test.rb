@@ -112,4 +112,56 @@ class Account::MarketDataImporterTest < ActiveSupport::TestCase
 
     assert_equal 1, Security::Price.where(security: security, date: trade_date).count
   end
+
+  test "syncs security prices for equity grant securities without trades" do
+    family = Family.create!(name: "Smith", currency: "USD")
+    user = family.users.create!(email: "smith3@test.com", password: "password123456", first_name: "Test", role: "admin")
+
+    account = family.accounts.create!(
+      name: "Equity Comp",
+      currency: "USD",
+      balance: 0,
+      accountable: EquityCompensation.new,
+      created_by_user: user
+    )
+
+    security = Security.create!(ticker: "GOOG", exchange_operating_mic: "XNAS")
+
+    grant_date = 30.days.ago.to_date
+    account.accountable.equity_grants.create!(
+      security: security,
+      grant_type: "rsu",
+      total_units: 100,
+      vesting_period_months: 48,
+      vesting_frequency: "quarterly",
+      grant_date: grant_date,
+      cliff_months: 12
+    )
+
+    expected_start_date = grant_date - PROVIDER_BUFFER
+    end_date = Date.current.in_time_zone("America/New_York").to_date
+
+    @provider.expects(:fetch_security_prices)
+             .with(symbol: security.ticker,
+                   exchange_operating_mic: security.exchange_operating_mic,
+                   start_date: expected_start_date,
+                   end_date: end_date)
+             .returns(provider_success_response([
+               OpenStruct.new(security: security,
+                              date: grant_date,
+                              price: 180,
+                              currency: "USD")
+             ]))
+
+    @provider.stubs(:fetch_security_info)
+             .with(symbol: security.ticker, exchange_operating_mic: security.exchange_operating_mic)
+             .returns(provider_success_response(OpenStruct.new(name: "Alphabet", logo_url: "logo")))
+
+    # Ignore exchange-rate calls for this test
+    @provider.stubs(:fetch_exchange_rates).returns(provider_success_response([]))
+
+    Account::MarketDataImporter.new(account).import_all
+
+    assert_equal 1, Security::Price.where(security: security, date: grant_date).count
+  end
 end

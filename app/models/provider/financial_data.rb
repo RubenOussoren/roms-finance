@@ -51,12 +51,23 @@ class Provider::FinancialData < Provider
 
   def search_securities(symbol, country_code: nil, exchange_operating_mic: nil)
     with_provider_response do
-      cached_symbols = Rails.cache.read(SYMBOL_CACHE_KEY)
+      # DB search first — fast, indexed, includes logos
+      db_results = search_database_fallback(symbol, country_code: country_code, exchange_operating_mic: exchange_operating_mic)
 
-      if cached_symbols.present?
-        search_cached_symbols(cached_symbols, symbol, country_code: country_code, exchange_operating_mic: exchange_operating_mic)
+      remaining = 20 - db_results.size
+      if remaining > 0
+        cached_symbols = Rails.cache.read(SYMBOL_CACHE_KEY)
+        if cached_symbols.present?
+          db_tickers = db_results.map { |s| s.symbol.upcase }.to_set
+          cache_results = search_cached_symbols(cached_symbols, symbol,
+            country_code: country_code, exchange_operating_mic: exchange_operating_mic,
+            limit: remaining, exclude_tickers: db_tickers)
+          db_results + cache_results
+        else
+          db_results
+        end
       else
-        search_database_fallback(symbol, country_code: country_code, exchange_operating_mic: exchange_operating_mic)
+        db_results
       end
     end
   end
@@ -106,40 +117,64 @@ class Provider::FinancialData < Provider
   def fetch_security_prices(symbol:, exchange_operating_mic: nil, start_date:, end_date:)
     with_provider_response do
       fd_symbol, endpoint = resolve_price_endpoint(symbol, exchange_operating_mic)
-
-      response = client.get("#{BASE_URL}/#{endpoint}") do |req|
-        req.params["identifier"] = fd_symbol
-        req.params["key"] = api_key
-      end
-
-      parsed = JSON.parse(response.body)
-      validate_response!(parsed)
-
-      prices = parsed.is_a?(Array) ? parsed : []
       currency = detect_currency(exchange_operating_mic)
+      all_prices = []
+      offset = 0
+      max_pages = 50 # ~15,000 trading days ≈ 60 years of history
 
-      prices.filter_map do |price_data|
-        date = Date.parse(price_data["date"])
-        next unless date >= start_date && date <= end_date
+      loop do
+        break if offset / 300 >= max_pages
 
-        price = price_data["close"]&.to_f || price_data["open"]&.to_f
-
-        if price.nil?
-          Rails.logger.warn("#{self.class.name} returned invalid price data for security #{symbol} on: #{price_data['date']}")
-          Sentry.capture_exception(InvalidSecurityPriceError.new("#{self.class.name} returned invalid security price data"), level: :warning) do |scope|
-            scope.set_context("security", { symbol: symbol, date: price_data["date"] })
-          end
-          next
+        response = client.get("#{BASE_URL}/#{endpoint}") do |req|
+          req.params["identifier"] = fd_symbol
+          req.params["key"] = api_key
+          req.params["offset"] = offset if offset > 0
         end
 
-        Price.new(
-          symbol: symbol,
-          date: date,
-          price: price,
-          currency: currency,
-          exchange_operating_mic: exchange_operating_mic
-        )
-      end.sort_by(&:date)
+        parsed = JSON.parse(response.body)
+        validate_response!(parsed)
+
+        batch = parsed.is_a?(Array) ? parsed : []
+        break if batch.empty?
+
+        # API returns newest-first; check if we've passed the start_date
+        oldest_in_batch = begin
+          Date.parse(batch.last["date"])
+        rescue ArgumentError, TypeError
+          nil
+        end
+
+        batch.each do |price_data|
+          date = Date.parse(price_data["date"])
+          next unless date >= start_date && date <= end_date
+
+          price = price_data["close"]&.to_f || price_data["open"]&.to_f
+
+          if price.nil?
+            Rails.logger.warn("#{self.class.name} returned invalid price data for security #{symbol} on: #{price_data['date']}")
+            Sentry.capture_exception(InvalidSecurityPriceError.new("#{self.class.name} returned invalid security price data"), level: :warning) do |scope|
+              scope.set_context("security", { symbol: symbol, date: price_data["date"] })
+            end
+            next
+          end
+
+          all_prices << Price.new(
+            symbol: symbol,
+            date: date,
+            price: price,
+            currency: currency,
+            exchange_operating_mic: exchange_operating_mic
+          )
+        end
+
+        # Stop if this batch didn't fill a full page or we've gone past start_date
+        break if batch.size < 300
+        break if oldest_in_batch && oldest_in_batch < start_date
+
+        offset += 300
+      end
+
+      all_prices.sort_by(&:date)
     end
   end
 
@@ -294,8 +329,12 @@ class Provider::FinancialData < Provider
     #   Symbol Search (cached)
     # ================================
 
-    def search_cached_symbols(cached_symbols, query, country_code: nil, exchange_operating_mic: nil)
+    def search_cached_symbols(cached_symbols, query, country_code: nil, exchange_operating_mic: nil,
+                              limit: 20, exclude_tickers: Set.new)
+      return [] if query.length < 2
+
       query_downcase = query.downcase
+      max_collect = [ limit * 5, 100 ].min
 
       # Filter by country and exchange if specified
       filtered = cached_symbols
@@ -308,19 +347,23 @@ class Provider::FinancialData < Provider
       name_match = []
 
       filtered.each do |s|
+        next if exclude_tickers.include?(s[:symbol].upcase)
+
         sym = s[:symbol].downcase
-        name = s[:name]&.downcase || ""
 
         if sym == query_downcase
           exact << s
-        elsif sym.start_with?(query_downcase)
+        elsif sym.start_with?(query_downcase) && prefix.size < max_collect
           prefix << s
-        elsif name.include?(query_downcase)
-          name_match << s
+        elsif exact.size + prefix.size < limit # skip name matching once we have enough ticker matches
+          name = s[:name]&.downcase || ""
+          if name.include?(query_downcase) && name_match.size < max_collect
+            name_match << s
+          end
         end
       end
 
-      results = (exact + prefix + name_match).first(20)
+      results = (exact + prefix + name_match).first(limit)
 
       tickers = results.map { |s| s[:symbol].upcase }
       logo_map = ::Security.where(ticker: tickers)
@@ -339,9 +382,19 @@ class Provider::FinancialData < Provider
     end
 
     def search_database_fallback(query, country_code: nil, exchange_operating_mic: nil)
-      scope = ::Security.where("ticker ILIKE ?", "%#{::Security.sanitize_sql_like(query)}%")
+      sanitized = ::Security.sanitize_sql_like(query)
+      scope = ::Security.where("ticker ILIKE :q OR name ILIKE :q", q: "%#{sanitized}%")
       scope = scope.where(country_code: country_code) if country_code.present?
       scope = scope.where(exchange_operating_mic: exchange_operating_mic) if exchange_operating_mic.present?
+
+      # Prioritize exact ticker matches, then ticker prefix, then name matches
+      scope = scope.order(
+        Arel.sql(::Security.sanitize_sql_array([
+          "CASE WHEN ticker ILIKE ? THEN 0 WHEN ticker ILIKE ? THEN 1 ELSE 2 END",
+          sanitized, "#{sanitized}%"
+        ])),
+        :ticker
+      )
 
       scope.limit(20).map do |sec|
         Security.new(

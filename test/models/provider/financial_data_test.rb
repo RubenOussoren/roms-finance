@@ -75,11 +75,11 @@ class Provider::FinancialDataTest < ActiveSupport::TestCase
 
     assert securities.any?
     assert_equal "AAPL", securities.first.symbol
-    assert_equal "Apple Inc.", securities.first.name
+    assert_equal "Apple", securities.first.name
   end
 
   test "search_securities with warm cache filters by country_code" do
-    response = @financial_data.search_securities("V", country_code: "CA")
+    response = @financial_data.search_securities("VCN", country_code: "CA")
     securities = response.data
 
     assert securities.any?

@@ -76,19 +76,23 @@ class EquityCompensation < ApplicationRecord
         price_cache[[ sec.id, sp.date ]] = sp.price
       end
 
-      # Pre-load nearest-earlier price for any dates missing from the cache
+      # Pre-load nearest price for any dates missing from the cache (backward first, then forward).
+      # Only use prices within 7 days to avoid stale LOCF gap-filled values distorting historical valuations.
       missing_dates = all_dates.reject { |d| price_cache.key?([ sec.id, d ]) }
       missing_dates.each do |date|
-        price_cache[[ sec.id, date ]] = sec.prices.where("date <= ?", date)
-          .order(date: :desc).limit(1).pick(:price)
+        nearest = sec.prices.where(date: (date - 7.days)..date)
+          .order(date: :desc).limit(1).pick(:price, :date)
+        nearest ||= sec.prices.where(date: date..(date + 7.days))
+          .order(date: :asc).limit(1).pick(:price, :date)
+        price_cache[[ sec.id, date ]] = nearest&.first
       end
     end
 
     # Wrap delete + create in a transaction for atomicity (I4 fix)
     ActiveRecord::Base.transaction do
-      # Delete old auto-generated vesting entries
+      # Delete old auto-generated vesting entries and opening balance
       acct.entries.where(entryable_type: "Valuation")
-        .where("name LIKE ?", "#{VESTING_ENTRY_PREFIX}%")
+        .where("name LIKE ? OR name = ?", "#{VESTING_ENTRY_PREFIX}%", "Opening balance")
         .destroy_all
 
       # Find dates that already have manual valuations (don't overwrite)
@@ -101,9 +105,12 @@ class EquityCompensation < ApplicationRecord
         next if manual_dates.include?(date)
 
         total = grants.sum do |g|
-          unit_price = price_cache[[ g.security_id, date ]] || 0
+          unit_price = price_cache[[ g.security_id, date ]]
+          next 0 if unit_price.nil?
           g.vested_value(as_of: date, price: unit_price.to_d)
         end
+
+        next if total.zero?
 
         acct.entries.create!(
           name: "#{VESTING_ENTRY_PREFIX}#{date.strftime('%b %Y')}",
