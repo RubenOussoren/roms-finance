@@ -284,7 +284,7 @@ class Provider::FinancialData < Provider
 
         response = client.get("#{BASE_URL}/#{endpoint}") do |req|
           req.params["key"] = api_key
-          req.params["page"] = page
+          req.params["offset"] = page * 500
         end
 
         parsed = JSON.parse(response.body)
@@ -311,7 +311,7 @@ class Provider::FinancialData < Provider
         break if items.size < 500 # Last page
       end
 
-      symbols
+      symbols.uniq { |s| [s[:symbol].upcase, s[:exchange_mic]] }
     end
 
     def mic_to_country(mic)
