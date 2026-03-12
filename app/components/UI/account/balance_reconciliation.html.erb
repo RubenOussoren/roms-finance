@@ -4,19 +4,49 @@
       <hr class="border border-primary">
     <% end %>
 
-    <dl class="flex gap-4 items-center text-sm text-primary">
-      <dt class="flex items-center gap-2">
-        <%= item[:label] %>
-        <%= render DS::Tooltip.new(text: item[:tooltip], placement: "left", size: "sm") %>
-      </dt>
-      <hr class="grow border-dashed <%= item[:style] == :final ? "border-primary" : "border-secondary" %>">
-      <dd class="<%= item[:style] == :start || item[:style] == :final ? "font-bold" : item[:style] == :subtotal ? "font-medium" : "" %>">
-        <%= item[:value].format %>
-      </dd>
-    </dl>
+    <% if item[:style] == :vesting_detail %>
+      <% if index == reconciliation_items.index { |i| i[:style] == :vesting_detail } %>
+        <hr class="border border-secondary mt-1 mb-1">
+      <% end %>
 
-    <% if item[:style] == :adjustment %>
-      <hr class="border border-primary">
+      <dl class="flex gap-4 items-center text-sm text-primary pl-2">
+        <dt class="flex items-center gap-2 font-medium">
+          Vesting: <%= item[:label] %>
+          <%= render DS::Tooltip.new(text: item[:tooltip], placement: "left", size: "sm") %>
+        </dt>
+        <hr class="grow border-dashed border-secondary">
+        <dd>
+          <%= item[:value].format %>
+        </dd>
+      </dl>
+      <div class="text-xs text-secondary pl-4">
+        <%= item[:units] %> units @ <%= item[:unit_price].format %>
+      </div>
+      <% if item[:grant_type] == "stock_option" %>
+        <div class="text-xs text-secondary pl-4">
+          Strike: <%= item[:strike_price].format %> · Intrinsic: <%= item[:intrinsic_value_per_unit].format %>/unit
+        </div>
+      <% end %>
+
+      <% next_item = reconciliation_items[index + 1] %>
+      <% if next_item.nil? || next_item[:style] != :vesting_detail %>
+        <hr class="border border-secondary mt-1 mb-1">
+      <% end %>
+    <% else %>
+      <dl class="flex gap-4 items-center text-sm text-primary">
+        <dt class="flex items-center gap-2">
+          <%= item[:label] %>
+          <%= render DS::Tooltip.new(text: item[:tooltip], placement: "left", size: "sm") %>
+        </dt>
+        <hr class="grow border-dashed <%= item[:style] == :final ? "border-primary" : "border-secondary" %>">
+        <dd class="<%= item[:style] == :start || item[:style] == :final ? "font-bold" : item[:style] == :subtotal ? "font-medium" : "" %>">
+          <%= item[:value].format %>
+        </dd>
+      </dl>
+
+      <% if item[:style] == :adjustment %>
+        <hr class="border border-primary">
+      <% end %>
     <% end %>
   <% end %>
 </div>
