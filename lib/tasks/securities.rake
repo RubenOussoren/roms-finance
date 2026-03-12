@@ -170,4 +170,42 @@ namespace :securities do
     puts "  Mode: #{dry_run ? 'Dry run (no changes made)' : 'Live run (changes applied)'}"
     puts "\nDe-duplication complete!"
   end
+
+  desc "Warm the FinancialData symbol cache (normally runs daily via sidekiq-cron)"
+  task warm_symbol_cache: :environment do
+    provider = Provider::Registry.get_provider(:market_data_provider)
+    unless provider.present?
+      puts "ERROR: No market data provider configured. Please set MARKET_DATA_FINANCIAL_DATA_API_KEY or MARKET_DATA_ALPHA_VANTAGE_API_KEY env var, or configure it in Settings > Self-Hosting."
+      exit 1
+    end
+
+    unless provider.respond_to?(:warm_symbol_cache!)
+      puts "ERROR: Provider #{provider.class.name} does not support symbol cache warming. Only FinancialData provider supports this."
+      exit 1
+    end
+
+    puts "Warming symbol cache from #{provider.class.name}..."
+    begin
+      count = provider.warm_symbol_cache!
+      puts "Cached #{count} symbols."
+    rescue => e
+      puts "ERROR: Symbol cache warming failed: #{e.message}"
+      exit 1
+    end
+
+    # Verify with a sample search
+    begin
+      response = provider.search_securities("GOOG")
+      if response.success? && response.data.present?
+        puts "\nSample search for 'GOOG' returned #{response.data.length} result(s):"
+        response.data.first(3).each do |s|
+          puts "  #{s.symbol} - #{s.name} (#{s.exchange_operating_mic})"
+        end
+      else
+        puts "\nWarning: Sample search for 'GOOG' returned no results. Cache may not be working correctly."
+      end
+    rescue => e
+      puts "\nWarning: Sample search verification failed: #{e.message}"
+    end
+  end
 end
