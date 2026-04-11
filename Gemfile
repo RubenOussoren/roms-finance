@@ -71,7 +71,7 @@ gem "snaptrade", "~> 2.0"
 gem "rotp", "~> 6.3"
 gem "rqrcode", "~> 3.0"
 gem "activerecord-import"
-gem "rubyzip", "~> 2.3"
+gem "rubyzip", "~> 3.0"
 
 # State machines
 gem "aasm"
