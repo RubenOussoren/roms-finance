@@ -155,6 +155,130 @@ namespace :data_migration do
     puts "    Opening anchors set: #{opening_anchors_set}"
   end
 
+  desc "Fix duplicate entries created by transfer rules"
+  # 2026-03-10: Rules with "Create transfer to/from" actions created duplicate entries on every
+  # sync run because Transfer::Creator built new Transaction/Entry pairs without linking the
+  # original matched transaction. This task:
+  #   1. Finds confirmed transfers where both sides have auto-generated names and no plaid_id
+  #   2. Groups by (from_account, to_account, date, abs_amount) to find duplicates
+  #   3. Keeps the first transfer, destroys duplicates and their entries
+  #   4. Optionally rewires the kept transfer to use an unlinked original transaction
+  # Supports DRY_RUN=1 for preview mode.
+  task fix_rule_transfer_duplicates: :environment do
+    dry_run = ENV["DRY_RUN"] == "1"
+
+    puts "==> #{dry_run ? '[DRY RUN] ' : ''}Fixing rule transfer duplicates..."
+
+    total_duplicates_removed = 0
+    total_entries_removed = 0
+    total_rewired = 0
+    accounts_to_sync = Set.new
+
+    Family.find_each do |family|
+      # Find confirmed transfers where both entries have auto-generated names and no plaid_id
+      suspect_transfers = Transfer.confirmed
+        .joins("INNER JOIN transactions AS inflow_txns ON inflow_txns.id = transfers.inflow_transaction_id")
+        .joins("INNER JOIN entries AS inflow_entries ON inflow_entries.entryable_type = 'Transaction' AND inflow_entries.entryable_id = inflow_txns.id")
+        .joins("INNER JOIN transactions AS outflow_txns ON outflow_txns.id = transfers.outflow_transaction_id")
+        .joins("INNER JOIN entries AS outflow_entries ON outflow_entries.entryable_type = 'Transaction' AND outflow_entries.entryable_id = outflow_txns.id")
+        .joins("INNER JOIN accounts AS from_accounts ON from_accounts.id = outflow_entries.account_id")
+        .where("from_accounts.family_id = ?", family.id)
+        .where("inflow_entries.plaid_id IS NULL AND outflow_entries.plaid_id IS NULL")
+        .where("inflow_entries.name ~ ?", "^(Transfer|Payment) (to|from) .+$")
+        .where("outflow_entries.name ~ ?", "^(Transfer|Payment) (to|from) .+$")
+        .select(
+          "transfers.*",
+          "outflow_entries.account_id AS from_account_id",
+          "inflow_entries.account_id AS to_account_id",
+          "inflow_entries.date AS transfer_date",
+          "ABS(outflow_entries.amount) AS abs_amount"
+        )
+        .order("transfers.created_at ASC")
+        .to_a
+
+      # Group by (from_account_id, to_account_id, date, abs_amount)
+      groups = suspect_transfers.group_by do |t|
+        [ t.from_account_id, t.to_account_id, t.transfer_date, t.abs_amount.to_d ]
+      end
+
+      groups.each do |(from_id, to_id, date, amount), transfers|
+        next if transfers.size <= 1
+
+        keeper = transfers.first
+        duplicates = transfers[1..]
+
+        if dry_run
+          puts "  Would remove #{duplicates.size} duplicate(s): " \
+               "from_account=#{from_id} to_account=#{to_id} date=#{date} amount=#{amount}"
+        else
+          begin
+            ActiveRecord::Base.transaction do
+              duplicates.each do |dup_transfer|
+                # Destroy the transfer's entries (both inflow and outflow were auto-generated)
+                inflow_entry = dup_transfer.inflow_transaction&.entry
+                outflow_entry = dup_transfer.outflow_transaction&.entry
+
+                dup_transfer.destroy!
+
+                inflow_entry&.destroy!
+                outflow_entry&.destroy!
+
+                total_entries_removed += [ inflow_entry, outflow_entry ].compact.size
+                total_duplicates_removed += 1
+              end
+
+              # Try to find an unlinked original transaction to rewire the keeper
+              from_account = Account.find(from_id)
+              original_txn = from_account.entries
+                .where(date: date, entryable_type: "Transaction", plaid_id: nil)
+                .where("ABS(amount) = ?", amount)
+                .where("name !~ ?", "^(Transfer|Payment) (to|from) .+$")
+                .select { |e| e.entryable.transfer.nil? }
+                .first
+
+              if original_txn
+                old_outflow_entry = keeper.outflow_transaction.entry
+
+                # Rewire: original becomes the outflow side
+                original_txn.entryable.update!(kind: Transfer.kind_for_account(Account.find(to_id)))
+                original_txn.update!(amount: amount.abs) if original_txn.amount.negative?
+
+                keeper.update!(outflow_transaction: original_txn.entryable)
+
+                # Remove the now-redundant auto-generated outflow entry
+                old_outflow_entry.destroy!
+
+                total_rewired += 1
+                total_entries_removed += 1
+              end
+
+              accounts_to_sync.add(from_id)
+              accounts_to_sync.add(to_id)
+            end
+          rescue => e
+            puts "  ERROR for family #{family.id}: #{e.message}"
+          end
+        end
+      end
+    rescue => e
+      puts "ERROR processing family #{family.id}: #{e.message}"
+    end
+
+    # Sync affected accounts
+    unless dry_run
+      accounts_to_sync.each do |account_id|
+        Account.find_by(id: account_id)&.sync_later
+      end
+    end
+
+    puts "#{dry_run ? '[DRY RUN] ' : ''}Results:"
+    puts "  Duplicate transfers removed: #{total_duplicates_removed}"
+    puts "  Entries removed: #{total_entries_removed}"
+    puts "  Transfers rewired to original transactions: #{total_rewired}"
+    puts "  Accounts to sync: #{accounts_to_sync.size}"
+    puts "✅  Rule transfer duplicate fix complete."
+  end
+
   desc "Migrate balance components"
   # 2025-07-20: Migrate balance components to support event-sourced ledger model.
   # This task:

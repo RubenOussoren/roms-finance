@@ -6,6 +6,7 @@ class Provider::SnapTrade < Provider
     configuration.client_id = client_id
     configuration.consumer_key = consumer_key
     @client = ::SnapTrade::Client.new(configuration)
+    @consumer_key = consumer_key
   end
 
   def register_user(user_id:)
@@ -110,11 +111,7 @@ class Provider::SnapTrade < Provider
   end
 
   private
-    attr_reader :client
-
-    def consumer_key
-      client.instance_variable_get(:@config).consumer_key
-    end
+    attr_reader :client, :consumer_key
 
     def default_error_transformer(error)
       Error.new(error.message, details: error.try(:response)&.dig(:body))

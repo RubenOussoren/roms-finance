@@ -24,6 +24,10 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :messages, only: [] do
+    resource :feedback, only: :create, controller: "message_feedbacks"
+  end
+
   resources :family_exports, only: %i[new create index] do
     member do
       get :download
@@ -60,6 +64,11 @@ Rails.application.routes.draw do
     resource :hosting, only: %i[show update] do
       delete :clear_cache, on: :collection
     end
+    resource :ai_usage, only: :show, controller: "ai_usages"
+    resource :ai_memory, only: :show, controller: "ai_memories" do
+      delete :clear, on: :collection
+    end
+    delete "ai_memories/:id", to: "ai_memories#destroy", as: :destroy_ai_memory
     resource :billing, only: :show
     resource :security, only: :show
     resource :api_key, only: [ :show, :new, :create, :destroy ]
@@ -207,6 +216,10 @@ Rails.application.routes.draw do
     member do
       post :simulate
     end
+  end
+  resources :equity_compensations, only: %i[new create edit update]
+  resources :accounts, only: [] do
+    resources :equity_grants, only: %i[index new create edit update destroy]
   end
   resources :cryptos, only: %i[new create edit update]
   resources :other_assets, only: %i[new create edit update]

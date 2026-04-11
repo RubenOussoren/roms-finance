@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://financialdata.net/api/v1/stock-prices?identifier=AAPL&key=test_financial_data_key
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.2
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '[{"date":"2026-02-14","open":257.12,"high":259.30,"low":255.78,"close":258.45,"volume":42000000},{"date":"2026-02-13","open":262.01,"high":262.23,"low":255.45,"close":255.78,"volume":56290673},{"date":"2026-02-12","open":275.59,"high":275.72,"low":260.18,"close":261.73,"volume":81077229},{"date":"2026-02-11","open":274.70,"high":280.18,"low":274.45,"close":275.50,"volume":51931283},{"date":"2026-02-10","open":274.89,"high":275.37,"low":272.94,"close":273.68,"volume":34376898},{"date":"2026-02-09","open":277.91,"high":278.20,"low":271.70,"close":274.62,"volume":44623396},{"date":"2026-02-06","open":277.12,"high":280.91,"low":276.93,"close":278.12,"volume":50453414},{"date":"2026-02-05","open":278.13,"high":279.50,"low":273.23,"close":275.91,"volume":52977441},{"date":"2026-02-04","open":272.29,"high":278.95,"low":272.29,"close":276.49,"volume":90545710},{"date":"2026-02-03","open":269.20,"high":271.88,"low":267.61,"close":269.48,"volume":63799388},{"date":"2026-02-02","open":260.03,"high":270.49,"low":259.21,"close":270.01,"volume":73913425},{"date":"2026-01-30","open":255.17,"high":261.90,"low":252.18,"close":259.48,"volume":92443408},{"date":"2026-01-29","open":258.00,"high":259.65,"low":254.41,"close":258.28,"volume":67253009},{"date":"2026-01-28","open":257.65,"high":258.86,"low":254.51,"close":256.44,"volume":41287971},{"date":"2026-01-27","open":259.17,"high":261.95,"low":258.21,"close":258.27,"volume":48787855},{"date":"2026-01-26","open":251.48,"high":256.56,"low":249.80,"close":255.41,"volume":55969234},{"date":"2026-01-23","open":247.32,"high":249.41,"low":244.68,"close":248.04,"volume":41688982},{"date":"2026-01-22","open":249.20,"high":251.00,"low":248.15,"close":248.35,"volume":39708340},{"date":"2026-01-21","open":248.70,"high":251.56,"low":245.18,"close":247.65,"volume":54641725},{"date":"2026-01-20","open":252.73,"high":254.79,"low":243.42,"close":246.70,"volume":77280987},{"date":"2026-01-16","open":257.90,"high":258.90,"low":254.93,"close":255.53,"volume":72142773},{"date":"2026-01-15","open":260.65,"high":261.04,"low":257.05,"close":258.21,"volume":39388564}]'
+  recorded_at: Tue, 11 Mar 2026 12:00:00 GMT
+recorded_with: VCR 6.3.1

@@ -1,4 +1,4 @@
-# Seed: 20 accounts with permissions and opening valuations
+# Seed: 20 accounts with permissions and opening valuations (+ 3 equity compensation in 14a)
 #
 # Creates a realistic Canadian household portfolio:
 # - Joint real estate (primary residence + mortgage + HELOC)

@@ -82,8 +82,11 @@ Sidekiq handles async tasks: account syncing, import processing, AI chat respons
 - Providers configured via `Provider::Registry`
 - Domain models use `Provided` concerns for data fetching
 - Inherit from `Provider` base class and return `with_provider_response`
-- `Provider::AlphaVantage` — sole market data provider, TSX support, 25 calls/day free tier
-- Env var: `ALPHA_VANTAGE_API_KEY`
+- `Provider::FinancialData` — default market data provider (financialdata.net) for stock/crypto prices, company info
+- `Provider::AlphaVantage` — fallback market data provider, TSX support, 25 calls/day free tier
+- `Provider::Frankfurter` — exchange rates via ECB data (frankfurter.dev), no API key, unlimited, 30+ currencies
+- Env vars: `MARKET_DATA_FINANCIAL_DATA_API_KEY` (default), `MARKET_DATA_PROVIDER=alpha_vantage` + `MARKET_DATA_ALPHA_VANTAGE_API_KEY` (fallback). Provider can also be switched in Settings > Self-Hosting UI.
+- **AI Providers**: RubyLLM multi-provider (`config/initializers/ruby_llm.rb`). OpenAI (`OPENAI_ACCESS_TOKEN`), Anthropic (`ANTHROPIC_API_KEY`), Gemini (`GEMINI_API_KEY`), Ollama (`OLLAMA_API_BASE`). Model override: `DEFAULT_AI_MODEL` (default `gpt-5-mini`). All fall back to `Setting` model (configurable in Settings UI).
 
 ### Account Connectivity Providers
 - **Plaid** (`Provider::Plaid`): Banking accounts (chequing, savings, credit cards, loans). US + EU regions. OAuth flow via Plaid Link with account selection/review before import. `PlaidItem` → `PlaidAccount` → `Account`.

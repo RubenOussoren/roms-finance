@@ -1,0 +1,6 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Edit Equity Grant") %>
+  <% dialog.with_body do %>
+    <%= render "equity_grants/form", equity_grant: @equity_grant, account: @account %>
+  <% end %>
+<% end %>

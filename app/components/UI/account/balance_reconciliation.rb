@@ -7,7 +7,7 @@ class UI::Account::BalanceReconciliation < ApplicationComponent
   end
 
   def reconciliation_items
-    case account.accountable_type
+    @reconciliation_items ||= case account.accountable_type
     when "Depository", "OtherAsset", "OtherLiability"
       default_items
     when "CreditCard"
@@ -20,6 +20,8 @@ class UI::Account::BalanceReconciliation < ApplicationComponent
       asset_items
     when "Crypto"
       crypto_items
+    when "EquityCompensation"
+      equity_compensation_items
     else
       default_items
     end
@@ -151,5 +153,70 @@ class UI::Account::BalanceReconciliation < ApplicationComponent
 
     def end_balance_before_adjustments
       balance.end_balance_money - total_adjustments
+    end
+
+    def equity_compensation_items
+      items = [
+        { label: "Start balance", value: balance.start_balance_money, tooltip: "The equity compensation value at the beginning of this day", style: :start },
+        { label: "Net value change", value: net_total_flow, tooltip: "All value changes including vesting and market movements", style: :flow }
+      ]
+
+      details = vesting_grant_details(balance.date)
+      items.concat(details) if details.any?
+
+      if has_adjustments?
+        items << { label: "End balance", value: end_balance_before_adjustments, tooltip: "The calculated balance after all activity", style: :subtotal }
+        items << { label: "Adjustments", value: total_adjustments, tooltip: "Manual reconciliations or other adjustments", style: :adjustment }
+      end
+
+      items << { label: "Final balance", value: balance.end_balance_money, tooltip: "The final equity compensation value for the day", style: :final }
+      items
+    end
+
+    def vesting_grant_details(date)
+      grants = account.accountable.equity_grants.includes(:security).to_a
+      return [] if grants.empty?
+
+      price_cache = {}
+      details = []
+
+      grants.each do |grant|
+        units = grant.vested_units(as_of: date)
+        next if units.zero?
+
+        security = grant.security
+        unit_price = price_cache[security.id] ||= price_for_security_on_date(security, date)
+        next if unit_price.nil?
+
+        value = grant.vested_value(as_of: date, price: unit_price.to_d)
+        currency = account.currency
+
+        item = {
+          label: grant.name.presence || "#{grant.security.ticker} #{grant.grant_type.humanize}",
+          value: Money.new(value, currency),
+          tooltip: "Cumulative vested value for this grant",
+          style: :vesting_detail,
+          units: units,
+          unit_price: Money.new(unit_price, currency),
+          grant_type: grant.grant_type
+        }
+
+        if grant.stock_option?
+          item[:strike_price] = Money.new(grant.strike_price || 0, currency)
+          item[:intrinsic_value_per_unit] = Money.new([ unit_price.to_d - (grant.strike_price || 0), 0 ].max, currency)
+        end
+
+        details << item
+      end
+
+      details
+    end
+
+    def price_for_security_on_date(security, date)
+      price = security.prices.where("date <= ?", date)
+        .order(date: :desc).limit(1).pick(:price)
+      price ||= security.prices.where("date >= ?", date)
+        .order(date: :asc).limit(1).pick(:price)
+      price
     end
 end

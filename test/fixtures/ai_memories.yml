@@ -1,0 +1,15 @@
+preference_dark_mode:
+  family: dylan_family
+  category: preference
+  content: "User prefers dark mode and minimal notifications"
+
+goal_retirement:
+  family: dylan_family
+  category: goal
+  content: "Retire by age 55 with $2M in investments"
+
+expired_memory:
+  family: dylan_family
+  category: context
+  content: "Temporary context that has expired"
+  expires_at: <%= 1.day.ago %>

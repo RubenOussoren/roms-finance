@@ -37,7 +37,7 @@ class Provider::Registry
       end
 
       def alpha_vantage
-        api_key = ENV.fetch("ALPHA_VANTAGE_API_KEY", Setting.alpha_vantage_api_key)
+        api_key = ENV.fetch("MARKET_DATA_ALPHA_VANTAGE_API_KEY", Setting.market_data_alpha_vantage_api_key)
 
         return nil unless api_key.present?
 
@@ -45,7 +45,18 @@ class Provider::Registry
       end
 
       def market_data_provider
-        alpha_vantage
+        case ENV.fetch("MARKET_DATA_PROVIDER", Setting.market_data_provider)
+        when "alpha_vantage" then alpha_vantage
+        else financial_data
+        end
+      end
+
+      def financial_data
+        api_key = ENV.fetch("MARKET_DATA_FINANCIAL_DATA_API_KEY", Setting.market_data_financial_data_api_key)
+
+        return nil unless api_key.present?
+
+        Provider::FinancialData.new(api_key)
       end
 
       def plaid_us
@@ -75,16 +86,18 @@ class Provider::Registry
         )
       end
 
+      def frankfurter
+        Provider::Frankfurter.new
+      end
+
       def github
         Provider::Github.new
       end
 
-      def openai
-        access_token = ENV.fetch("OPENAI_ACCESS_TOKEN", Setting.openai_access_token)
-
-        return nil unless access_token.present?
-
-        Provider::Openai.new(access_token)
+      def ruby_llm_provider
+        # RubyLLM is configured via its initializer with all provider API keys.
+        # It supports any model from any configured provider.
+        Provider::RubyLlm.new
       end
   end
 
@@ -111,13 +124,13 @@ class Provider::Registry
     def available_providers
       case concept
       when :exchange_rates
-        %i[market_data_provider]
+        %i[frankfurter]
       when :securities
         %i[market_data_provider]
       when :llm
-        %i[openai]
+        %i[ruby_llm_provider]
       else
-        %i[alpha_vantage plaid_us plaid_eu github openai]
+        raise Error, "Unknown concept: #{concept}"
       end
     end
 end
