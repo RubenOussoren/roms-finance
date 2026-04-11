@@ -14,5 +14,8 @@
 		"format": "biome format --write"
 	},
 	"author": "",
-	"license": "ISC"
+	"license": "ISC",
+	"dependencies": {
+		"@playwright/test": "^1.58.2"
+	}
 }
