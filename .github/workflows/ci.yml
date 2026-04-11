@@ -115,7 +115,7 @@ jobs:
       - name: Install Playwright browsers
         run: |
           PLAYWRIGHT_CLI_VERSION=$(bundle exec ruby -e 'require "playwright"; puts Playwright::COMPATIBLE_PLAYWRIGHT_VERSION.strip')
-          npx "playwright@${PLAYWRIGHT_CLI_VERSION}" install --with-deps chromium
+          npx "playwright@${PLAYWRIGHT_CLI_VERSION}" install --with-deps chromium chromium-headless-shell
 
       - name: DB setup and smoke test
         run: |
