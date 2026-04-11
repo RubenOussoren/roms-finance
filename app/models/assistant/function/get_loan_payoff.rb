@@ -47,12 +47,12 @@ class Assistant::Function::GetLoanPayoff < Assistant::Function
 
     result = {
       account: summary[:account]&.name,
-      current_balance: summary[:current_balance]&.format,
-      monthly_payment: summary[:monthly_payment]&.format,
+      current_balance: format_money(summary[:current_balance], summary[:currency]),
+      monthly_payment: format_money(summary[:monthly_payment], summary[:currency]),
       interest_rate: summary[:interest_rate],
       months_to_payoff: summary[:months_to_payoff],
       payoff_date: summary[:payoff_date],
-      total_interest_remaining: summary[:total_interest_remaining]&.format,
+      total_interest_remaining: format_money(summary[:total_interest_remaining], summary[:currency]),
       years_remaining: summary[:years_remaining],
       currency: summary[:currency]
     }
@@ -60,12 +60,18 @@ class Assistant::Function::GetLoanPayoff < Assistant::Function
     if extra_payment > 0
       result[:extra_payment_scenario] = {
         extra_monthly_payment: Money.new(extra_payment, summary[:currency]).format,
-        total_monthly_payment: calculator.total_monthly_payment&.format,
+        total_monthly_payment: format_money(calculator.total_monthly_payment, summary[:currency]),
         months_saved: calculator.months_saved_with_extra_payment,
-        interest_saved: calculator.interest_saved_with_extra_payment&.format
+        interest_saved: format_money(calculator.interest_saved_with_extra_payment, summary[:currency])
       }
     end
 
     result
   end
+
+  private
+    def format_money(value, currency)
+      return nil unless value && currency
+      Money.new(value, currency).format
+    end
 end

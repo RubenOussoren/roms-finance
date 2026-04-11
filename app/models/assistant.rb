@@ -8,17 +8,20 @@ class Assistant
   class << self
     def for_chat(chat)
       config = config_for(chat)
-      new(chat, instructions: config[:instructions], functions: config[:functions])
+      new(chat, instructions: config[:instructions], family: config[:family])
     end
   end
 
-  def initialize(chat, instructions: nil, functions: [])
+  def initialize(chat, instructions: nil, family: nil, functions: [])
     @chat = chat
     @instructions = instructions
+    @family = family
     @functions = functions
   end
 
   def respond_to(message)
+    started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
     assistant_message = AssistantMessage.new(
       chat: chat,
       content: "",
@@ -26,27 +29,54 @@ class Assistant
       status: :pending
     )
 
-    function_instances = build_function_instances
+    function_instances = select_functions(message.content)
+
+    provider = get_model_provider(message.ai_model)
+
+    # Fallback to default model if requested model isn't available
+    if provider.nil? && message.ai_model != Setting.default_ai_model
+      provider = get_model_provider(Setting.default_ai_model)
+      Rails.logger.warn("AI model '#{message.ai_model}' unavailable, falling back to '#{Setting.default_ai_model}'")
+    end
+
+    unless provider
+      chat.add_error(Provider::Error.new(
+        "No AI provider is available for model '#{message.ai_model}'. Please verify your API keys in Settings."
+      ))
+      return
+    end
+
+    setup_done = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    Rails.logger.info("[AI Chat] Setup took #{((setup_done - started_at) * 1000).round}ms (#{function_instances.size} functions, model=#{message.ai_model})")
 
     responder = Assistant::Responder.new(
       message: message,
       instructions: instructions,
       function_instances: function_instances,
-      llm: get_model_provider(message.ai_model)
+      llm: provider
     )
 
     assistant_message.start_streaming!
+    first_token_at = nil
+
+    thinking_stopped = false
 
     responder.on(:output_text) do |text|
-      if assistant_message.content.blank?
-        stop_thinking
-        assistant_message.append_text!(text)
-      else
-        assistant_message.append_text!(text)
+      unless first_token_at
+        first_token_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        Rails.logger.info("[AI Chat] TTFT #{((first_token_at - setup_done) * 1000).round}ms (time from API call to first token)")
       end
+
+      unless thinking_stopped
+        stop_thinking
+        thinking_stopped = true
+      end
+
+      assistant_message.append_text!(text)
     end
 
     responder.on(:response) do |data|
+      stop_thinking unless thinking_stopped
       assistant_message.flush_buffer!
 
       # Track token usage
@@ -96,10 +126,14 @@ class Assistant
   end
 
   private
-    attr_reader :functions
+    attr_reader :functions, :family
 
-    def build_function_instances
-      functions.map { |fn| fn.new(chat.user) }
+    def select_functions(message_content)
+      if family
+        self.class.send(:available_functions, family, message_content)
+      else
+        functions
+      end.map { |fn| fn.new(chat.user) }
     end
 
     def build_conversation_history(current_message)

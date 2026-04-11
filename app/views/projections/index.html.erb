@@ -54,7 +54,10 @@
             projection_years: @projection_years,
             net_worth_projection: @net_worth_projection,
             milestones: @milestones,
-            balance_sheet: @balance_sheet %>
+            balance_sheet: @balance_sheet,
+            equity_comp_accounts: @equity_comp_accounts,
+            equity_comp_current: @equity_comp_current,
+            equity_comp_projected: @equity_comp_projected %>
       <% when "investments" %>
         <%= render "projections/investments",
             accounts: @investment_accounts,

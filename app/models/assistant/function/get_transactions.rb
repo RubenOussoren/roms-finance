@@ -133,6 +133,8 @@ class Assistant::Function::GetTransactions < Assistant::Function
 
   def call(params = {})
     search_params = params.except("order", "page", "page_size")
+    search_params["start_date"] = safe_parse_date(search_params["start_date"])&.to_s if search_params["start_date"].present?
+    search_params["end_date"] = safe_parse_date(search_params["end_date"])&.to_s if search_params["end_date"].present?
 
     search = Transaction::Search.new(family, filters: search_params)
     full_access_ids = full_access_accounts.select(:id)

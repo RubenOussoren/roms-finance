@@ -217,6 +217,10 @@ Rails.application.routes.draw do
       post :simulate
     end
   end
+  resources :equity_compensations, only: %i[new create edit update]
+  resources :accounts, only: [] do
+    resources :equity_grants, only: %i[index new create edit update destroy]
+  end
   resources :cryptos, only: %i[new create edit update]
   resources :other_assets, only: %i[new create edit update]
   resources :other_liabilities, only: %i[new create edit update]

@@ -27,8 +27,10 @@ module Assistant::Function::CsvReportable
     end
 
     def report_result(export:, summary:)
+      path = "/family_exports/#{export.id}/download"
       {
-        download_path: "/family_exports/#{export.id}/download",
+        download_path: path,
+        download_link: "[Download Report](#{path})",
         filename: export.filename,
         summary: summary
       }
@@ -36,8 +38,8 @@ module Assistant::Function::CsvReportable
 
     def parse_date_range(params)
       [
-        Date.parse(params["start_date"]),
-        Date.parse(params["end_date"])
+        safe_parse_date(params["start_date"]),
+        safe_parse_date(params["end_date"])
       ]
     end
 

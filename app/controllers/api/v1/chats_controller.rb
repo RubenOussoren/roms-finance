@@ -24,7 +24,7 @@ class Api::V1::ChatsController < Api::V1::BaseController
         @message = @chat.messages.build(
           content: chat_params[:message],
           type: "UserMessage",
-          ai_model: chat_params[:model] || "gpt-5.1-mini"
+          ai_model: chat_params[:model] || "gpt-5-mini"
         )
 
         if @message.save

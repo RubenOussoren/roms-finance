@@ -1,7 +1,7 @@
 class ChatsController < ApplicationController
   include ActionView::RecordIdentifier
 
-  before_action :set_chat, only: [ :show, :edit, :update, :destroy ]
+  before_action :set_chat, only: [ :show, :edit, :update, :destroy, :retry ]
 
   def index
     @chat = nil # override application_controller default behavior of setting @chat to last viewed chat

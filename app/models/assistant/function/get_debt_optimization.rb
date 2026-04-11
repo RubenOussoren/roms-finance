@@ -67,9 +67,9 @@ class Assistant::Function::GetDebtOptimization < Assistant::Function
 
         if strategy.simulated? || strategy.active?
           data[:results] = {
-            total_interest_saved: strategy.total_interest_saved&.format,
-            total_tax_benefit: strategy.total_tax_benefit&.format,
-            net_benefit: strategy.net_benefit&.format,
+            total_interest_saved: format_money(strategy.total_interest_saved, strategy.primary_mortgage&.currency),
+            total_tax_benefit: format_money(strategy.total_tax_benefit, strategy.primary_mortgage&.currency),
+            net_benefit: format_money(strategy.net_benefit, strategy.primary_mortgage&.currency),
             months_accelerated: strategy.months_accelerated
           }
         end
@@ -78,4 +78,10 @@ class Assistant::Function::GetDebtOptimization < Assistant::Function
       }
     }
   end
+
+  private
+    def format_money(value, currency)
+      return nil unless value && currency
+      Money.new(value, currency).format
+    end
 end

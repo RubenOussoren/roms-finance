@@ -21,7 +21,7 @@ class Assistant::Function::GetBalanceSheet < Assistant::Function
     observation_start_date = [ 5.years.ago.to_date, family.oldest_entry_date ].max
 
     period = Period.custom(start_date: observation_start_date, end_date: Date.current)
-    balance_sheet = family.balance_sheet(viewer: user)
+    balance_sheet = family.balance_sheet_for(user)
 
     {
       as_of_date: Date.current,

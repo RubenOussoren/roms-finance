@@ -10,3 +10,9 @@ msft:
   exchange_operating_mic: XNAS
   country_code: US
 
+goog:
+  ticker: GOOG
+  name: Alphabet
+  exchange_operating_mic: XNAS
+  country_code: US
+

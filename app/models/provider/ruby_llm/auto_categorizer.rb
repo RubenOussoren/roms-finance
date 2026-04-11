@@ -1,7 +1,7 @@
 # Provider-agnostic auto-categorizer using RubyLLM.
 # Uses a cheap/fast model to categorize transactions against user categories.
 class Provider::RubyLlm::AutoCategorizer
-  CATEGORIZATION_MODEL = "gpt-5.1-mini"
+  CATEGORIZATION_MODEL = "gpt-5-mini"
 
   def initialize(transactions: [], user_categories: [])
     @transactions = transactions

@@ -45,8 +45,14 @@ class Account::MarketDataImporter
   def import_security_prices
     return unless Security.provider
 
-    account_securities = account.trades.map(&:security).uniq
+    account_securities = account.trades.map(&:security)
 
+    # Also include securities from equity grants (equity compensation accounts have no trades)
+    if account.accountable.respond_to?(:equity_grants)
+      account_securities |= account.accountable.equity_grants.includes(:security).map(&:security)
+    else
+      account_securities.uniq!
+    end
     return if account_securities.empty?
 
     account_securities.each do |security|
@@ -62,10 +68,18 @@ class Account::MarketDataImporter
   private
     # Calculates the first date we require a price for the given security scoped to this account
     def first_required_price_date(security)
-      account.trades.with_entry
-                    .where(security: security)
-                    .where(entries: { account_id: account.id })
-                    .minimum("entries.date")
+      trade_date = account.trades.with_entry
+                          .where(security: security)
+                          .where(entries: { account_id: account.id })
+                          .minimum("entries.date")
+      return trade_date if trade_date
+
+      # For equity grants without trades, use the earliest grant date
+      if account.accountable.respond_to?(:equity_grants)
+        account.accountable.equity_grants
+               .where(security: security)
+               .minimum(:grant_date)
+      end || Date.current
     end
 
     def needs_exchange_rates?
