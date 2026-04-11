@@ -64,8 +64,9 @@ The `investment-dashboard/` directory is a Python prototype for reference only. 
 
 ### Core Domain Model
 - **User** → has many **Accounts** → has many **Transactions**
-- **Account** types: checking, savings, credit cards, investments, crypto, loans, properties
+- **Account** types: checking, savings, credit cards, investments, crypto, loans, properties, equity compensation
 - **Investment accounts** → have **Holdings** → track **Securities** via **Trades**
+- **Equity compensation accounts** → have **EquityGrants** with grant prices, vesting schedules, and withdrawal-aware balances
 - **PlaidItem** → has many **PlaidAccounts** → each linked to an **Account** (banking connectivity)
 - **SnapTradeConnection** → has many **SnapTradeAccounts** → each linked to an **Account** (brokerage connectivity)
 

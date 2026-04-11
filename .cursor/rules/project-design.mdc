@@ -22,6 +22,7 @@ This rule provides detailed documentation of the core domain models beyond what 
 - [crypto.rb](mdc:app/models/crypto.rb) — tracks value of one or more crypto holdings
 - [property.rb](mdc:app/models/property.rb) — tracks value of physical property (house, rental)
 - [vehicle.rb](mdc:app/models/vehicle.rb) — tracks value of a vehicle
+- [equity_compensation.rb](mdc:app/models/equity_compensation.rb) — stock options and RSUs with grant prices, vesting schedules, and withdrawal-aware balances. Has many [equity_grant.rb](mdc:app/models/equity_grant.rb) records.
 - [other_asset.rb](mdc:app/models/other_asset.rb) — asset that doesn't fit other types (e.g. jewelry)
 
 ### Liability Accountables

@@ -335,7 +335,7 @@ Deferred. Only if demonstrated need after function tools and memory layers are l
 | --------------------- | ------------------------ | -------------------------------- | ----- |
 | `OPENAI_ACCESS_TOKEN` | OpenAI API key           | At least one provider required   | 1 ✅  |
 | `ANTHROPIC_API_KEY`   | Anthropic Claude API key | Optional                         | 1 ✅  |
-| `DEFAULT_AI_MODEL`    | Default model override   | Optional (defaults to `gpt-4.1`) | 1 ✅  |
+| `DEFAULT_AI_MODEL`    | Default model override   | Optional (defaults to `gpt-5-mini`) | 1 ✅  |
 | `GEMINI_API_KEY`      | Google Gemini API key    | Optional                         | 4 ✅  |
 | `OLLAMA_API_BASE`     | Ollama server URL        | Optional (self-hosted)           | 4 ✅  |
 

@@ -12,7 +12,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License"></a>
   <a href="https://github.com/RubenOussoren/roms-finance/actions/workflows/ci.yml"><img src="https://github.com/RubenOussoren/roms-finance/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/ruby-3.4-red.svg" alt="Ruby 3.4">
-  <img src="https://img.shields.io/badge/rails-7.2-red.svg" alt="Rails 7.2">
+  <img src="https://img.shields.io/badge/rails-8-red.svg" alt="Rails 8">
   <img src="https://img.shields.io/badge/docker-ready-2496ED.svg" alt="Docker Ready">
 </p>
 
@@ -35,6 +35,7 @@
 | Per-User Privacy           | Household and personal views with granular account visibility               |
 | Dark Mode                  | Full dark theme with system preference detection                            |
 | AI Assistant               | Natural language queries about your finances (OpenAI, Anthropic, Gemini, Ollama) |
+| Equity Compensation        | Track stock options and RSUs with grant prices, vesting schedules, and withdrawal-aware balances |
 | Self-Hostable              | Single Docker Compose file, runs on x86 and arm64 (Raspberry Pi)            |
 
 ## Screenshots
@@ -145,7 +146,7 @@ The next features planned (from the [Feature Roadmap](docs/FEATURE_ROADMAP.md)):
 
 ## Tech Stack
 
-- **Backend:** Ruby on Rails 7.2, PostgreSQL 16, Redis, Sidekiq
+- **Backend:** Ruby on Rails 8, PostgreSQL 16, Redis, Sidekiq
 - **Frontend:** Hotwire (Turbo + Stimulus), Tailwind CSS v4, D3.js
 - **Infrastructure:** Docker Compose, GitHub Actions CI, arm64 support
 

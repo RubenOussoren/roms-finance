@@ -1,8 +1,22 @@
 # ROMS Finance Feature Roadmap
 
 **Date:** February 2026
+**Last Updated:** April 2026
 **Status:** Draft specification for sprint planning
 **Audience:** Development team, product owner
+
+---
+
+## Recently Shipped (Post-v1.0.0)
+
+| Feature | Shipped | Description |
+|---------|---------|-------------|
+| AI Multi-Provider Upgrade | Mar 2026 | RubyLLM integration with OpenAI, Anthropic, Gemini, Ollama. 17 function tools, AI memory, chat UX improvements. See `docs/AI_UPGRADE_2026.md`. |
+| Equity Compensation | Mar 2026 | EquityCompensation accountable type with EquityGrant model. Grant price tracking, vesting schedules, withdrawal-aware balances, market data integration. |
+| Rails 8 Upgrade | Apr 2026 | Rails 7.2.3 → 8.1.3. See `docs/DEPENDENCY_UPGRADE_REPORT.md`. |
+| 29 Dependency Upgrades | Mar–Apr 2026 | Tiers 1-4 complete. Pagy 43, Puma 7, RubyZip 3, Playwright, and more. |
+| SnapTrade Brokerage | Feb 2026 | Canadian brokerage connectivity (Wealthsimple, Questrade) with account selection flow. |
+| Per-User Privacy Controls | Feb 2026 | Household/personal views with granular account visibility per family member. |
 
 ---
 

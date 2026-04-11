@@ -3,7 +3,7 @@
 		"@biomejs/biome": "^1.9.3"
 	},
 	"name": "roms-finance",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "The OS for your personal finances",
 	"scripts": {
 		"style:check": "biome check",
