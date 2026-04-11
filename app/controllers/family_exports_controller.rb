@@ -1,7 +1,7 @@
 class FamilyExportsController < ApplicationController
   include StreamExtensions
 
-  before_action :require_admin
+  before_action :require_admin, except: [ :download ]
   before_action :set_export, only: [ :download ]
 
   def new
@@ -27,16 +27,23 @@ class FamilyExportsController < ApplicationController
 
   def download
     if @export.downloadable?
-      redirect_to @export.export_file, allow_other_host: true
+      send_data @export.export_file.download,
+                filename: @export.filename,
+                type: @export.export_file.content_type,
+                disposition: "attachment"
     else
       redirect_to settings_profile_path, alert: "Export not ready for download"
     end
+  rescue ActiveStorage::FileNotFoundError, Errno::ENOENT
+    redirect_to settings_profile_path, alert: "This export file is no longer available. Please generate a new report."
   end
 
   private
 
     def set_export
-      @export = Current.family.family_exports.find(params[:id])
+      scope = Current.family.family_exports
+      scope = scope.where(requested_by_user_id: Current.user.id) unless Current.user.admin?
+      @export = scope.find(params[:id])
     end
 
     def require_admin

@@ -1,6 +1,7 @@
 class Message < ApplicationRecord
   belongs_to :chat
   has_many :tool_calls, dependent: :destroy
+  has_one :feedback, class_name: "MessageFeedback", dependent: :destroy
 
   enum :status, {
     pending: "pending",
@@ -8,7 +9,7 @@ class Message < ApplicationRecord
     failed: "failed"
   }
 
-  validates :content, presence: true
+  validates :content, presence: true, unless: :pending?
 
   after_create_commit -> { broadcast_append_to chat, target: "messages" }, if: :broadcast?
   after_update_commit -> { broadcast_update_to chat }, if: :broadcast?

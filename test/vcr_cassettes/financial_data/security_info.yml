@@ -1,0 +1,27 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://financialdata.net/api/v1/company-information?identifier=AAPL&key=test_financial_data_key
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v2.13.2
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '[{"trading_symbol":"AAPL","central_index_key":"0000320193","registrant_name":"Apple Inc.","exchange":"Nasdaq","sic_code":"3571","sic_description":"Electronic Computers","website":"https://www.apple.com/","description":"Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide.","chief_executive_officer":"Tim Cook","industry":"Consumer electronics","address_country_code":"US"}]'
+  recorded_at: Tue, 11 Mar 2026 12:00:00 GMT
+recorded_with: VCR 6.3.1

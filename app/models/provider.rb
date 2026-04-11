@@ -21,6 +21,15 @@ class Provider
     PaginatedData = Data.define(:paginated, :first_page, :total_pages)
     UsageData = Data.define(:used, :limit, :utilization, :plan)
 
+    def provider_client
+      @provider_client ||= Faraday.new do |faraday|
+        faraday.options.timeout = 15
+        faraday.options.open_timeout = 5
+        faraday.request(:retry, { max: 2, interval: 0.05, interval_randomness: 0.5, backoff_factor: 2 })
+        faraday.response :raise_error
+      end
+    end
+
     def with_provider_response(error_transformer: nil, &block)
       data = yield
 
@@ -51,7 +60,7 @@ class Provider
           details: error.response&.dig(:body),
         )
       else
-        self.class::Error.new(error.message)
+        self.class::Error.new(error.message, details: error.backtrace&.first(5)&.join("\n"))
       end
     end
 end

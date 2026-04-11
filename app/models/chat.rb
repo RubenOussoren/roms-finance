@@ -38,10 +38,6 @@ class Chat < ApplicationRecord
     end
   end
 
-  def update_latest_response!(provider_response_id)
-    update!(latest_assistant_response_id: provider_response_id)
-  end
-
   def add_error(e)
     update! error: e.to_json
     broadcast_append target: "messages", partial: "chats/error", locals: { chat: self }
@@ -71,5 +67,24 @@ class Chat < ApplicationRecord
     else
       messages.where(type: [ "UserMessage", "AssistantMessage" ])
     end
+  end
+
+  def generate_summary
+    return if summary.present?
+
+    msgs = conversation_messages.ordered.limit(10)
+    return if msgs.size < 4
+
+    provider = Provider::Registry.for_concept(:llm).providers.first
+    return unless provider
+
+    transcript = msgs.map { |m| "#{m.role}: #{m.content}" }.join("\n")
+    prompt = "Summarize this conversation in 2-3 sentences, focusing on the key topics and any decisions or preferences expressed:\n\n#{transcript}"
+
+    response = provider.chat_response(prompt, model: Setting.default_ai_model, instructions: "You are a concise summarizer. Return only the summary, no preamble.")
+    text = response.data&.messages&.first&.output_text
+    update!(summary: text) if text.present?
+  rescue => e
+    Rails.logger.error("Chat summary generation failed: #{e.message}")
   end
 end

@@ -1,3 +1,4 @@
+<%# locals: (family:, projection_years:, net_worth_projection:, milestones:, balance_sheet:, equity_comp_accounts:, equity_comp_current:, equity_comp_projected:) %>
 <%# Overview tab: Net worth projection + summary metrics + milestones %>
 <div class="space-y-6">
   <%# Summary metrics grid %>
@@ -34,6 +35,41 @@
       </p>
     </div>
   </div>
+
+  <%# Equity Compensation Summary %>
+  <% if equity_comp_accounts.any? %>
+    <div class="bg-container shadow-border-xs rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <%= icon "award", class: "w-5 h-5 text-violet-500" %>
+          <h2 class="text-lg font-medium text-primary">Equity Compensation</h2>
+        </div>
+        <span class="text-sm text-secondary"><%= equity_comp_accounts.size %> account<%= "s" if equity_comp_accounts.size > 1 %></span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-sm text-secondary">Current Vested Value</p>
+          <p class="text-lg font-semibold text-primary">
+            <%= format_money(Money.new(equity_comp_current, family.currency)) %>
+          </p>
+        </div>
+        <div>
+          <p class="text-sm text-secondary">Projected Vested (<%= projection_years %>y)</p>
+          <p class="text-lg font-semibold text-primary">
+            <%= format_money(Money.new(equity_comp_projected, family.currency)) %>
+          </p>
+        </div>
+      </div>
+
+      <% first_ec = equity_comp_accounts.first %>
+      <div class="mt-3 pt-3 border-t border-secondary">
+        <%= link_to account_path(first_ec), class: "text-sm text-link hover:underline", data: { turbo_frame: "_top" } do %>
+          View equity details
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <%# Net Worth Projection Chart %>
   <% if net_worth_projection %>

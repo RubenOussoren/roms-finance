@@ -42,6 +42,13 @@ class Rack::Attack
     request.ip if request.path == "/registration/new" && request.get?
   end
 
+  # 20 chat message submissions per minute per session/IP
+  throttle("chat/messages", limit: 20, period: 1.minute) do |request|
+    if request.path.match?(%r{/chats/.+/messages}) && request.post?
+      request.session[:session_id] || request.ip
+    end
+  end
+
   # Block requests that appear to be malicious
   blocklist("block malicious requests") do |request|
     # Block requests with suspicious user agents

@@ -32,6 +32,16 @@ class ProjectionsController < ApplicationController
                              .order(:target_amount)
                              .limit(5)
       @balance_sheet = @family.balance_sheet_for(Current.user, scope: @scope)
+
+      @equity_comp_accounts = scope_filtered_accounts
+        .where(accountable_type: "EquityCompensation").active
+        .includes(accountable: { equity_grants: :security })
+      @equity_comp_current = compute_scoped_total(@equity_comp_accounts)
+      # N+1 on security.current_price is bounded by unique securities (typically 1-5)
+      # and memoized per Security instance via @current_price
+      @equity_comp_projected = @equity_comp_accounts.sum { |a|
+        a.accountable.total_vested_value(as_of: Date.current + @projection_years.years)
+      }
     end
 
     def prepare_investments_data

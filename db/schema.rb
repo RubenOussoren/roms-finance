@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_11_100002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -139,6 +139,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.index ["addressable_type", "addressable_id"], name: "index_addresses_on_addressable"
   end
 
+  create_table "ai_memories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.string "category", null: false
+    t.text "content", null: false
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_ai_memories_on_expires_at"
+    t.index ["family_id", "category"], name: "index_ai_memories_on_family_id_and_category"
+    t.index ["family_id"], name: "index_ai_memories_on_family_id"
+  end
+
   create_table "api_keys", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
     t.uuid "user_id", null: false
@@ -225,9 +237,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.string "title", null: false
     t.string "instructions"
     t.jsonb "error"
-    t.string "latest_assistant_response_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "summary"
     t.index ["user_id"], name: "index_chats_on_user_id"
   end
 
@@ -373,6 +385,33 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.index ["import_id"], name: "index_entries_on_import_id"
   end
 
+  create_table "equity_compensations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.jsonb "locked_attributes", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "equity_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "equity_compensation_id", null: false
+    t.uuid "security_id", null: false
+    t.string "grant_type", null: false
+    t.string "name"
+    t.date "grant_date", null: false
+    t.decimal "total_units", precision: 19, scale: 4, null: false
+    t.integer "cliff_months", default: 12
+    t.integer "vesting_period_months", null: false
+    t.string "vesting_frequency", default: "monthly"
+    t.decimal "strike_price", precision: 19, scale: 4
+    t.date "expiration_date"
+    t.string "option_type"
+    t.decimal "estimated_tax_rate", precision: 5, scale: 2
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.date "termination_date"
+    t.index ["equity_compensation_id"], name: "index_equity_grants_on_equity_compensation_id"
+    t.index ["security_id"], name: "index_equity_grants_on_security_id"
+  end
+
   create_table "exchange_rates", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "from_currency", null: false
     t.string "to_currency", null: false
@@ -402,6 +441,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.datetime "latest_sync_completed_at", default: -> { "CURRENT_TIMESTAMP" }
     t.string "snaptrade_user_id"
     t.string "snaptrade_user_secret"
+    t.jsonb "ai_profile", default: {}
   end
 
   create_table "family_exports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -409,7 +449,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.string "status", default: "pending", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "export_type", default: "full_data", null: false
+    t.uuid "requested_by_user_id"
     t.index ["family_id"], name: "index_family_exports_on_family_id"
+    t.index ["requested_by_user_id"], name: "index_family_exports_on_requested_by_user_id"
   end
 
   create_table "holdings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -599,6 +642,18 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.index ["type"], name: "index_merchants_on_type"
   end
 
+  create_table "message_feedbacks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "message_id", null: false
+    t.uuid "user_id", null: false
+    t.integer "rating", null: false
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "user_id"], name: "index_message_feedbacks_on_message_id_and_user_id", unique: true
+    t.index ["message_id"], name: "index_message_feedbacks_on_message_id"
+    t.index ["user_id"], name: "index_message_feedbacks_on_user_id"
+  end
+
   create_table "messages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "chat_id", null: false
     t.string "type", null: false
@@ -610,6 +665,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
     t.boolean "debug", default: false
     t.string "provider_id"
     t.boolean "reasoning", default: false
+    t.integer "input_tokens"
+    t.integer "output_tokens"
+    t.integer "cost_cents"
     t.index ["chat_id"], name: "index_messages_on_chat_id"
   end
 
@@ -1104,6 +1162,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
   add_foreign_key "accounts", "users", column: "created_by_user_id"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_memories", "families"
   add_foreign_key "api_keys", "users"
   add_foreign_key "balances", "accounts", on_delete: :cascade
   add_foreign_key "budget_categories", "budgets"
@@ -1120,7 +1179,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
   add_foreign_key "debt_optimization_strategies", "jurisdictions"
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
+  add_foreign_key "equity_grants", "equity_compensations", on_delete: :cascade
+  add_foreign_key "equity_grants", "securities", on_delete: :cascade
   add_foreign_key "family_exports", "families"
+  add_foreign_key "family_exports", "users", column: "requested_by_user_id"
   add_foreign_key "holdings", "accounts"
   add_foreign_key "holdings", "securities"
   add_foreign_key "impersonation_session_logs", "impersonation_sessions"
@@ -1132,6 +1194,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_22_100005) do
   add_foreign_key "invitations", "families"
   add_foreign_key "invitations", "users", column: "inviter_id"
   add_foreign_key "merchants", "families"
+  add_foreign_key "message_feedbacks", "messages"
+  add_foreign_key "message_feedbacks", "users"
   add_foreign_key "messages", "chats"
   add_foreign_key "milestones", "accounts"
   add_foreign_key "mobile_devices", "users"

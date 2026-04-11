@@ -1,0 +1,24 @@
+rsu_grant:
+  equity_compensation: one
+  security: goog
+  grant_type: rsu
+  name: "2024 Annual RSU"
+  grant_date: "2024-01-15"
+  total_units: 1000.0000
+  cliff_months: 12
+  vesting_period_months: 48
+  vesting_frequency: monthly
+
+option_grant:
+  equity_compensation: one
+  security: goog
+  grant_type: stock_option
+  name: "2024 Stock Options"
+  grant_date: "2024-01-15"
+  total_units: 500.0000
+  cliff_months: 12
+  vesting_period_months: 48
+  vesting_frequency: monthly
+  strike_price: 150.0000
+  expiration_date: "2034-01-15"
+  option_type: iso

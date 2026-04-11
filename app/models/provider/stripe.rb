@@ -11,7 +11,7 @@ class Provider::Stripe
 
     case event.type
     when /^customer\.subscription\./
-      SubscriptionEventProcessor.new(event).process
+      process_subscription_event(event)
     else
       Rails.logger.warn "Unhandled event type: #{event.type}"
     end
@@ -84,5 +84,21 @@ class Provider::Stripe
 
     def retrieve_event(event_id)
       client.v1.events.retrieve(event_id)
+    end
+
+    def process_subscription_event(event)
+      subscription = event.data.object
+      family = Family.find_by(stripe_customer_id: subscription.customer)
+      raise Error, "Family not found for Stripe customer ID: #{subscription.customer}" unless family
+
+      details = subscription.items.data.first
+      family.subscription.update(
+        stripe_id: subscription.id,
+        status: subscription.status,
+        interval: details.plan.interval,
+        amount: details.plan.amount / 100.0,
+        currency: details.plan.currency.upcase,
+        current_period_ends_at: Time.at(details.current_period_end)
+      )
     end
 end

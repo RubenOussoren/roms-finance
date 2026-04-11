@@ -44,10 +44,20 @@ x-rails-env: &rails_env
   CACHE_REDIS_URL: redis://redis:6379/2
   SIDEKIQ_WEB_USERNAME: ${SIDEKIQ_WEB_USERNAME:-roms}
   SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-roms}
-# Market data — stock prices and exchange rates (Alpha Vantage). Set key in Settings > Self-Hosting or here.
-# ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
-# NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
+# Market data — stock prices and exchange rates. Set key in Settings > Self-Hosting or here.
+# Default: financialdata.net (300 calls/day free). Get a key: https://financialdata.net
+# MARKET_DATA_FINANCIAL_DATA_API_KEY: ${MARKET_DATA_FINANCIAL_DATA_API_KEY}
+# To use Alpha Vantage instead (25 calls/day), uncomment below:
+# MARKET_DATA_PROVIDER: alpha_vantage
+# MARKET_DATA_ALPHA_VANTAGE_API_KEY: ${MARKET_DATA_ALPHA_VANTAGE_API_KEY}
+# AI Providers — powers AI assistant (chat, rules). Costs apply for cloud providers.
+# At least one provider is needed. Can also be set in Settings > Self-Hosting.
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN}
+# ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+# GEMINI_API_KEY: ${GEMINI_API_KEY}
+# OLLAMA_API_BASE: ${OLLAMA_API_BASE}
+# DEFAULT_AI_MODEL: ${DEFAULT_AI_MODEL:-gpt-5-mini}
+
 # Plaid — bank account connectivity (US & EU). Get credentials at https://dashboard.plaid.com
 # PLAID_CLIENT_ID: ${PLAID_CLIENT_ID}
 # PLAID_SECRET: ${PLAID_SECRET}
@@ -88,6 +98,8 @@ services:
     image: ghcr.io/rubenoussoren/roms-finance:latest
     command: bundle exec sidekiq
     restart: unless-stopped
+    volumes:
+      - app-storage:/rails/storage
     depends_on:
       db:
         condition: service_healthy

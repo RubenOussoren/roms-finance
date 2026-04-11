@@ -1,0 +1,64 @@
+<%= settings_section title: "AI Memory", subtitle: "Manage what the AI assistant remembers about you" do %>
+  <div class="space-y-6">
+    <%# AI Profile %>
+    <div>
+      <h3 class="font-medium mb-2 text-primary">Profile</h3>
+      <% if @ai_profile.any? %>
+        <div class="bg-container rounded-lg border border-primary p-4 space-y-2">
+          <% @ai_profile.each do |key, value| %>
+            <div class="flex justify-between text-sm">
+              <span class="text-secondary font-medium"><%= key.humanize %></span>
+              <span class="text-primary"><%= value.is_a?(Array) ? value.join(", ") : value %></span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-secondary">No profile data yet. The AI will learn about you over time.</p>
+      <% end %>
+    </div>
+
+    <%# Saved Memories %>
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-medium text-primary">Saved memories (<%= @ai_memories.count %>/<%= AiMemory::MAX_PER_FAMILY %>)</h3>
+        <% if @ai_memories.any? %>
+          <%= button_to "Clear all", clear_settings_ai_memory_path, method: :delete,
+              class: "text-sm text-destructive hover:underline",
+              data: { turbo_confirm: "This will delete all AI memories and profile data. Are you sure?" } %>
+        <% end %>
+      </div>
+
+      <% if @ai_memories.any? %>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-secondary border-b border-primary">
+                <th class="py-2 pr-4">Category</th>
+                <th class="py-2 pr-4">Content</th>
+                <th class="py-2 pr-4">Expires</th>
+                <th class="py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @ai_memories.each do |memory| %>
+                <tr class="border-b border-secondary">
+                  <td class="py-2 pr-4">
+                    <span class="inline-block px-2 py-0.5 text-xs rounded-full bg-container border border-primary"><%= memory.category %></span>
+                  </td>
+                  <td class="py-2 pr-4 text-primary"><%= memory.content %></td>
+                  <td class="py-2 pr-4 text-secondary"><%= memory.expires_at ? memory.expires_at.strftime("%Y-%m-%d") : "Never" %></td>
+                  <td class="py-2">
+                    <%= button_to "Delete", settings_destroy_ai_memory_path(memory), method: :delete,
+                        class: "text-sm text-destructive hover:underline" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="text-sm text-secondary">No saved memories yet. Use the AI chat and it will remember important details.</p>
+      <% end %>
+    </div>
+  </div>
+<% end %>

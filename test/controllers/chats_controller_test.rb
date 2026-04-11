@@ -14,10 +14,10 @@ class ChatsControllerTest < ActionDispatch::IntegrationTest
 
   test "creates chat" do
     assert_difference("Chat.count") do
-      post chats_url, params: { chat: { content: "Hello", ai_model: "gpt-4.1" } }
+      post chats_url, params: { chat: { content: "Hello", ai_model: "gpt-5.4" } }
     end
 
-    assert_redirected_to chat_path(Chat.order(created_at: :desc).first, thinking: true)
+    assert_redirected_to chat_path(Chat.order(created_at: :desc).first)
   end
 
   test "shows chat" do
@@ -31,6 +31,19 @@ class ChatsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to chats_url
+  end
+
+  test "retries last message" do
+    chat = chats(:one)
+
+    # Add a user message as the last conversation message so retry enqueues a job
+    chat.messages.create!(type: "UserMessage", content: "Retry this", ai_model: "gpt-5.4")
+
+    assert_enqueued_with(job: AssistantResponseJob) do
+      post retry_chat_url(chat)
+    end
+
+    assert_redirected_to chat_path(chat)
   end
 
   test "should not allow access to other user's chats" do
