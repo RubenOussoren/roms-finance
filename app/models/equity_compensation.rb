@@ -36,17 +36,20 @@ class EquityCompensation < ApplicationRecord
   end
 
   def total_vested_value(as_of: Date.current)
-    equity_grants.sum { |g| g.vested_value(as_of: as_of) }
+    currency = account&.currency
+    equity_grants.sum { |g| g.vested_value(as_of: as_of, currency: currency) }
   end
 
   def total_unvested_value(as_of: Date.current)
-    equity_grants.sum { |g| g.unvested_value(as_of: as_of) }
+    currency = account&.currency
+    equity_grants.sum { |g| g.unvested_value(as_of: as_of, currency: currency) }
   end
 
   def total_unrealized_gain_loss(as_of: Date.current)
+    currency = account&.currency
     grants_with_price = equity_grants.select { |g| g.grant_price.present? }
     return nil if grants_with_price.empty?
-    grants_with_price.sum { |g| g.unrealized_gain_loss(as_of: as_of) }
+    grants_with_price.sum { |g| g.unrealized_gain_loss(as_of: as_of, currency: currency) }
   end
 
   def total_unrealized_gain_loss_trend(as_of: Date.current)
@@ -109,6 +112,18 @@ class EquityCompensation < ApplicationRecord
         nearest ||= sec.prices.where(date: date..(date + 7.days))
           .order(date: :asc).limit(1).pick(:price, :date)
         price_cache[[ sec.id, date ]] = nearest&.first
+      end
+    end
+
+    # Convert cached prices to account currency if needed
+    securities.each do |sec|
+      price_currency = sec.prices.pick(:currency) || "USD"
+      next if price_currency == acct.currency
+
+      price_cache.each do |(sec_id, date), price|
+        next unless sec_id == sec.id && price.present?
+        price_money = Money.new(price, price_currency)
+        price_cache[[ sec_id, date ]] = price_money.exchange_to(acct.currency, date: date, fallback_rate: 1).amount
       end
     end
 

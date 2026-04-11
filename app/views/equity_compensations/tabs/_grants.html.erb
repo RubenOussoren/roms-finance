@@ -60,7 +60,7 @@
             </div>
 
             <div class="col-span-2 justify-self-end text-right">
-              <p class="font-medium"><%= format_money Money.new(grant.vested_value, account.currency) %></p>
+              <p class="font-medium"><%= format_money Money.new(grant.vested_value(currency: account.currency), account.currency) %></p>
               <% if grant.stock_option? && grant.intrinsic_value_per_unit %>
                 <p class="text-xs text-secondary">Strike: <%= format_money Money.new(grant.strike_price, account.currency) %></p>
               <% end %>
@@ -68,8 +68,8 @@
                 <p class="text-xs text-red-600">Exercise by: <%= grant.exercise_deadline.strftime("%b %d, %Y") %></p>
               <% end %>
               <% if grant.grant_price.present? %>
-                <p class="text-xs text-secondary">Grant: <%= format_money Money.new(grant.grant_price, account.currency) %>/unit</p>
-                <% if (trend = grant.unrealized_gain_loss_trend) %>
+                <p class="text-xs text-secondary">Grant: <%= format_money Money.new(grant.grant_value(currency: account.currency) / grant.total_units, account.currency) %>/unit</p>
+                <% if (trend = grant.unrealized_gain_loss_trend(currency: account.currency)) %>
                   <%= render "shared/trend_change", trend: trend %>
                 <% end %>
               <% end %>

@@ -423,4 +423,48 @@ class EquityGrantTest < ActiveSupport::TestCase
     as_of = @rsu_grant.grant_date - 1.day
     assert_nil @rsu_grant.unrealized_gain_loss_trend(as_of: as_of)
   end
+
+  # === Currency Conversion ===
+
+  test "price_amount with currency converts via Money exchange_to" do
+    usd_price = Money.new(200, "USD")
+    cad_price = Money.new(280, "CAD")
+    @rsu_grant.security.stubs(:current_price).returns(usd_price)
+    usd_price.stubs(:exchange_to).with("CAD", fallback_rate: 1).returns(cad_price)
+
+    assert_equal 280, @rsu_grant.price_amount(currency: "CAD")
+  end
+
+  test "price_amount without currency returns raw amount" do
+    @rsu_grant.security.stubs(:current_price).returns(Money.new(200, "USD"))
+    assert_equal 200, @rsu_grant.price_amount
+  end
+
+  test "vested_value with currency converts price" do
+    usd_price = Money.new(200, "USD")
+    cad_price = Money.new(280, "CAD")
+    @rsu_grant.security.stubs(:current_price).returns(usd_price)
+    usd_price.stubs(:exchange_to).with("CAD", fallback_rate: 1).returns(cad_price)
+
+    as_of = @rsu_grant.grant_date + 24.months
+    units = @rsu_grant.vested_units(as_of: as_of)
+    expected = units * 280
+    assert_equal expected, @rsu_grant.vested_value(as_of: as_of, currency: "CAD")
+  end
+
+  test "unrealized_gain_loss with currency converts both prices" do
+    usd_price = Money.new(200, "USD")
+    cad_current = Money.new(280, "CAD")
+    cad_grant = Money.new(196, "CAD")
+    @rsu_grant.security.stubs(:current_price).returns(usd_price)
+    usd_price.stubs(:exchange_to).with("CAD", fallback_rate: 1).returns(cad_current)
+    Money.any_instance.stubs(:exchange_to).with("CAD", fallback_rate: 1).returns(cad_grant)
+    # Re-stub the security price since any_instance overrides it
+    usd_price.stubs(:exchange_to).with("CAD", fallback_rate: 1).returns(cad_current)
+
+    as_of = @rsu_grant.grant_date + 24.months
+    units = @rsu_grant.vested_units(as_of: as_of)
+    expected = (280 - 196) * units
+    assert_equal expected, @rsu_grant.unrealized_gain_loss(as_of: as_of, currency: "CAD")
+  end
 end

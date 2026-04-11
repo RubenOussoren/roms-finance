@@ -189,11 +189,19 @@ class UI::Account::BalanceReconciliation < ApplicationComponent
         next if units.zero?
 
         security = grant.security
-        unit_price = price_cache[security.id] ||= price_for_security_on_date(security, date)
-        next if unit_price.nil?
+        raw_price = price_cache[security.id] ||= price_for_security_on_date(security, date)
+        next if raw_price.nil?
+
+        # Convert security price to account currency if needed
+        price_currency = security.prices.pick(:currency) || "USD"
+        currency = account.currency
+        if price_currency != currency
+          unit_price = Money.new(raw_price, price_currency).exchange_to(currency, date: date, fallback_rate: 1).amount
+        else
+          unit_price = raw_price
+        end
 
         value = grant.vested_value(as_of: date, price: unit_price.to_d)
-        currency = account.currency
 
         item = {
           label: grant.name.presence || "#{grant.security.ticker} #{grant.grant_type.humanize}",
@@ -206,8 +214,9 @@ class UI::Account::BalanceReconciliation < ApplicationComponent
         }
 
         if grant.stock_option?
-          item[:strike_price] = Money.new(grant.strike_price || 0, currency)
-          item[:intrinsic_value_per_unit] = Money.new([ unit_price.to_d - (grant.strike_price || 0), 0 ].max, currency)
+          converted_strike = Money.new(grant.strike_price || 0, price_currency).exchange_to(currency, date: date, fallback_rate: 1).amount
+          item[:strike_price] = Money.new(converted_strike, currency)
+          item[:intrinsic_value_per_unit] = Money.new([ unit_price.to_d - converted_strike, 0 ].max, currency)
         end
 
         details << item

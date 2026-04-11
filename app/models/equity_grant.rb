@@ -54,16 +54,20 @@ class EquityGrant < ApplicationRecord
     security.current_price
   end
 
-  def price_amount
+  def price_amount(currency: nil)
     cp = current_price
     return 0 if cp.nil?
-    cp.respond_to?(:amount) ? cp.amount : cp.to_d
+    if currency && cp.respond_to?(:exchange_to)
+      cp.exchange_to(currency, fallback_rate: 1).amount
+    else
+      cp.respond_to?(:amount) ? cp.amount : cp.to_d
+    end
   end
 
-  def vested_value(as_of: Date.current, price: nil)
+  def vested_value(as_of: Date.current, price: nil, currency: nil)
     return 0 if expired_at?(as_of)
     units = vested_units(as_of: as_of)
-    unit_price = price || price_amount
+    unit_price = price || price_amount(currency: currency)
     if stock_option?
       units * [ unit_price - (strike_price || 0), 0 ].max
     else
@@ -71,10 +75,10 @@ class EquityGrant < ApplicationRecord
     end
   end
 
-  def unvested_value(as_of: Date.current, price: nil)
+  def unvested_value(as_of: Date.current, price: nil, currency: nil)
     return 0 if expired_at?(as_of)
     units = unvested_units(as_of: as_of)
-    unit_price = price || price_amount
+    unit_price = price || price_amount(currency: currency)
     if stock_option?
       units * [ unit_price - (strike_price || 0), 0 ].max
     else
@@ -151,29 +155,34 @@ class EquityGrant < ApplicationRecord
     (vested_units(as_of: as_of) / total_units.to_d * 100).round(1)
   end
 
-  def grant_value
+  def grant_value(currency: nil)
     return nil unless grant_price.present?
-    total_units * grant_price
+    total_units * converted_grant_price(currency: currency)
   end
 
-  def unrealized_gain_loss(as_of: Date.current)
+  def unrealized_gain_loss(as_of: Date.current, currency: nil)
     return nil unless grant_price.present?
     units = vested_units(as_of: as_of)
     return 0 if units.zero?
-    (price_amount - grant_price) * units
+    (price_amount(currency: currency) - converted_grant_price(currency: currency)) * units
   end
 
-  def unrealized_gain_loss_trend(as_of: Date.current)
+  def unrealized_gain_loss_trend(as_of: Date.current, currency: nil)
     return nil unless grant_price.present?
     units = vested_units(as_of: as_of)
     return nil if units.zero?
 
-    current = price_amount * units
-    previous = grant_price * units
+    current = price_amount(currency: currency) * units
+    previous = converted_grant_price(currency: currency) * units
     Trend.new(current: current, previous: previous)
   end
 
   private
+
+    def converted_grant_price(currency: nil)
+      return grant_price unless currency && current_price&.respond_to?(:currency)
+      Money.new(grant_price, current_price.currency).exchange_to(currency, fallback_rate: 1).amount
+    end
 
     def expired_at?(as_of)
       # Stock options expire at expiration_date

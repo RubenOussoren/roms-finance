@@ -31,6 +31,7 @@
     <%= form.date_field :grant_date, label: "Grant date", value: equity_grant.grant_date || Date.current, required: true %>
 
     <%= form.number_field :grant_price, label: "Grant price (per unit)", placeholder: "e.g. 175.50", min: 0, step: "0.01" %>
+    <p class="text-xs text-secondary -mt-1">Enter in the stock's trading currency (e.g. USD for US stocks). Will be converted to your account currency automatically.</p>
 
     <%= form.number_field :total_units, label: "Total units", placeholder: "1000", min: 0.0001, step: "any", required: true %>
 
@@ -44,6 +45,7 @@
 
     <div data-equity-grant-form-target="optionFields" class="<%= "hidden" unless equity_grant.stock_option? %> space-y-2">
       <%= form.number_field :strike_price, label: "Strike price", placeholder: "150.00", min: 0, step: "0.01" %>
+      <p class="text-xs text-secondary -mt-1">Enter in the stock's trading currency.</p>
 
       <%= form.date_field :expiration_date, label: "Expiration date" %>
 
