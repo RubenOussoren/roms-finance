@@ -67,6 +67,12 @@
               <% if grant.terminated? && grant.stock_option? && grant.exercise_deadline %>
                 <p class="text-xs text-red-600">Exercise by: <%= grant.exercise_deadline.strftime("%b %d, %Y") %></p>
               <% end %>
+              <% if grant.grant_price.present? %>
+                <p class="text-xs text-secondary">Grant: <%= format_money Money.new(grant.grant_price, account.currency) %>/unit</p>
+                <% if (trend = grant.unrealized_gain_loss_trend) %>
+                  <%= render "shared/trend_change", trend: trend %>
+                <% end %>
+              <% end %>
             </div>
 
             <div class="col-span-1 justify-self-end flex gap-1">

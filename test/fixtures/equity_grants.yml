@@ -8,6 +8,7 @@ rsu_grant:
   cliff_months: 12
   vesting_period_months: 48
   vesting_frequency: monthly
+  grant_price: 140.0000
 
 option_grant:
   equity_compensation: one

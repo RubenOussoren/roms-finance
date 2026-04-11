@@ -356,4 +356,71 @@ class EquityGrantTest < ActiveSupport::TestCase
     units = @option_grant.vested_units(as_of: as_of)
     assert_equal units * 50, value
   end
+
+  # === Grant Value ===
+
+  test "grant_value returns total_units times grant_price" do
+    assert_equal 1000 * 140, @rsu_grant.grant_value
+  end
+
+  test "grant_value returns nil when grant_price is nil" do
+    assert_nil @option_grant.grant_value
+  end
+
+  # === Unrealized Gain/Loss ===
+
+  test "unrealized_gain_loss returns gain when price above grant_price" do
+    @rsu_grant.security.stubs(:current_price).returns(Money.new(200, "USD"))
+    as_of = @rsu_grant.grant_date + 24.months
+    units = @rsu_grant.vested_units(as_of: as_of)
+    expected = (200 - 140) * units
+    assert_equal expected, @rsu_grant.unrealized_gain_loss(as_of: as_of)
+  end
+
+  test "unrealized_gain_loss returns loss when price below grant_price" do
+    @rsu_grant.security.stubs(:current_price).returns(Money.new(100, "USD"))
+    as_of = @rsu_grant.grant_date + 24.months
+    units = @rsu_grant.vested_units(as_of: as_of)
+    expected = (100 - 140) * units
+    assert_equal expected, @rsu_grant.unrealized_gain_loss(as_of: as_of)
+  end
+
+  test "unrealized_gain_loss returns nil when grant_price is nil" do
+    assert_nil @option_grant.unrealized_gain_loss
+  end
+
+  test "unrealized_gain_loss returns 0 when no units vested" do
+    as_of = @rsu_grant.grant_date - 1.day
+    assert_equal 0, @rsu_grant.unrealized_gain_loss(as_of: as_of)
+  end
+
+  test "unrealized_gain_loss only considers vested units" do
+    @rsu_grant.security.stubs(:current_price).returns(Money.new(200, "USD"))
+    as_of = @rsu_grant.grant_date + 24.months
+    units = @rsu_grant.vested_units(as_of: as_of)
+    assert units < @rsu_grant.total_units, "Should not be fully vested"
+    expected = (200 - 140) * units
+    assert_equal expected, @rsu_grant.unrealized_gain_loss(as_of: as_of)
+  end
+
+  # === Unrealized Gain/Loss Trend ===
+
+  test "unrealized_gain_loss_trend returns Trend object" do
+    @rsu_grant.security.stubs(:current_price).returns(Money.new(200, "USD"))
+    as_of = @rsu_grant.grant_date + 24.months
+    trend = @rsu_grant.unrealized_gain_loss_trend(as_of: as_of)
+    assert_instance_of Trend, trend
+    units = @rsu_grant.vested_units(as_of: as_of)
+    assert_equal 200 * units, trend.current
+    assert_equal 140 * units, trend.previous
+  end
+
+  test "unrealized_gain_loss_trend returns nil when grant_price is nil" do
+    assert_nil @option_grant.unrealized_gain_loss_trend
+  end
+
+  test "unrealized_gain_loss_trend returns nil when no units vested" do
+    as_of = @rsu_grant.grant_date - 1.day
+    assert_nil @rsu_grant.unrealized_gain_loss_trend(as_of: as_of)
+  end
 end

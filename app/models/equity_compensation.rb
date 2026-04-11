@@ -43,8 +43,32 @@ class EquityCompensation < ApplicationRecord
     equity_grants.sum { |g| g.unvested_value(as_of: as_of) }
   end
 
+  def total_unrealized_gain_loss(as_of: Date.current)
+    grants_with_price = equity_grants.select { |g| g.grant_price.present? }
+    return nil if grants_with_price.empty?
+    grants_with_price.sum { |g| g.unrealized_gain_loss(as_of: as_of) }
+  end
+
+  def total_unrealized_gain_loss_trend(as_of: Date.current)
+    total_gl = total_unrealized_gain_loss(as_of: as_of)
+    return nil if total_gl.nil?
+
+    vested = total_vested_value(as_of: as_of)
+    Trend.new(current: vested, previous: vested - total_gl)
+  end
+
   def next_vesting_event(as_of: Date.current)
     equity_grants.filter_map { |g| g.next_vest_date(as_of: as_of) }.min
+  end
+
+  def total_withdrawals
+    acct = account
+    return 0 unless acct
+
+    acct.entries
+      .where(entryable_type: "Transaction", currency: acct.currency)
+      .where("amount > 0")
+      .sum(:amount)
   end
 
   VESTING_ENTRY_PREFIX = "Vesting: "
@@ -121,8 +145,8 @@ class EquityCompensation < ApplicationRecord
         )
       end
 
-      # Update current balance
-      acct.update!(balance: total_vested_value)
+      # Update current balance: vested value minus any withdrawals (e.g., sold GSUs transferred out)
+      acct.update!(balance: [ total_vested_value - total_withdrawals, 0 ].max)
     end
 
     # Trigger sync outside the transaction so job only fires on commit (I1 fix)

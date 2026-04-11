@@ -164,6 +164,10 @@ class UI::Account::BalanceReconciliation < ApplicationComponent
       details = vesting_grant_details(balance.date)
       items.concat(details) if details.any?
 
+      if balance.non_cash_outflows != 0
+        items << { label: "Withdrawals", value: balance.non_cash_outflows_money * -1, tooltip: "Proceeds from selling vested units", style: :flow }
+      end
+
       if has_adjustments?
         items << { label: "End balance", value: end_balance_before_adjustments, tooltip: "The calculated balance after all activity", style: :subtotal }
         items << { label: "Adjustments", value: total_adjustments, tooltip: "Manual reconciliations or other adjustments", style: :adjustment }

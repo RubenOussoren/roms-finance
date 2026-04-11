@@ -66,7 +66,7 @@ class EquityGrantsController < ApplicationController
 
     def equity_grant_params
       params.require(:equity_grant).permit(
-        :grant_type, :name, :security_id, :grant_date, :total_units,
+        :grant_type, :name, :security_id, :grant_date, :grant_price, :total_units,
         :cliff_months, :vesting_period_months, :vesting_frequency,
         :strike_price, :expiration_date, :option_type, :estimated_tax_rate,
         :termination_date

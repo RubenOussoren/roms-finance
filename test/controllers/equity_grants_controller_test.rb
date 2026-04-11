@@ -29,7 +29,8 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to account_path(@account, tab: :grants)
-    assert_equal @account.accountable.reload.total_vested_value, @account.reload.balance
+    ec = @account.accountable.reload
+    assert_equal [ ec.total_vested_value - ec.total_withdrawals, 0 ].max, @account.reload.balance
   end
 
   test "creates stock option grant" do
@@ -66,7 +67,8 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to account_path(@account, tab: :grants)
     assert_equal "Updated Grant Name", @grant.reload.name
-    assert_equal @account.accountable.reload.total_vested_value, @account.reload.balance
+    ec = @account.accountable.reload
+    assert_equal [ ec.total_vested_value - ec.total_withdrawals, 0 ].max, @account.reload.balance
   end
 
   test "destroys grant" do
@@ -75,7 +77,8 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to account_path(@account, tab: :grants)
-    assert_equal @account.accountable.reload.total_vested_value, @account.reload.balance
+    ec = @account.accountable.reload
+    assert_equal [ ec.total_vested_value - ec.total_withdrawals, 0 ].max, @account.reload.balance
   end
 
   test "creates grant with combobox composite security_id" do
@@ -118,6 +121,28 @@ class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
     grant = EquityGrant.order(:created_at).last
     assert_equal "NVDA", grant.security.ticker
     assert_equal "XNAS", grant.security.exchange_operating_mic
+    assert_redirected_to account_path(@account, tab: :grants)
+  end
+
+  test "creates grant with grant_price" do
+    assert_difference -> { EquityGrant.count } => 1 do
+      post account_equity_grants_path(@account), params: {
+        equity_grant: {
+          grant_type: "rsu",
+          name: "Grant With Price",
+          security_id: securities(:goog).id,
+          grant_date: "2025-03-01",
+          grant_price: 175.50,
+          total_units: 500,
+          cliff_months: 12,
+          vesting_period_months: 48,
+          vesting_frequency: "monthly"
+        }
+      }
+    end
+
+    grant = EquityGrant.order(:created_at).last
+    assert_equal 175.50, grant.grant_price.to_f
     assert_redirected_to account_path(@account, tab: :grants)
   end
 

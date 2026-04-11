@@ -43,6 +43,8 @@ class UI::Account::Chart < ApplicationComponent
       "Debt balance"
     when "Loan"
       "Remaining principal balance"
+    when "EquityCompensation"
+      "Vested equity value"
     else
       "Balance"
     end

@@ -12,6 +12,19 @@
     <%= format_money Money.new(ec.total_unvested_value, account.currency) %>
   <% end %>
 
+  <% withdrawals = ec.total_withdrawals %>
+  <% if withdrawals > 0 %>
+    <%= summary_card title: "Withdrawals" do %>
+      -<%= format_money Money.new(withdrawals, account.currency) %>
+    <% end %>
+  <% end %>
+
+  <% if (trend = ec.total_unrealized_gain_loss_trend) %>
+    <%= summary_card title: "Unrealized Gain/Loss" do %>
+      <%= render "shared/trend_change", trend: trend %>
+    <% end %>
+  <% end %>
+
   <%= summary_card title: "Next Vesting" do %>
     <% if (next_date = ec.next_vesting_event) %>
       <%= next_date.strftime("%b %d, %Y") %>

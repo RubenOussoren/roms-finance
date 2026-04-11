@@ -59,7 +59,8 @@ EquityGrant.create!(
   cliff_months: 12,
   vesting_period_months: 48,
   vesting_frequency: "monthly",
-  estimated_tax_rate: 30.0
+  estimated_tax_rate: 30.0,
+  grant_price: 95.50
 )
 
 puts "  Created Alphabet RSUs (wife) — 1 RSU grant"
@@ -92,7 +93,8 @@ EquityGrant.create!(
   vesting_period_months: 48,
   vesting_frequency: "quarterly",
   expiration_date: Date.new(2034, 3, 1),
-  estimated_tax_rate: 15.0
+  estimated_tax_rate: 15.0,
+  grant_price: 185.00
 )
 
 puts "  Created Apple Stock Options (husband) — 1 ISO grant"

@@ -110,6 +110,39 @@ class EquityCompensationTest < ActiveSupport::TestCase
     assert_equal 0, vesting_on_date.count
   end
 
+  # === Unrealized Gain/Loss ===
+
+  test "total_unrealized_gain_loss sums across grants with grant_price" do
+    ec = equity_compensations(:one)
+    ec.equity_grants.each do |g|
+      g.grant_price = 100.0
+      g.security.stubs(:current_price).returns(Money.new(150, "USD"))
+      g.save!(validate: false)
+    end
+
+    result = ec.total_unrealized_gain_loss
+    assert result.is_a?(Numeric)
+  end
+
+  test "total_unrealized_gain_loss returns nil when no grants have grant_price" do
+    ec = equity_compensations(:one)
+    ec.equity_grants.each { |g| g.update_column(:grant_price, nil) }
+    assert_nil ec.total_unrealized_gain_loss
+  end
+
+  test "total_unrealized_gain_loss ignores grants without grant_price" do
+    ec = equity_compensations(:one)
+    grants = ec.equity_grants.to_a
+
+    # Only first grant has grant_price
+    grants.first.update_column(:grant_price, 100.0)
+    grants.last.update_column(:grant_price, nil) if grants.size > 1
+
+    grants.first.security.stubs(:current_price).returns(Money.new(150, "USD"))
+    result = ec.total_unrealized_gain_loss
+    assert result.is_a?(Numeric)
+  end
+
   test "regenerate_vesting_valuations updates account balance" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
@@ -119,6 +152,107 @@ class EquityCompensationTest < ActiveSupport::TestCase
 
     ec.regenerate_vesting_valuations!
 
-    assert_equal ec.total_vested_value, account.reload.balance
+    expected = [ ec.total_vested_value - ec.total_withdrawals, 0 ].max
+    assert_equal expected, account.reload.balance
+  end
+
+  # === Withdrawal Tracking ===
+
+  test "total_withdrawals sums positive transaction entries" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+
+    # Create outflow transaction entries (positive amount = money leaving asset account)
+    account.entries.create!(
+      name: "Sale proceeds",
+      date: Date.current - 30.days,
+      amount: 5000,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+    account.entries.create!(
+      name: "Sale proceeds 2",
+      date: Date.current - 15.days,
+      amount: 3000,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    assert_equal 8000, ec.total_withdrawals
+  end
+
+  test "total_withdrawals ignores valuation entries" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+
+    # Valuation entries should not count as withdrawals
+    account.entries.create!(
+      name: "Vesting: Jan 2025",
+      date: Date.current - 30.days,
+      amount: 10000,
+      currency: account.currency,
+      entryable: Valuation.new(kind: "reconciliation")
+    )
+
+    assert_equal 0, ec.total_withdrawals
+  end
+
+  test "total_withdrawals ignores negative transaction entries" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+
+    # Negative amount = inflow, should not count as withdrawal
+    account.entries.create!(
+      name: "Refund",
+      date: Date.current - 30.days,
+      amount: -1000,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    assert_equal 0, ec.total_withdrawals
+  end
+
+  test "regenerate_vesting_valuations subtracts withdrawals from balance" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+
+    ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
+    account.stubs(:sync_later)
+
+    # Create a withdrawal
+    account.entries.create!(
+      name: "Sale proceeds",
+      date: Date.current - 30.days,
+      amount: 5000,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    ec.regenerate_vesting_valuations!
+
+    expected = [ ec.total_vested_value - 5000, 0 ].max
+    assert_equal expected, account.reload.balance
+  end
+
+  test "balance does not go negative when withdrawals exceed vested value" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+
+    ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
+    account.stubs(:sync_later)
+
+    # Create a very large withdrawal
+    account.entries.create!(
+      name: "Large sale",
+      date: Date.current - 30.days,
+      amount: 999_999_999,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    ec.regenerate_vesting_valuations!
+
+    assert_equal 0, account.reload.balance
   end
 end

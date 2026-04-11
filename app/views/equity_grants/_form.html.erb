@@ -30,6 +30,8 @@
 
     <%= form.date_field :grant_date, label: "Grant date", value: equity_grant.grant_date || Date.current, required: true %>
 
+    <%= form.number_field :grant_price, label: "Grant price (per unit)", placeholder: "e.g. 175.50", min: 0, step: "0.01" %>
+
     <%= form.number_field :total_units, label: "Total units", placeholder: "1000", min: 0.0001, step: "any", required: true %>
 
     <%= form.number_field :cliff_months, label: "Cliff (months)", value: equity_grant.cliff_months || 12, min: 0, step: 1 %>

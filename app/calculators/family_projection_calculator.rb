@@ -261,7 +261,7 @@ class FamilyProjectionCalculator
     def project_equity_compensation_balance(account, month)
       ec = equity_compensation_with_grants(account)
       return account.balance if ec.nil?
-      ec.total_vested_value(as_of: Date.current + month.months)
+      [ ec.total_vested_value(as_of: Date.current + month.months) - ec.total_withdrawals, 0 ].max
     end
 
     def equity_compensation_with_grants(account)

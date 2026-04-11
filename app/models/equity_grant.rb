@@ -9,6 +9,7 @@ class EquityGrant < ApplicationRecord
   validates :grant_date, presence: true
   validates :cliff_months, numericality: { greater_than_or_equal_to: 0 }, allow_nil: false
 
+  validates :grant_price, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :strike_price, presence: true, if: :stock_option?
   validates :expiration_date, presence: true, if: :stock_option?
   validates :option_type, presence: true, inclusion: { in: %w[iso nso] }, if: :stock_option?
@@ -148,6 +149,28 @@ class EquityGrant < ApplicationRecord
   def vesting_progress(as_of: Date.current)
     return 0 if total_units.zero?
     (vested_units(as_of: as_of) / total_units.to_d * 100).round(1)
+  end
+
+  def grant_value
+    return nil unless grant_price.present?
+    total_units * grant_price
+  end
+
+  def unrealized_gain_loss(as_of: Date.current)
+    return nil unless grant_price.present?
+    units = vested_units(as_of: as_of)
+    return 0 if units.zero?
+    (price_amount - grant_price) * units
+  end
+
+  def unrealized_gain_loss_trend(as_of: Date.current)
+    return nil unless grant_price.present?
+    units = vested_units(as_of: as_of)
+    return nil if units.zero?
+
+    current = price_amount * units
+    previous = grant_price * units
+    Trend.new(current: current, previous: previous)
   end
 
   private
