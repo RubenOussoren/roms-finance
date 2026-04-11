@@ -1,5 +1,5 @@
 class Assistant::Function::GetTransactions < Assistant::Function
-  include Pagy::Backend
+  include Pagy::Method
 
   class << self
     def default_page_size
@@ -150,7 +150,8 @@ class Assistant::Function::GetTransactions < Assistant::Function
         transfer_as_inflow: { outflow_transaction: { entry: :account } }
       ),
       page: params["page"] || 1,
-      limit: default_page_size
+      limit: default_page_size,
+      request: { base_url: "", path: "/", params: {} }
     )
 
     totals = search.totals

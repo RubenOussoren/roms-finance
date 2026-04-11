@@ -1,6 +1,4 @@
 module ApplicationHelper
-  include Pagy::Frontend
-
   def styled_form_with(**options, &block)
     options[:builder] = StyledFormBuilder
     form_with(**options, &block)

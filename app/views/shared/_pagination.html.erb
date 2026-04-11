@@ -3,8 +3,8 @@
 <nav class="flex w-full items-center justify-between">
   <div class="flex items-center gap-1">
     <div>
-      <% if pagy.prev %>
-        <%= link_to pagy_url_for(pagy, pagy.prev),
+      <% if pagy.previous %>
+        <%= link_to pagy.page_url(pagy.previous),
               data: { turbo_frame: :_top },
               class: "inline-flex items-center p-2 text-sm font-medium text-secondary bg-container-inset hover:border-secondary hover:text-secondary" do %>
           <%= icon("chevron-left") %>
@@ -16,15 +16,15 @@
       <% end %>
     </div>
     <div class="rounded-xl p-1 bg-container-inset">
-      <% pagy.series.each do |series_item| %>
+      <% pagy.send(:series).each do |series_item| %>
         <% if series_item.is_a?(Integer) %>
-          <%= link_to pagy_url_for(pagy, series_item),
+          <%= link_to pagy.page_url(series_item),
                 data: { turbo_frame: :_top },
                 class: "rounded-md px-2 py-1 inline-flex items-center text-sm font-medium text-secondary hover:border-secondary hover:text-secondary" do %>
             <%= series_item %>
           <% end %>
         <% elsif series_item.is_a?(String) %>
-          <%= link_to pagy_url_for(pagy, series_item),
+          <%= link_to pagy.page_url(series_item),
                 data: { turbo_frame: :_top },
                 class: "rounded-md px-2 py-1 bg-container border border-secondary shadow-xs inline-flex items-center text-sm font-medium text-primary" do %>
             <%= series_item %>
@@ -36,7 +36,7 @@
     </div>
     <div>
       <% if pagy.next %>
-        <%= link_to pagy_url_for(pagy, pagy.next),
+        <%= link_to pagy.page_url(pagy.next),
               data: { turbo_frame: :_top },
               class: "inline-flex items-center p-2 text-sm font-medium text-secondary hover:border-secondary hover:text-secondary" do %>
           <%= icon("chevron-right") %>

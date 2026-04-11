@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
 class Api::V1::ChatsController < Api::V1::BaseController
-  include Pagy::Backend
+  include Pagy::Method
   before_action :require_ai_enabled
   before_action :ensure_read_scope, only: [ :index, :show ]
   before_action :ensure_write_scope, only: [ :create, :update, :destroy ]
   before_action :set_chat, only: [ :show, :update, :destroy ]
 
   def index
-    @pagy, @chats = pagy(Current.user.chats.ordered, items: 20)
+    @pagy, @chats = pagy(Current.user.chats.ordered, limit: 20)
   end
 
   def show
     return unless @chat
-    @pagy, @messages = pagy(@chat.messages.ordered, items: 50)
+    @pagy, @messages = pagy(@chat.messages.ordered, limit: 50)
   end
 
   def create
