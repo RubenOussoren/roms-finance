@@ -73,4 +73,20 @@ class FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to settings_profile_path
     assert_equal "Export not ready for download", flash[:alert]
   end
+
+  test "handles missing file gracefully on download" do
+    export = @family.family_exports.create!(status: "completed")
+    export.export_file.attach(
+      io: StringIO.new("test zip content"),
+      filename: "test.zip",
+      content_type: "application/zip"
+    )
+
+    # Delete the blob from storage to simulate a missing file
+    export.export_file.blob.service.delete(export.export_file.blob.key)
+
+    get download_family_export_path(export)
+    assert_redirected_to settings_profile_path
+    assert_equal "This export file is no longer available. Please generate a new report.", flash[:alert]
+  end
 end

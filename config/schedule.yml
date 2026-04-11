@@ -13,6 +13,12 @@ clean_syncs:
   queue: "scheduled"
   description: "Cleans up stale syncs"
 
+sync_financial_data_symbols:
+  cron: "0 4 * * *"  # 4 AM UTC daily
+  class: "FinancialDataSymbolSyncJob"
+  queue: "scheduled"
+  description: "Syncs security symbol list from financialdata.net"
+
 run_security_health_checks:
   cron: "0 2 * * 1-5" # 2:00 AM EST / 3:00 AM EDT (NY time) Monday through Friday
   class: "SecurityHealthCheckJob"

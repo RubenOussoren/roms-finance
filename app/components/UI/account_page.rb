@@ -43,6 +43,8 @@ class UI::AccountPage < ApplicationComponent
       [ :activity, :holdings ]
     when "Property", "Vehicle", "Loan"
       [ :activity, :overview ]
+    when "EquityCompensation"
+      [ :overview, :grants, :activity ]
     else
       [ :activity ]
     end
@@ -52,9 +54,9 @@ class UI::AccountPage < ApplicationComponent
     case tab
     when :activity
       activity_feed
-    when :holdings, :overview
+    when :holdings, :overview, :grants
       # Accountable is responsible for implementing the partial in the correct folder
-      render "#{account.accountable_type.downcase.pluralize}/tabs/#{tab}", account: account
+      render "#{account.accountable_type.underscore.pluralize}/tabs/#{tab}", account: account
     end
   end
 end

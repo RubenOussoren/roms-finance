@@ -46,6 +46,17 @@ class Assistant::Function
   private
     attr_reader :user
 
+    def safe_parse_date(date_string)
+      return nil if date_string.blank?
+      Date.parse(date_string)
+    rescue Date::Error
+      # LLM may generate invalid dates like 2026-02-29 (not a leap year)
+      if date_string.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+        year, month, _day = date_string.split("-").map(&:to_i)
+        Date.new(year, month, 1).end_of_month rescue nil
+      end
+    end
+
     def build_schema(properties: {}, required: [])
       {
         type: "object",

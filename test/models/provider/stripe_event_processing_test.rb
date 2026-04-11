@@ -1,7 +1,7 @@
 require "test_helper"
 require "ostruct"
 
-class Provider::Stripe::SubscriptionEventProcessorTest < ActiveSupport::TestCase
+class Provider::StripeEventProcessingTest < ActiveSupport::TestCase
   test "handles subscription event" do
     test_customer_id = "test-customer-id"
     test_subscription_id = "test-subscription-id"
@@ -36,15 +36,15 @@ class Provider::Stripe::SubscriptionEventProcessorTest < ActiveSupport::TestCase
 
     family.start_subscription!(test_subscription_id)
 
-    processor = Provider::Stripe::SubscriptionEventProcessor.new(mock_event)
-
     assert_equal "active", family.subscription.status
     assert_equal test_subscription_id, family.subscription.stripe_id
     assert_nil family.subscription.amount
     assert_nil family.subscription.currency
     assert_nil family.subscription.current_period_ends_at
 
-    processor.process
+    provider = Provider::Stripe.new(secret_key: "sk_test", webhook_secret: "whsec_test")
+    provider.stubs(:retrieve_event).returns(mock_event)
+    provider.process_event("evt_test")
 
     family.reload
 

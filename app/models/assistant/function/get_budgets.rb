@@ -34,7 +34,7 @@ class Assistant::Function::GetBudgets < Assistant::Function
 
   def call(params = {})
     start_date = if params["month"].present?
-      Date.parse("#{params['month']}-01")
+      safe_parse_date("#{params['month']}-01") || Date.current.beginning_of_month
     else
       Date.current.beginning_of_month
     end

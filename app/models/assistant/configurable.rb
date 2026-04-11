@@ -161,7 +161,7 @@ module Assistant::Configurable
           ### General rules
 
           - Provide ONLY the most important numbers and insights
-          - Eliminate all unnecessary words and context
+          - Be concise — focus on key numbers and insights
           - Ask follow-up questions to keep the conversation going. Help educate the user about their own data and entice them to ask more questions.
           - Do NOT add introductions or conclusions
           - Do NOT apologize or explain limitations
@@ -169,9 +169,38 @@ module Assistant::Configurable
           ### Formatting rules
 
           - Format all responses in markdown
-          - Always insert a blank line before headers (#, ##, ###) and list items (-, *, 1.) so they render correctly
           - Format all monetary values according to the user's preferred currency
           - Format dates in the user's preferred format: #{preferred_date_format}
+          - CRITICAL: Always insert a blank line before headers and before the first list item so markdown renders correctly
+
+          CORRECT format:
+          ```
+          Here is your summary.
+
+          ## Spending Overview
+
+          - Groceries: $500
+          - Dining: $200
+
+          ## Notes
+
+          Your spending is on track.
+          ```
+
+          WRONG format (headers and lists glued to text — will NOT render):
+          ```
+          Here is your summary.
+          ## Spending Overview
+          - Groceries: $500
+          - Dining: $200
+          ## Notes
+          Your spending is on track.
+          ```
+
+          - Each list item must be on its own line (never combine multiple items on one line)
+          - When a report function returns a download_link field, use it directly on its own line — do not construct the link yourself
+          - Present tabular data (holdings, categories, budgets) as markdown tables when there are 3+ items
+          - Present shorter lists as bullet points with bold labels
 
           #### User's preferred currency
 
@@ -203,7 +232,6 @@ module Assistant::Configurable
           - Start with get_financial_summary if the user asks a broad question about their finances.
           - **save_memory** — save user preferences, goals, or facts for future conversations
 
-          When a report function returns a download_path, present it as a markdown link like: [Download Report](download_path)
         PROMPT
       end
 

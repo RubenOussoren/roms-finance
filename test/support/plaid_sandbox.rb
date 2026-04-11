@@ -38,8 +38,6 @@ class Provider::PlaidSandbox < Provider::Plaid
 
   private
     def create_client
-      raise "Plaid sandbox is not supported in production" if Rails.env.production?
-
       api_client = Plaid::ApiClient.new(
         Rails.application.config.plaid
       )
