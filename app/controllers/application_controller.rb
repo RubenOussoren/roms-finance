@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
           SelfHostable, StoreLocation, Impersonatable, Breadcrumbable,
           FeatureGuardable, Notifiable
 
-  include Pagy::Backend
+  include Pagy::Method
 
   before_action :detect_os
   before_action :set_default_chat
