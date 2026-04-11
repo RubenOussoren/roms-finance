@@ -2,9 +2,9 @@
 
 **Created:** March 10, 2026
 **Last Updated:** April 11, 2026
-**Current Stack:** Rails 7.2.3 / Ruby 3.4.4 / PostgreSQL / Redis
+**Current Stack:** Rails 8.1.3 / Ruby 3.4.4 / PostgreSQL / Redis
 
-All Tier 1-3 dependency upgrades are complete. Rails 8.0 (Tier 4) is deferred to a separate effort.
+All dependency upgrades across Tiers 1-4 are complete.
 
 ---
 
@@ -18,7 +18,7 @@ All Tier 1-3 dependency upgrades are complete. Rails 8.0 (Tier 4) is deferred to
 
 ## Completed Upgrades
 
-All 28 dependency upgrades across Tiers 1-3 have been merged. Verified with:
+All 29 dependency upgrades across Tiers 1-4 have been merged. Verified with:
 - 1853 unit/integration tests, 0 failures
 - 72 system tests (Playwright), 0 failures
 - RuboCop: 0 offenses
@@ -95,51 +95,31 @@ Code changes made in PR #34:
 
 ---
 
-## Tier 4: Rails 8.0 Upgrade (Deferred)
+## Tier 4: Rails 8.1.3 Upgrade (Complete)
 
-### Current State
+| Dependency | From | To | Notes |
+|------------|------|----|-------|
+| rails | 7.2.3 | 8.1.3 | Gemfile constraint `~> 7.2.2` → `~> 8.0` |
 
-- **Rails:** 7.2.3 (`~> 7.2.2` in Gemfile)
-- **Ruby:** 3.4.4 (Rails 8 requires 3.2+ — OK)
-- **Config:** `config.load_defaults 7.2`
-- **Prerequisite:** All Tier 1-3 upgrades are now complete
+#### Migration Details
 
-### Rails 8.0 Breaking Changes
+Code changes made:
+- `ActiveRecord::Base.connection` → `ActiveRecord::Base.connection_pool.with_connection` (5 files, 8 calls)
+- Migration file: `ActiveRecord::Base.connection.adapter_name` → `connection.adapter_name` (uses migration's own method)
+- `form_with local: true` → removed `local: true` (default since Rails 7.0)
+- `Transfer#date`: added safe navigation (`&.`) — Rails 8 form builder calls model method before checking explicit `value:`
+- `connection_pool` gem: removed `< 3.0` pin (was for Rails 7.2 RedisCacheStore bug, no longer needed)
+- `config.load_defaults` remains at `7.2` — adopt 8.0 defaults incrementally in a follow-up
 
-1. **Removed deprecated configs:**
-   - `config.active_record.commit_transaction_on_non_local_return`
-   - `config.active_record.allow_deprecated_singular_associations_name`
-   - `config.action_controller.allow_deprecated_parameters_hash_equality`
-   - `config.active_record.warn_on_records_fetched_greater_than`
-   - `config.active_record.sqlite3_deprecated_warning`
-   - `ActiveRecord::ConnectionAdapters::ConnectionPool#connection`
+#### Blockers Resolved
 
-2. **View changes:**
-   - Passing `nil` to `model:` in `form_with` no longer supported
-   - Passing content to void tag elements in tag builder no longer supported
-
-3. **New defaults in `config.load_defaults 8.0`**
-
-### Blockers to Investigate
-
-| Blocker | Details |
-|---------|---------|
-| `connection_pool < 3.0` | Pinned due to Rails 7.2 RedisCacheStore bug. Rails 8 likely fixes this — remove pin and test. |
-| `lucide-rails` fork | GitHub fork from maybe-finance. Verify it works with Rails 8 asset pipeline. |
-| Doorkeeper 5.8.2 | Check if v6.x is needed for Rails 8 compatibility. |
-| Hotwire stack | `turbo-rails`, `stimulus-rails` — verify latest versions are Rails 8 compatible. |
-| `rails-settings-cached` | Verify Rails 8 compatibility. |
-
-### Migration Steps
-
-1. Update Gemfile: `"~> 7.2.2"` → `"~> 8.0.0"`
-2. Run `rails app:update` — review generated diffs carefully
-3. Update `config.load_defaults 7.2` → `8.0`
-4. Remove `connection_pool < 3.0` pin and test Redis caching
-5. Remove any deprecated config options listed above
-6. Grep for `form_with model: nil` patterns and fix
-7. Run full test suite
-8. Test Sidekiq, cron jobs, Plaid/SnapTrade flows, exports
+| Blocker | Resolution |
+|---------|-----------|
+| `connection_pool < 3.0` pin | Removed — Rails 8 compatible with connection_pool 3.x |
+| `lucide-rails` fork | Compatible (requires `railties >= 4.1.0`) |
+| Doorkeeper 5.8.2 | Compatible (requires `railties >= 5`) |
+| Hotwire stack | Compatible (turbo-rails 2.0.23, stimulus-rails 1.3.4) |
+| `rails-settings-cached` | Compatible (requires `railties >= 5.0.0`) |
 
 ---
 

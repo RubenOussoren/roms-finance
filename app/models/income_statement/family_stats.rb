@@ -5,7 +5,7 @@ class IncomeStatement::FamilyStats
   end
 
   def call
-    ActiveRecord::Base.connection.select_all(sanitized_query_sql).map do |row|
+    ActiveRecord::Base.connection_pool.with_connection { |conn| conn.select_all(sanitized_query_sql) }.map do |row|
       StatRow.new(
         classification: row["classification"],
         median: row["median"],

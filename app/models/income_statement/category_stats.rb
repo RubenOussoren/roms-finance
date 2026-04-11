@@ -5,7 +5,7 @@ class IncomeStatement::CategoryStats
   end
 
   def call
-    ActiveRecord::Base.connection.select_all(sanitized_query_sql).map do |row|
+    ActiveRecord::Base.connection_pool.with_connection { |conn| conn.select_all(sanitized_query_sql) }.map do |row|
       StatRow.new(
         category_id: row["category_id"],
         classification: row["classification"],

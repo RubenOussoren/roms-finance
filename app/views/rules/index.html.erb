@@ -40,7 +40,7 @@
         </div>
         <div class="flex items-center gap-1">
           <span class="text-secondary">Sort by:</span>
-          <%= form_with url: rules_path, method: :get, local: true, class: "flex items-center", data: { controller: "auto-submit-form" } do |form| %>
+          <%= form_with url: rules_path, method: :get, class: "flex items-center", data: { controller: "auto-submit-form" } do |form| %>
             <%= form.select :sort_by,
                       options_for_select([["Name", "name"], ["Updated At", "updated_at"]], @sort_by),
                       {},

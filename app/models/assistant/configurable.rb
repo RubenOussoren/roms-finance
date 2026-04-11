@@ -119,7 +119,7 @@ module Assistant::Configurable
             (EXISTS(SELECT 1 FROM plaid_items WHERE plaid_items.family_id = :fid) OR EXISTS(SELECT 1 FROM snaptrade_connections WHERE snaptrade_connections.family_id = :fid)) AS has_connections
         SQL
 
-        result = ActiveRecord::Base.connection.select_one(sql, "Feature Checks") || {}
+        result = ActiveRecord::Base.connection_pool.with_connection { |conn| conn.select_one(sql, "Feature Checks") } || {}
         bool = ActiveModel::Type::Boolean.new
 
         {

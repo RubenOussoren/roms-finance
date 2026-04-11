@@ -77,7 +77,7 @@ class CreateDoorkeeperTables < ActiveRecord::Migration[7.2]
     add_index :oauth_access_tokens, :token, unique: true
 
     # See https://github.com/doorkeeper-gem/doorkeeper/issues/1592
-    if ActiveRecord::Base.connection.adapter_name == "SQLServer"
+    if connection.adapter_name == "SQLServer"
       execute <<~SQL.squish
         CREATE UNIQUE NONCLUSTERED INDEX index_oauth_access_tokens_on_refresh_token ON oauth_access_tokens(refresh_token)
         WHERE refresh_token IS NOT NULL

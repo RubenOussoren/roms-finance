@@ -36,6 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Authentication Context
 - Use `Current.user` for the current user. Do NOT use `current_user`.
 - Use `Current.family` for the current family. Do NOT use `current_family`.
+- Use `ActiveRecord::Base.connection_pool.with_connection { |conn| ... }` for raw SQL. Do NOT use `ActiveRecord::Base.connection` directly (deprecated in Rails 8).
 
 ### Prohibited Actions
 - Do not run `rails server` in your responses

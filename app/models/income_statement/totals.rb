@@ -5,7 +5,7 @@ class IncomeStatement::Totals
   end
 
   def call
-    ActiveRecord::Base.connection.select_all(query_sql).map do |row|
+    ActiveRecord::Base.connection_pool.with_connection { |conn| conn.select_all(query_sql) }.map do |row|
       TotalsRow.new(
         parent_category_id: row["parent_category_id"],
         category_id: row["category_id"],
