@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_11_185221) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_20_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -389,6 +389,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_185221) do
     t.datetime "created_at", null: false
     t.jsonb "locked_attributes", default: {}, null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "equity_grant_sales", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.date "date", null: false
+    t.uuid "entry_id"
+    t.uuid "equity_grant_id", null: false
+    t.decimal "proceeds", precision: 19, scale: 4, default: "0.0", null: false
+    t.decimal "units", precision: 19, scale: 4, null: false
+    t.datetime "updated_at", null: false
+    t.index ["entry_id"], name: "index_equity_grant_sales_on_entry_id"
+    t.index ["equity_grant_id", "date"], name: "index_equity_grant_sales_on_equity_grant_id_and_date"
+    t.index ["equity_grant_id"], name: "index_equity_grant_sales_on_equity_grant_id"
   end
 
   create_table "equity_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1180,6 +1194,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_185221) do
   add_foreign_key "debt_optimization_strategies", "jurisdictions"
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
+  add_foreign_key "equity_grant_sales", "entries", on_delete: :nullify
+  add_foreign_key "equity_grant_sales", "equity_grants", on_delete: :cascade
   add_foreign_key "equity_grants", "equity_compensations", on_delete: :cascade
   add_foreign_key "equity_grants", "securities", on_delete: :cascade
   add_foreign_key "family_exports", "families"

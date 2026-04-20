@@ -12,7 +12,10 @@ module Account::Anchorable
 
   def set_opening_anchor_balance(**opts)
     result = opening_balance_manager.set_opening_balance(**opts)
-    sync_later if result.success?
+    if result.success?
+      accountable.on_opening_balance_changed if result.changes_made? && accountable.respond_to?(:on_opening_balance_changed)
+      sync_later
+    end
     result
   end
 

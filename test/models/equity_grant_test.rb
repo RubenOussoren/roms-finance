@@ -424,6 +424,69 @@ class EquityGrantTest < ActiveSupport::TestCase
     assert_nil @rsu_grant.unrealized_gain_loss_trend(as_of: as_of)
   end
 
+  # === Withdrawn / Remaining ===
+
+  test "withdrawn_units is 0 with no sales" do
+    assert_equal 0, @rsu_grant.withdrawn_units
+  end
+
+  test "withdrawn_units sums sales on or before as_of" do
+    @rsu_grant.sales.create!(date: Date.new(2025, 6, 1), units: 10, proceeds: 1800, currency: "USD")
+    @rsu_grant.sales.create!(date: Date.new(2025, 8, 1), units: 5, proceeds: 950, currency: "USD")
+
+    assert_equal 10, @rsu_grant.withdrawn_units(as_of: Date.new(2025, 7, 1))
+    assert_equal 15, @rsu_grant.withdrawn_units(as_of: Date.new(2025, 8, 1))
+    assert_equal 15, @rsu_grant.withdrawn_units(as_of: Date.new(2025, 12, 1))
+  end
+
+  test "withdrawn_units ignores sales after as_of" do
+    @rsu_grant.sales.create!(date: Date.new(2025, 10, 1), units: 10, proceeds: 1800, currency: "USD")
+    assert_equal 0, @rsu_grant.withdrawn_units(as_of: Date.new(2025, 9, 30))
+  end
+
+  test "vested_units_remaining subtracts withdrawn from vested" do
+    as_of = @rsu_grant.grant_date + 24.months
+    vested = @rsu_grant.vested_units(as_of: as_of)
+    @rsu_grant.sales.create!(date: as_of, units: 50, proceeds: 9000, currency: "USD")
+
+    assert_equal vested - 50, @rsu_grant.vested_units_remaining(as_of: as_of)
+  end
+
+  test "vested_units_remaining floors at 0" do
+    as_of = @rsu_grant.grant_date + 24.months
+    vested = @rsu_grant.vested_units(as_of: as_of)
+    @rsu_grant.sales.create!(date: as_of, units: vested + 100, proceeds: 0, currency: "USD")
+
+    assert_equal 0, @rsu_grant.vested_units_remaining(as_of: as_of)
+  end
+
+  test "remaining_value for RSU uses remaining units x price" do
+    as_of = @rsu_grant.grant_date + 24.months
+    @rsu_grant.sales.create!(date: as_of, units: 50, proceeds: 9000, currency: "USD")
+    remaining = @rsu_grant.vested_units_remaining(as_of: as_of)
+
+    assert_equal remaining * 200, @rsu_grant.remaining_value(as_of: as_of, price: 200)
+  end
+
+  test "remaining_value for stock option respects strike price" do
+    as_of = @option_grant.grant_date + 24.months
+    @option_grant.sales.create!(date: as_of, units: 10, proceeds: 500, currency: "USD")
+    remaining = @option_grant.vested_units_remaining(as_of: as_of)
+    # strike_price 150 (from fixture), price 200 -> intrinsic 50
+    assert_equal remaining * 50, @option_grant.remaining_value(as_of: as_of, price: 200)
+  end
+
+  test "remaining_value returns 0 when underwater option" do
+    as_of = @option_grant.grant_date + 24.months
+    # price below strike -> 0
+    assert_equal 0, @option_grant.remaining_value(as_of: as_of, price: 100)
+  end
+
+  test "remaining_value returns 0 for expired options" do
+    @option_grant.expiration_date = Date.new(2025, 1, 1)
+    assert_equal 0, @option_grant.remaining_value(as_of: Date.new(2025, 6, 1), price: 500)
+  end
+
   # === Currency Conversion ===
 
   test "price_amount with currency converts via Money exchange_to" do

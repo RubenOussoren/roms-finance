@@ -1,6 +1,7 @@
 class EquityGrant < ApplicationRecord
   belongs_to :equity_compensation
   belongs_to :security
+  has_many :sales, class_name: "EquityGrantSale", dependent: :destroy
 
   validates :grant_type, presence: true, inclusion: { in: %w[rsu stock_option] }
   validates :total_units, presence: true, numericality: { greater_than: 0 }
@@ -31,6 +32,26 @@ class EquityGrant < ApplicationRecord
   def exercise_deadline
     return nil unless terminated? && stock_option?
     termination_date + POST_TERMINATION_EXERCISE_DAYS.days
+  end
+
+  def withdrawn_units(as_of: Date.current)
+    sales.where("date <= ?", as_of).sum(:units)
+  end
+
+  def vested_units_remaining(as_of: Date.current)
+    [ vested_units(as_of: as_of) - withdrawn_units(as_of: as_of), 0 ].max
+  end
+
+  def remaining_value(as_of: Date.current, price: nil, currency: nil)
+    return 0 if expired_at?(as_of)
+    units = vested_units_remaining(as_of: as_of)
+    return 0 if units.zero?
+    unit_price = price || price_amount(currency: currency)
+    if stock_option?
+      units * [ unit_price - (strike_price || 0), 0 ].max
+    else
+      units * unit_price
+    end
   end
 
   def vested_units(as_of: Date.current)

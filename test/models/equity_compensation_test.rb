@@ -143,7 +143,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     assert result.is_a?(Numeric)
   end
 
-  test "regenerate_vesting_valuations updates account balance" do
+  test "regenerate_vesting_valuations updates account balance to opening + remaining" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
 
@@ -152,8 +152,53 @@ class EquityCompensationTest < ActiveSupport::TestCase
 
     ec.regenerate_vesting_valuations!
 
-    expected = [ ec.total_vested_value - ec.total_withdrawals, 0 ].max
+    expected = [ account.opening_anchor_balance + ec.total_remaining_value, 0 ].max
     assert_equal expected, account.reload.balance
+  end
+
+  test "total_remaining_value subtracts sold units" do
+    ec = equity_compensations(:one)
+    grant = ec.equity_grants.first
+    grant.security.stubs(:current_price).returns(Money.new(200, "USD"))
+
+    as_of = grant.grant_date + 24.months
+    vested = grant.vested_units(as_of: as_of)
+    grant.sales.create!(date: as_of, units: vested, proceeds: vested * 180, currency: "USD")
+
+    assert_equal grant.remaining_value(as_of: as_of), ec.total_remaining_value(as_of: as_of)
+  end
+
+  test "regenerate_vesting_valuations preserves opening balance anchor" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+
+    account.set_opening_anchor_balance(balance: 5000, date: Date.new(2023, 1, 1))
+    ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
+    account.stubs(:sync_later)
+
+    ec.regenerate_vesting_valuations!
+
+    assert account.has_opening_anchor?, "Opening anchor should not be deleted"
+    assert_equal 5000, account.opening_anchor_balance
+  end
+
+  test "vesting valuations include opening balance" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = ec.equity_grants.first
+
+    account.set_opening_anchor_balance(balance: 5000, date: Date.new(2023, 1, 1))
+    vest_date = grant.grant_date + 12.months
+    grant.security.stubs(:import_provider_prices)
+    Security::Price.find_or_create_by!(security: grant.security, date: vest_date, price: 180.0, currency: "USD")
+    account.stubs(:sync_later)
+
+    ec.regenerate_vesting_valuations!
+
+    first_vesting = account.entries.where("name LIKE ?", "#{EquityCompensation::VESTING_ENTRY_PREFIX}%").order(:date).first
+    assert_not_nil first_vesting
+    # Should include the $5000 opening balance baked in
+    assert first_vesting.amount > 5000, "Vesting valuation should include opening balance (got #{first_vesting.amount})"
   end
 
   # === Withdrawal Tracking ===
@@ -213,46 +258,149 @@ class EquityCompensationTest < ActiveSupport::TestCase
     assert_equal 0, ec.total_withdrawals
   end
 
-  test "regenerate_vesting_valuations subtracts withdrawals from balance" do
+  test "regenerate_vesting_valuations excludes sold units from balance" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
     account.stubs(:sync_later)
 
-    # Create a withdrawal
-    account.entries.create!(
-      name: "Sale proceeds",
-      date: Date.current - 30.days,
-      amount: 5000,
-      currency: account.currency,
-      entryable: Transaction.new
-    )
+    grant = ec.equity_grants.first
+    as_of = grant.grant_date + 24.months
+    vested = grant.vested_units(as_of: as_of)
+    grant.sales.create!(date: as_of, units: vested, proceeds: vested * 180, currency: "USD")
 
     ec.regenerate_vesting_valuations!
 
-    expected = [ ec.total_vested_value - 5000, 0 ].max
+    expected = [ account.opening_anchor_balance + ec.total_remaining_value, 0 ].max
     assert_equal expected, account.reload.balance
   end
 
-  test "balance does not go negative when withdrawals exceed vested value" do
+  test "balance does not go negative with oversized sales" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
+    grant = ec.equity_grants.first
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
     account.stubs(:sync_later)
 
-    # Create a very large withdrawal
+    # Record more units sold than ever vested (edge case; vested_units_remaining floors at 0)
+    grant.sales.create!(date: Date.current, units: grant.total_units * 2, proceeds: 0, currency: "USD")
+
+    ec.regenerate_vesting_valuations!
+
+    assert account.reload.balance >= 0
+  end
+
+  # === Opening Anchor Edit Hook ===
+
+  test "set_opening_anchor_balance triggers vesting regeneration" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = ec.equity_grants.order(:grant_date).first
+    Security::Price.find_or_create_by!(security: grant.security, date: grant.grant_date + 12.months, price: 180.0, currency: "USD")
+
+    ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
+    account.stubs(:sync_later)
+
+    # Establish initial state with opening balance 0 and some vest valuations
+    ec.regenerate_vesting_valuations!
+    initial_first_vest = account.entries.where("name LIKE ?", "#{EquityCompensation::VESTING_ENTRY_PREFIX}%").order(:date).first
+    initial_amount = initial_first_vest.amount.to_d
+
+    # User edits Starting Balance to 5000
+    account.set_opening_anchor_balance(balance: 5000, date: Date.new(2023, 1, 1))
+
+    updated_first_vest = account.entries.where("name LIKE ?", "#{EquityCompensation::VESTING_ENTRY_PREFIX}%").order(:date).first
+    assert_not_nil updated_first_vest
+    # New vest valuation should be 5000 higher (opening balance baked in)
+    assert_in_delta initial_amount + 5000, updated_first_vest.amount.to_d, 0.01
+  end
+
+  # === Backfill ===
+
+  test "backfill_sales_from_transactions creates sales from positive entries" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = ec.equity_grants.order(:grant_date).first
+
+    Security::Price.find_or_create_by!(security: grant.security, date: Date.new(2025, 6, 15), price: 180.0, currency: "USD")
+
     account.entries.create!(
-      name: "Large sale",
-      date: Date.current - 30.days,
-      amount: 999_999_999,
+      name: "GSU sale proceeds",
+      date: Date.new(2025, 6, 15),
+      amount: 1800,
       currency: account.currency,
       entryable: Transaction.new
     )
 
+    assert_difference "EquityGrantSale.count", 1 do
+      ec.backfill_sales_from_transactions!
+    end
+
+    sale = EquityGrantSale.last
+    assert_equal grant, sale.equity_grant
+    assert_equal Date.new(2025, 6, 15), sale.date
+    assert_in_delta 10.0, sale.units.to_f, 0.01
+  end
+
+  test "backfill_sales_from_transactions is idempotent" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = ec.equity_grants.order(:grant_date).first
+
+    Security::Price.find_or_create_by!(security: grant.security, date: Date.new(2025, 6, 15), price: 180.0, currency: "USD")
+    entry = account.entries.create!(
+      name: "GSU sale proceeds",
+      date: Date.new(2025, 6, 15),
+      amount: 1800,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    ec.backfill_sales_from_transactions!
+    assert_no_difference "EquityGrantSale.count" do
+      ec.backfill_sales_from_transactions!
+    end
+  end
+
+  test "backfill_sales_from_transactions skips entries without an eligible grant" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    ec.equity_grants.destroy_all
+
+    account.entries.create!(
+      name: "Mystery proceeds",
+      date: Date.current,
+      amount: 500,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    assert_no_difference "EquityGrantSale.count" do
+      ec.backfill_sales_from_transactions!
+    end
+  end
+
+  test "balance is stable when price rises after full sale" do
+    # Regression for Bug 2: vest 10 at $180, sell 10, price later rises to $300
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = ec.equity_grants.first
+
+    # Sell everything vested today
+    as_of = Date.current
+    vested = grant.vested_units(as_of: as_of)
+    grant.sales.create!(date: as_of, units: vested, proceeds: vested * 180, currency: "USD")
+
+    # Price now spikes
+    grant.security.stubs(:current_price).returns(Money.new(300, "USD"))
+    grant.security.stubs(:import_provider_prices)
+    account.stubs(:sync_later)
+
     ec.regenerate_vesting_valuations!
 
-    assert_equal 0, account.reload.balance
+    # With no opening balance, remaining is 0 units * $300 = 0
+    assert_equal account.opening_anchor_balance, account.reload.balance
   end
 end

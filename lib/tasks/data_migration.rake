@@ -1,4 +1,23 @@
 namespace :data_migration do
+  desc "Backfill EquityGrantSales from historical equity-comp account transactions"
+  # Required after shipping the per-grant sold-unit tracking change. Walks positive-amount
+  # Transaction entries in each EquityCompensation account and creates EquityGrantSale rows
+  # (FIFO by grant_date, units derived from historical price). Idempotent.
+  task backfill_equity_sales: :environment do
+    total_created = 0
+    total_accounts = 0
+    EquityCompensation.find_each do |ec|
+      created = ec.backfill_sales_from_transactions!
+      next unless created&.positive?
+      total_accounts += 1
+      total_created += created
+      ec.regenerate_vesting_valuations!
+      puts "  #{ec.account&.name}: created #{created} sale(s)"
+    end
+    puts "==> Backfill complete: #{total_created} sale(s) across #{total_accounts} account(s)"
+  end
+
+
   desc "Migrate EU Plaid webhooks"
   # 2025-02-07: EU Plaid items need to be moved over to a new webhook URL so that we can
   # instantiate the correct Plaid client for verification based on which Plaid instance it comes from
