@@ -83,14 +83,28 @@ class Rule::ActionExecutor::CreateEquitySaleTest < ActiveSupport::TestCase
   end
 
   test "execute updates account balance via regenerate" do
-    @equity_account.stubs(:sync_later)
+    # Pre-sale total remaining value (FIFO hasn't allocated yet).
+    before_remaining = @equity_account.accountable.total_remaining_value
+
     action = Rule::Action.new(rule: @rule, action_type: "create_equity_sale", value: @equity_account.id)
     action.apply(Transaction.where(id: @bank_txn.id))
 
-    # Balance is opening + total remaining (summed across all grants on the account)
     @equity_account.reload
-    expected = @equity_account.opening_anchor_balance + @equity_account.accountable.total_remaining_value
-    assert_in_delta expected, @equity_account.balance, 0.01
+    after_remaining = @equity_account.accountable.total_remaining_value
+    assert after_remaining < before_remaining,
+      "Expected total_remaining_value to drop after sale (before=#{before_remaining}, after=#{after_remaining})"
+
+    # Walker-computed expected balance. Only the seeded price date (Date.current) falls
+    # inside the 7-day price-lookup window, so the last reachable vesting valuation is
+    # 2026-04-15 (5 days before @sale_date). The walker anchors balance to that valuation
+    # and then applies the +sale_amount outflow on 2026-04-20.
+    last_vest = Date.current - 5.days
+    rsu = @equity_account.accountable.equity_grants.find(&:rsu?)
+    opt = @equity_account.accountable.equity_grants.find(&:stock_option?)
+    rsu_val = rsu.vested_units(as_of: last_vest) * 180
+    opt_val = opt.vested_units(as_of: last_vest) * [ 180 - opt.strike_price, 0 ].max
+    expected_balance = rsu_val + opt_val - @sale_amount
+    assert_in_delta expected_balance, @equity_account.balance, 0.01
   end
 
   test "skips when target account is not equity compensation" do

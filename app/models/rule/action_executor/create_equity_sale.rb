@@ -22,6 +22,9 @@ class Rule::ActionExecutor::CreateEquitySale < Rule::ActionExecutor
     return if source_account.nil?
     return unless source_account.accountable_type == "EquityCompensation"
 
+    any_sale_created = false
+    bank_accounts_to_sync = Set.new
+
     transaction_scope.find_each do |txn|
       next if txn.transfer.present?
       next if txn.entry.account_id == source_account.id
@@ -66,9 +69,14 @@ class Rule::ActionExecutor::CreateEquitySale < Rule::ActionExecutor
         )
       end
 
-      source_account.accountable.regenerate_vesting_valuations!
-      txn.entry.account.sync_later
+      any_sale_created = true
+      bank_accounts_to_sync << entry.account
     end
+
+    # Regenerate once after all matched transactions are processed. Running this
+    # inside the loop would re-materialize 700+ balance rows per match.
+    source_account.accountable.regenerate_vesting_valuations! if any_sale_created
+    bank_accounts_to_sync.each(&:sync_later)
   end
 
   private

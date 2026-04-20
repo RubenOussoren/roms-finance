@@ -230,7 +230,9 @@ class EquityCompensation < ApplicationRecord
       acct.update!(balance: [ opening_balance + total_remaining_value, 0 ].max)
     end
 
-    # Trigger sync outside the transaction so job only fires on commit (I1 fix)
-    acct.sync_later
+    # Run the sync inline so the balances table is populated before the caller returns.
+    # Avoids Sidekiq races (stalled workers, cold restarts, duplicate enqueued jobs)
+    # that previously left the Chart + Activity views empty.
+    acct.sync_now
   end
 end

@@ -45,6 +45,21 @@ module Syncable
     end
   end
 
+  # Runs a sync inline and returns the completed Sync record. Use when the caller
+  # (typically a controller action or rule executor) needs the `balances` table
+  # materialized before returning to the user, e.g. equity-comp valuation regen.
+  # Prefer `sync_later` when async is acceptable — it has dedup protection that
+  # `sync_now` intentionally skips so the caller can rely on fresh materialization.
+  def sync_now(parent_sync: nil, window_start_date: nil, window_end_date: nil)
+    sync = syncs.create!(
+      parent: parent_sync,
+      window_start_date: window_start_date,
+      window_end_date: window_end_date
+    )
+    sync.perform
+    sync
+  end
+
   def perform_sync(sync)
     syncer.perform_sync(sync)
   end

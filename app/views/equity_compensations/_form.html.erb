@@ -1,10 +1,16 @@
 <%# locals: (account:, url:) %>
 
 <%= render "accounts/form", account: account, url: url do |form| %>
+  <%= form.hidden_field :balance, value: 0 unless account.persisted? %>
+
   <%= form.select :subtype,
                  options_for_select(
                    EquityCompensation::SUBTYPES.map { |k, v| [v[:long], k] },
                    account.subtype
                  ),
                  { label: "Type", include_blank: "Select type..." } %>
+
+  <p class="text-sm text-secondary">
+    Balance is calculated automatically from the grants you add below. If you hold shares outside of any grant (e.g. ESPP or pre-IPO), set a starting balance from the account page after creation.
+  </p>
 <% end %>

@@ -52,8 +52,8 @@ class EquityCompensationTest < ActiveSupport::TestCase
       currency: "USD"
     )
 
-    # Stub sync_later to avoid background job
-    account.stubs(:sync_later)
+    # Skip the inline sync to keep this test focused on entry creation
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
 
@@ -68,7 +68,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
 
     # Stub externals
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
     first_count = account.entries.where("name LIKE ?", "#{EquityCompensation::VESTING_ENTRY_PREFIX}%").count
@@ -95,7 +95,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     )
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
 
@@ -148,7 +148,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     account = accounts(:equity_compensation)
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
 
@@ -174,7 +174,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
 
     account.set_opening_anchor_balance(balance: 5000, date: Date.new(2023, 1, 1))
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
 
@@ -191,7 +191,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     vest_date = grant.grant_date + 12.months
     grant.security.stubs(:import_provider_prices)
     Security::Price.find_or_create_by!(security: grant.security, date: vest_date, price: 180.0, currency: "USD")
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
 
@@ -263,7 +263,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     account = accounts(:equity_compensation)
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     grant = ec.equity_grants.first
     as_of = grant.grant_date + 24.months
@@ -282,7 +282,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     grant = ec.equity_grants.first
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     # Record more units sold than ever vested (edge case; vested_units_remaining floors at 0)
     grant.sales.create!(date: Date.current, units: grant.total_units * 2, proceeds: 0, currency: "USD")
@@ -290,6 +290,26 @@ class EquityCompensationTest < ActiveSupport::TestCase
     ec.regenerate_vesting_valuations!
 
     assert account.reload.balance >= 0
+  end
+
+  # === Inline Sync (regression) ===
+
+  test "regenerate_vesting_valuations populates balances table inline" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = ec.equity_grants.order(:grant_date).first
+
+    Security.any_instance.stubs(:import_provider_prices)
+    Security.any_instance.stubs(:current_price).returns(Money.new(200, "USD"))
+    grant.vesting_dates(up_to: Date.current).each do |d|
+      Security::Price.find_or_create_by!(security: grant.security, date: d, price: 180.0, currency: "USD")
+    end
+
+    ec.regenerate_vesting_valuations!
+
+    # No Sidekiq here — if this count is 0 or 1, the empty-chart bug has regressed.
+    assert account.balances.count > 1,
+      "Expected balances table to be materialized by regenerate; got #{account.balances.count} rows"
   end
 
   # === Opening Anchor Edit Hook ===
@@ -301,7 +321,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     Security::Price.find_or_create_by!(security: grant.security, date: grant.grant_date + 12.months, price: 180.0, currency: "USD")
 
     ec.equity_grants.each { |g| g.security.stubs(:import_provider_prices) }
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     # Establish initial state with opening balance 0 and some vest valuations
     ec.regenerate_vesting_valuations!
@@ -396,7 +416,7 @@ class EquityCompensationTest < ActiveSupport::TestCase
     # Price now spikes
     grant.security.stubs(:current_price).returns(Money.new(300, "USD"))
     grant.security.stubs(:import_provider_prices)
-    account.stubs(:sync_later)
+    account.stubs(:sync_now)
 
     ec.regenerate_vesting_valuations!
 
