@@ -18,6 +18,7 @@ ENV["PLAID_SECRET"] ||= "test_secret"
 ENV["PGGSSENCMODE"] = "disable"
 
 require "rails/test_help"
+require "turbo/broadcastable/test_helper"
 require "minitest/mock"
 require "minitest/autorun"
 require "mocha/minitest"
@@ -39,6 +40,8 @@ end
 
 module ActiveSupport
   class TestCase
+    include Turbo::Broadcastable::TestHelper
+
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors) unless ENV["DISABLE_PARALLELIZATION"] == "true"
 
