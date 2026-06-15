@@ -341,7 +341,9 @@ GEM
       benchmark
       logger
     mini_mime (1.1.5)
-    minitest (5.27.0)
+    minitest (6.0.6)
+      drb (~> 2.0)
+      prism (~> 1.5)
     mocha (3.0.2)
       ruby2_keywords (>= 0.0.5)
     msgpack (1.8.0)
@@ -692,7 +694,7 @@ DEPENDENCIES
   logtail-rails
   lookbook (~> 2.3)
   lucide-rails!
-  minitest (~> 5.25)
+  minitest (~> 6.0)
   mocha
   octokit
   ostruct

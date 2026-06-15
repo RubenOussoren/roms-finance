@@ -151,17 +151,16 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
     equity_assumption = OpenStruct.new(effective_volatility: 0.18)
     bond_assumption = OpenStruct.new(effective_volatility: 0.06)
 
-    ProjectionAssumption.stub(:for_account, ->(acct) {
-      acct.id == "eq-1" ? equity_assumption : bond_assumption
-    }) do
-      volatility = @calculator.send(:aggregate_volatility, accounts)
+    ProjectionAssumption.stubs(:for_account).with(equity_account).returns(equity_assumption)
+    ProjectionAssumption.stubs(:for_account).with(bond_account).returns(bond_assumption)
 
-      # Weighted average would be: 0.6 * 0.18 + 0.4 * 0.06 = 0.132
-      weighted_avg = 0.6 * 0.18 + 0.4 * 0.06
+    volatility = @calculator.send(:aggregate_volatility, accounts)
 
-      assert volatility < weighted_avg, "Portfolio volatility (#{volatility.round(4)}) should be less than weighted average (#{weighted_avg}) due to diversification"
-      assert volatility > 0, "Portfolio volatility should be positive"
-    end
+    # Weighted average would be: 0.6 * 0.18 + 0.4 * 0.06 = 0.132
+    weighted_avg = 0.6 * 0.18 + 0.4 * 0.06
+
+    assert volatility < weighted_avg, "Portfolio volatility (#{volatility.round(4)}) should be less than weighted average (#{weighted_avg}) due to diversification"
+    assert volatility > 0, "Portfolio volatility should be positive"
   end
 
   test "single asset portfolio returns that asset volatility" do
@@ -172,13 +171,13 @@ class FamilyProjectionCalculatorTest < ActiveSupport::TestCase
 
     assumption = OpenStruct.new(effective_volatility: 0.18)
 
-    ProjectionAssumption.stub(:for_account, ->(_) { assumption }) do
-      volatility = @calculator.send(:aggregate_volatility, [ single_account ])
+    ProjectionAssumption.stubs(:for_account).returns(assumption)
 
-      # Single asset: self-correlation = 1.0, so variance = 1² * 0.18² * 1.0 = 0.0324
-      # volatility = sqrt(0.0324) = 0.18
-      assert_in_delta 0.18, volatility, 0.001
-    end
+    volatility = @calculator.send(:aggregate_volatility, [ single_account ])
+
+    # Single asset: self-correlation = 1.0, so variance = 1² * 0.18² * 1.0 = 0.0324
+    # volatility = sqrt(0.0324) = 0.18
+    assert_in_delta 0.18, volatility, 0.001
   end
 
   test "loan balance projection decreases over time" do

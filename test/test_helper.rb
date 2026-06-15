@@ -19,7 +19,6 @@ ENV["PGGSSENCMODE"] = "disable"
 
 require "rails/test_help"
 require "turbo/broadcastable/test_helper"
-require "minitest/mock"
 require "minitest/autorun"
 require "mocha/minitest"
 require "aasm/minitest"

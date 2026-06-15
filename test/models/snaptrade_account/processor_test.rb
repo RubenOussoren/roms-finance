@@ -59,12 +59,11 @@ class SnapTradeAccount::ProcessorTest < ActiveSupport::TestCase
 
     Sentry.expects(:capture_exception).at_least_once
 
-    Rails.env.stub(:development?, false) do
-      Rails.env.stub(:test?, false) do
-        assert_nothing_raised do
-          @processor.process
-        end
-      end
+    Rails.env.stubs(:development?).returns(false)
+    Rails.env.stubs(:test?).returns(false)
+
+    assert_nothing_raised do
+      @processor.process
     end
 
     assert_not_nil @snaptrade_account.reload.account
@@ -87,12 +86,11 @@ class SnapTradeAccount::ProcessorTest < ActiveSupport::TestCase
 
     Sentry.expects(:capture_exception).at_least_once
 
-    Rails.env.stub(:development?, false) do
-      Rails.env.stub(:test?, false) do
-        assert_nothing_raised do
-          @processor.process
-        end
-      end
+    Rails.env.stubs(:development?).returns(false)
+    Rails.env.stubs(:test?).returns(false)
+
+    assert_nothing_raised do
+      @processor.process
     end
 
     assert_not_nil @snaptrade_account.reload.account

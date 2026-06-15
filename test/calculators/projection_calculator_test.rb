@@ -252,13 +252,12 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     calc = ProjectionCalculator.new(principal: 10000, rate: 0.06, contribution: 500)
 
     # Stub rand to return 0.0 (which would cause log(0) = -Infinity without guard)
-    calc.stub(:rand, 0.0) do
-      results = calc.project_with_percentiles(months: 3, volatility: 0.18, simulations: 10)
+    calc.stubs(:rand).returns(0.0)
+    results = calc.project_with_percentiles(months: 3, volatility: 0.18, simulations: 10)
 
-      results.each do |month_data|
-        [ :p10, :p25, :p50, :p75, :p90, :mean ].each do |key|
-          assert month_data[key].finite?, "#{key} at month #{month_data[:month]} should be finite, got #{month_data[key]}"
-        end
+    results.each do |month_data|
+      [ :p10, :p25, :p50, :p75, :p90, :mean ].each do |key|
+        assert month_data[key].finite?, "#{key} at month #{month_data[:month]} should be finite, got #{month_data[key]}"
       end
     end
   end
