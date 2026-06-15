@@ -53,7 +53,7 @@ gem "jbuilder"
 
 # OAuth & API Security
 gem "doorkeeper"
-gem "rack-attack", "~> 6.6"
+gem "rack-attack", "~> 6.8"
 gem "faraday"
 gem "faraday-retry"
 gem "faraday-multipart"
