@@ -4,7 +4,12 @@ class Provider::AlphaVantageTest < ActiveSupport::TestCase
   include ExchangeRateProviderInterfaceTest, SecurityProviderInterfaceTest
 
   setup do
+    travel_to Time.zone.local(2026, 3, 1)
     @subject = @alpha_vantage = Provider::AlphaVantage.new(ENV["MARKET_DATA_ALPHA_VANTAGE_API_KEY"] || "test_alpha_vantage_key")
+  end
+
+  teardown do
+    travel_back
   end
 
   test "health check" do

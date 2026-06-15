@@ -77,7 +77,12 @@ class Rule::ActionExecutor::CreateEquitySaleTest < ActiveSupport::TestCase
     action = Rule::Action.new(rule: @rule, action_type: "create_equity_sale", value: @equity_account.id)
     action.apply(Transaction.where(id: @bank_txn.id))
 
-    outflow = @equity_account.entries.where(date: @sale_date).first
+    outflow = @equity_account.entries.find_by!(
+      date: @sale_date,
+      entryable_type: "Transaction",
+      name: "Sale from #{@bank.name}",
+      amount: @sale_amount
+    )
     sale = EquityGrantSale.last
     assert_equal outflow.id, sale.entry_id
   end
