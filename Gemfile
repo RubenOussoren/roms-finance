@@ -69,7 +69,7 @@ gem "intercom-rails"
 gem "plaid"
 gem "snaptrade", "~> 2.0"
 gem "rotp", "~> 6.3"
-gem "rqrcode", "~> 3.0"
+gem "rqrcode", "~> 3.2"
 gem "activerecord-import"
 gem "rubyzip", "~> 3.0"
 
