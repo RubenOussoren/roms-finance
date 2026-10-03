@@ -129,11 +129,17 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Install Playwright browsers
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install locked Playwright toolchain and browsers
         run: |
-          PLAYWRIGHT_CLI_VERSION=$(bundle exec ruby -e 'require "playwright"; puts Playwright::COMPATIBLE_PLAYWRIGHT_VERSION.strip')
-          npm install --no-save "playwright@${PLAYWRIGHT_CLI_VERSION}"
-          npx playwright install --with-deps chromium
+          npm ci
+          bundle exec ruby bin/verify-playwright
+          npx --no-install playwright install --with-deps chromium
 
       - name: DB setup and smoke test
         run: |

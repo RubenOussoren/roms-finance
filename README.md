@@ -183,11 +183,16 @@ docker compose -f compose.dev.yml exec app bin/importmap audit
 docker compose -f compose.dev.yml exec app npm audit
 ```
 
-For headless system tests, provision Chromium in the running development container:
+For headless system tests, use the locked npm CLI and the matching Ruby client.
+Update `@playwright/test` and `playwright-ruby-client` together; CI checks their
+compatibility rather than installing a different, unlocked CLI. Provision Chromium
+in the running development container:
 
 ```sh
-docker compose -f compose.dev.yml exec -u 0 app npx playwright install-deps chromium
-docker compose -f compose.dev.yml exec app npx playwright install chromium
+docker compose -f compose.dev.yml exec app npm ci
+docker compose -f compose.dev.yml exec app bundle exec ruby bin/verify-playwright
+docker compose -f compose.dev.yml exec -u 0 app npx --no-install playwright install-deps chromium
+docker compose -f compose.dev.yml exec app npx --no-install playwright install chromium
 docker compose -f compose.dev.yml exec -e RAILS_ENV=test -e POSTGRES_DB=roms_test \
   -e REDIS_URL=redis://redis:6379/2 -e CI=true -e DISABLE_PARALLELIZATION=true \
   app bin/rails test:system
