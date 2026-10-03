@@ -2,7 +2,7 @@
 
 ## Scope and sources
 
-This preparatory change adds tests and documentation only. `Gemfile`/`Gemfile.lock` remain on Plaid **46.0.0**; production code, dependencies, existing tests, and their configuration-dependent skips are unchanged. No live Plaid calls or pushes are needed.
+This focused upgrade moves Plaid **46.0.0 → 51.0.0** with deterministic wire-contract tests. Production integration and existing credential-dependent skips are unchanged. No live Plaid mutations or database migration are required. Unrelated JSON resolver updates were excluded.
 
 The mapping below uses the **entire upstream changelog**, including individual OpenAPI entries, not PR excerpts or only the “Breaking changes in this version” headings. In particular, v49 and v50 have breaking entries without that heading.
 
@@ -53,7 +53,7 @@ Consumers inspected: `PlaidItem`, `PlaidItem::AccountsSnapshot`, `PlaidItem::Imp
 | 1.699.5 | Manually constructed `CreditSessionDocumentIncomeResult` now requires `num_i20s_uploaded`. | No credit sessions or model construction in ROMS. No code change. |
 | 1.703.0 | Manually constructed `LinkEventsWebhook` now requires `environment`. | Webhook processor uses `JSON.parse` and does not instantiate this model. No code change. |
 | 1.699.0 | Manually constructed `PayrollIncomeObject` now requires `i20s`. | No payroll income endpoint or model construction in ROMS. No code change. |
-| 1.699.1 | `StudentRepaymentPlan.type`: `interest-only` → `interest only`, correcting the emitted wire value. | **Directly relevant** to `/liabilities/get`. Real SDK v46 rejects `interest only` during deserialization. The contract asserts that known `ArgumentError` on <48 and asserts successful typed decoding on ≥48. No app literal needs renaming; do not sanitize back to the wrong hyphenated value. Existing standard plans have separate cross-version coverage. |
+| 1.699.1 | `StudentRepaymentPlan.type`: `interest-only` → `interest only`, correcting the emitted wire value. | **Directly relevant** to `/liabilities/get`. Real SDK v46 rejects `interest only` during deserialization. Baseline reproduction demonstrated that `ArgumentError`; the final contract requires successful typed decoding. No app literal needs renaming; do not sanitize back to the wrong hyphenated value. Existing standard plans have separate cross-version coverage. |
 | 1.703.0 | `FDXInitiatorFiAttribute.value`: `FDXPartyType` enum → string; constants still hold strings. This schema has no endpoint reference. | No FDX usage or model construction. No code change. Included even though the summary bullet is not marked `[BREAKING]`. |
 
 ### v49 (OAS through 1.708.0)
@@ -101,7 +101,7 @@ These are not additional explicitly marked breaking entries, but prevent oversta
 
 Each case constructs `Plaid::Configuration` locally with **fake keys only**, creates the real `Provider::Plaid`/`PlaidApi`/`ApiClient`, and stubs HTTP using `WebMock::API`. The tests never depend on `Rails.application.config.plaid`, live credentials, or VCR cassettes. Exact parsed JSON equality catches extra/missing fields, including absent update-mode product lists. SDK response model/date conversion and setter enum validation remain real. Response fixtures contain the fields under test, not exhaustive API sample payloads.
 
-All network connections, including localhost, are disabled for each case. Teardown explicitly calls `WebMock.reset!` and restores prior connection settings so existing VCR tests/skips retain their behavior. Repeated regional/product cases also reset stubs between iterations. There are no new skips. The one version-aware assertion records a demonstrated v46 SDK defect instead of pretending the v48 correction already exists on the baseline.
+All network connections, including localhost, are disabled for each case. Teardown explicitly calls `WebMock.reset!` and restores prior connection settings so existing VCR tests/skips retain their behavior. Repeated regional/product cases also reset stubs between iterations. There are no new skips. The final enum assertion requires successful decoding of the corrected API value; the baseline defect was reproduced before the upgrade.
 
 Limitations: no live Link/OAuth interaction, provider pagination mutation/retry simulation, JWK signature verification, exhaustive new enum/product coverage, or production rollout validation. This is deterministic SDK wire-contract coverage, not a Sandbox integration replacement.
 
@@ -115,11 +115,19 @@ RAILS_ENV=test POSTGRES_DB=roms_test REDIS_URL=redis://redis:6379/2 DISABLE_PARA
 RAILS_ENV=test POSTGRES_DB=roms_test REDIS_URL=redis://redis:6379/2 bin/rails test
 ```
 
-Validation in this worktree:
+Verified in the isolated `roms-dependency-validation` project:
 
-- Normal Rails test boot was attempted in `roms-finance-sandbox-app-1` with the explicit test settings above; **blocked before test execution** by missing already-locked gems (`propshaft`, `tailwindcss-rails`, `doorkeeper`, `pagy`, `csv`, `activerecord-import`, `tailwindcss-ruby`). No dependencies were installed or changed. Repository-configured RuboCop was blocked by the same bundle resolution.
-- A standalone, no-install harness in that sandbox container loaded the actual production provider and this test file with installed ActiveSupport/Minitest/WebMock/Plaid **46.0.0**, supplying only the Rails environment and environment-override helper. **11 tests, 97 assertions, zero failures/errors/skips**, also repeated with VCR's WebMock hook and localhost-ignore configuration enabled. This exercises actual HTTP serialization/deserialization and stub compatibility with VCR, but is **not** a Rails boot/fixtures or existing VCR suite validation. Ruby syntax and staged diff whitespace checks passed.
-- Target v51 tagged source confirms the `count: 100` default, `ItemWithConsentFields` response type, and corrected `interest only` enum. **v51 runtime tests are still required**; source inspection is not a runtime pass.
-- The orchestrator's `roms-dependency-validation-app-1` was used only to read installed v46 SDK source, never to run tests or write files.
+- Original Plaid 46 contract suite: 11 tests, 97 assertions passed using a
+  characterization assertion for its incorrect `interest only` enum rejection.
+  Six existing VCR provider tests replayed with fake credentials: 11 assertions,
+  zero failures/errors/skips. No cassette was recorded or modified.
+- Plaid 51 focused contracts plus the same VCR replay: 17 tests, 111 assertions,
+  zero failures/errors/skips. The final test now requires successful enum decoding.
+- Full integrated candidate: 1,987 unit/integration tests, 9,448 assertions,
+  16 unchanged skips; all 72 Chromium tests (253 assertions), zero failures/errors.
+- Ruby/JavaScript lint, Brakeman, refreshed Ruby/importmap/npm audits, and
+  Zeitwerk passed. JWT 3 ES256 webhook coverage runs in the integrated suite.
 
-Follow-up gate before dependency/production changes: run the focused and existing provider tests with the complete baseline Rails bundle, then run the same contracts under v51 in the orchestrator's isolated upgrade environment, followed by the full Rails suite. Preserve existing credential-dependent skips. No current breaking note demands a production adaptation; the directly relevant liability enum fix should be verified as a successful decode after the SDK bump. Do not report the dependency upgrade as validated until the full Rails/v51 runs complete.
+Fresh current-main GitHub CI is required before merging. These results validate
+the SDK changes for the app's deterministic endpoint contracts, not every new
+Plaid feature or a live banking/OAuth flow.
