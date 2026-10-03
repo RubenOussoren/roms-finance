@@ -49,7 +49,8 @@ parallel workers. The project bundle cache is copied from a read-only mount of
 the sandbox cache; live sandbox services and volumes are not modified. CI also
 explicitly selects `roms_test` and Redis database 2.
 
-Ruby dependency audit still reports unrelated existing advisories in
+The initial Ruby dependency audit also reported unrelated advisories in
 concurrent-ruby, crass, css_parser, faraday, loofah, mail, msgpack, nokogiri, pagy,
-rails-html-sanitizer, rubyzip, view_component, websocket-driver, and yard. These
-are separate backlog work; the audit reports no vulnerability for ruby_llm 2.0.0.
+rails-html-sanitizer, rubyzip, view_component, websocket-driver, and yard. Those
+were resolved in the preceding focused security batches. The refreshed audit on
+the integrated security baseline reports no vulnerable dependencies.
