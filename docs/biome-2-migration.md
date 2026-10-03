@@ -6,8 +6,8 @@ Upgrade `@biomejs/biome` from locked 1.9.3 to **2.5.15**, pinned exactly in
 `package.json`. The lockfile was updated with
 `npm install --save-dev --save-exact --package-lock-only @biomejs/biome@2.5.15`,
 not regenerated. Only the root Biome requirement and Biome/platform-package
-entries changed; Playwright, playwright-core, and fsevents entries are identical
-to the baseline. Registry-provided metadata changes are confined to Biome entries.
+entries changed; Playwright package entries are identical to the current-main baseline
+(the coordinated Playwright upgrade independently removed fsevents). Registry-provided metadata changes are confined to Biome entries.
 
 Previewed `biome migrate`, applied `biome migrate --write`, and reviewed the
 result deliberately:
@@ -48,7 +48,7 @@ migration; full style-check success remains a separate cleanup task.
 
 ## Verification
 
-All commands ran with host Node **v20.19.2** and npm **9.2.0**, inside the isolated
+Initial specialist commands ran with host Node **v20.19.2** and npm **9.2.0**, inside the isolated
 `tmp/maintenance-biome` worktree; no containers were used. npm's download cache
 and comparison logs were kept under that worktree's ignored `tmp/` directory.
 A temporary baseline snapshot was removed before final verification because
@@ -66,6 +66,18 @@ Biome 2 discovers nested configuration files even outside the selected glob.
 - Programmatic lockfile comparison: all non-Biome package entries unchanged.
 - `git diff --check`: pass.
 
-No Rails or browser tests were run: this is a development-tool/configuration
-migration with narrowly scoped diagnostic fixes. No database, Redis, deployment,
-or environment-variable changes are required.
+Final integrated verification used **Node 22.23.3** in the isolated validation
+container after rebasing onto the merged Playwright/Puma/provider baseline:
+
+- 1,987 unit/integration tests, 9,464 assertions, zero failures/errors,
+  16 unchanged skips; all 72 Chromium tests, 253 assertions, zero failures/errors.
+- Strict JavaScript lint, Ruby lint, Brakeman, updated Ruby/importmap/npm audits,
+  Zeitwerk, locked Playwright compatibility check, and actionlint passed.
+- `style:check` still reports only the same 22 pre-existing formatting files;
+  this optional check already failed on unchanged main and is not a new failed CI
+  check. No required gate was bypassed or weakened.
+- Every Rails test invocation explicitly used `RAILS_ENV=test
+  POSTGRES_DB=roms_test REDIS_URL=redis://redis:6379/2`; sandbox dependencies and
+  development data were untouched during candidate validation.
+
+No database, Redis, deployment, or environment-variable changes are required.
