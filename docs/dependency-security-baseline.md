@@ -1,5 +1,10 @@
 # Dependency security baseline — October 3, 2026
 
+The subsequent 12-PR non-security queue is tracked separately in
+[the maintenance resolution report](dependency-maintenance-2026-10.md), including
+the updated regression-test baseline. The original security results below remain
+historical evidence rather than being overwritten by maintenance upgrades.
+
 ## Inventory and resolution
 
 The refreshed starting inventory contained 24 open Dependabot PRs and 29 open

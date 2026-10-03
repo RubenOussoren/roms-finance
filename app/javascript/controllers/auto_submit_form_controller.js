@@ -77,7 +77,7 @@ export default class extends Controller {
 
   #debounceTimeout(element) {
     if (element.dataset.autosubmitDebounceTimeout) {
-      return Number.parseInt(element.dataset.autosubmitDebounceTimeout);
+      return Number.parseInt(element.dataset.autosubmitDebounceTimeout, 10);
     }
 
     const type = element.type || element.tagName;
