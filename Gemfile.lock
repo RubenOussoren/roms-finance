@@ -543,21 +543,22 @@ GEM
       ffi (~> 1.12)
       logger
     ruby2_keywords (0.0.5)
-    ruby_llm (1.14.1)
+    ruby_llm (2.0.0)
       base64
       event_stream_parser (~> 1)
       faraday (>= 1.10.0)
       faraday-multipart (>= 1)
       faraday-net_http (>= 1)
       faraday-retry (>= 1)
-      marcel (~> 1)
-      ruby_llm-schema (~> 0)
+      json (< 3)
+      marcel (>= 1.0, < 3)
+      schematist (~> 1.1)
       zeitwerk (~> 2)
-    ruby_llm-schema (0.3.0)
     rubyzip (3.4.0)
     sawyer (0.9.2)
       addressable (>= 2.3.5)
       faraday (>= 0.17.3, < 3)
+    schematist (1.1.0)
     securerandom (0.4.1)
     sentry-rails (6.5.0)
       railties (>= 5.2.0)
@@ -716,7 +717,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   ruby-lsp-rails
   ruby-openai
-  ruby_llm
+  ruby_llm (~> 2.0.0)
   rubyzip (~> 3.0)
   sentry-rails
   sentry-ruby
