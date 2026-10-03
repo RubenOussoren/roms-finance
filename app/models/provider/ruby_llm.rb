@@ -28,7 +28,7 @@ class Provider::RubyLlm < Provider
 
       # Register function tools via adapter — RubyLLM will call execute() automatically
       tool_adapter = FunctionToolAdapter.new(function_instances)
-      tool_adapter.tool_classes.each { |tool_class| chat.with_tool(tool_class) }
+      chat.with_tools(*tool_adapter.tool_classes)
 
       # Load conversation history
       messages.each do |msg|
@@ -79,7 +79,7 @@ class Provider::RubyLlm < Provider
     def parse_response(message, tool_calls_log = [])
       ChatResponse.new(
         id: SecureRandom.uuid,
-        model: message.model_id,
+        model: message.model,
         messages: [
           ChatMessage.new(
             id: SecureRandom.uuid,
@@ -88,8 +88,8 @@ class Provider::RubyLlm < Provider
         ],
         function_requests: [],
         tool_calls_log: tool_calls_log,
-        input_tokens: message.input_tokens || 0,
-        output_tokens: message.output_tokens || 0
+        input_tokens: message.tokens.input || 0,
+        output_tokens: message.tokens.output || 0
       )
     end
 end

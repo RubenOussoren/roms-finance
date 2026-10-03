@@ -25,6 +25,14 @@ class AssistantMessageTest < ActiveSupport::TestCase
     assert_equal "", msg.content
   end
 
+  test "calculate_cost uses RubyLLM 2 pricing in cents" do
+    model = RubyLLM::Model.new(id: "priced-model", provider: "openai",
+      pricing: { text_tokens: { standard: { input_per_million: 2, output_per_million: 8 } } })
+    RubyLLM.models.expects(:find).with("priced-model").returns(model)
+    msg = AssistantMessage.new(ai_model: "priced-model", input_tokens: 10_000, output_tokens: 5_000)
+    assert_equal 6, msg.calculate_cost
+  end
+
   test "calculate_cost returns 0 for unknown model" do
     msg = AssistantMessage.new(ai_model: "nonexistent-model", input_tokens: 1000, output_tokens: 500)
     assert_equal 0, msg.calculate_cost

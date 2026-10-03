@@ -1,5 +1,5 @@
 # Converts Assistant::Function instances into RubyLLM::Tool subclasses
-# so they can be registered with RubyLLM.chat.with_tool(ToolClass)
+# so they can be registered with RubyLLM.chat.with_tools(ToolClass)
 #
 # RubyLLM calls execute() on each tool automatically when the model requests it.
 # The adapter delegates execution to the existing Assistant::Function#call method.
@@ -31,10 +31,10 @@ class Provider::RubyLlm::FunctionToolAdapter
         if fn_schema[:properties].present?
           fn_schema[:properties].each do |prop_name, prop_def|
             required = fn_schema[:required]&.include?(prop_name.to_s)
-            param prop_name,
-                  type: :string,
-                  desc: prop_def[:description] || "",
-                  required: required
+            parameter prop_name,
+                      type: :string,
+                      description: prop_def[:description] || "",
+                      required: required
           end
         end
 
