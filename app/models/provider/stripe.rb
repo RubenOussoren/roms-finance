@@ -30,6 +30,8 @@ class Provider::Stripe
     end
 
     StripeEventHandlerJob.perform_later(event.id)
+  rescue ArgumentError => error
+    raise InvalidWebhookError, error.message
   end
 
   def create_checkout_session(plan:, family_id:, family_email:, success_url:, cancel_url:)

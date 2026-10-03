@@ -1,6 +1,11 @@
 require "test_helper"
 
 class Provider::StripeTest < ActiveSupport::TestCase
+  include WebMock::API
+  teardown do
+    WebMock.reset!
+  end
+
   setup do
     @stripe = Provider::Stripe.new(secret_key: "sk_test_regression", webhook_secret: "whsec_regression")
   end

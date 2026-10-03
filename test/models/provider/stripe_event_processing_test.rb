@@ -1,6 +1,11 @@
 require "test_helper"
 
 class Provider::StripeEventProcessingTest < ActiveSupport::TestCase
+  include WebMock::API
+  teardown do
+    WebMock.reset!
+  end
+
   setup do
     @provider = Provider::Stripe.new(secret_key: "sk_test_regression", webhook_secret: "whsec_regression")
     @family = families(:dylan_family)

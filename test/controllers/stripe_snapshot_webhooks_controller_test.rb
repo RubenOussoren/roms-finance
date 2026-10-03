@@ -37,7 +37,7 @@ class StripeSnapshotWebhooksControllerTest < ActionDispatch::IntegrationTest
     with_stripe do
       body = "{"
       Sentry.expects(:capture_exception).with(instance_of(JSON::ParserError))
-      assert_no_enqueued_jobs { post_webhook(body, stripe_signature(body)) }
+      assert_no_enqueued_jobs { post_webhook(body, stripe_signature(body), content_type: "text/plain") }
       assert_response :bad_request
     end
   end
@@ -67,8 +67,8 @@ class StripeSnapshotWebhooksControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    def post_webhook(body, signature)
+    def post_webhook(body, signature, content_type: "application/json")
       post webhooks_stripe_path, params: body,
-        headers: { "Content-Type" => "application/json", "Stripe-Signature" => signature }.compact
+        headers: { "Content-Type" => content_type, "Stripe-Signature" => signature }.compact
     end
 end
