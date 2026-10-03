@@ -78,6 +78,15 @@ uses the v1 webhook verifier without changing the worker's retrieval path.
 The baseline empty-secret acceptance assertion is SDK-version-specific and is
 not a requirement: it may also fail under hardened Stripe 19.6.2.
 
-Runtime tests and RuboCop for this fix are left to the orchestrator: the host has
-no Ruby, shared test containers must not be written to, and Docker access is
-unavailable. Dependencies are unchanged; the orchestrator owns the lockfile.
+## Verified upgrade result
+
+The original parser failure was reproduced on unchanged application code with
+Stripe 19.0.0. After repairing the integration and test HTTP isolation, all 28
+focused tests passed on that original SDK (149 assertions). The same contracts
+pass with Stripe 19.6.2; its newer default API version retains the fields consumed
+by these deterministic checkout/subscription fixtures.
+
+The integrated candidate passed 1,958 unit/integration tests (9,308 assertions,
+16 existing skips), all 72 Chromium tests (253 assertions), Ruby/JavaScript lint,
+Brakeman, updated bundler-audit, importmap/npm audits, and Zeitwerk. No test was
+disabled and no live Stripe mutation or database migration was performed.
