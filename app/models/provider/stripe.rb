@@ -1,7 +1,10 @@
 class Provider::Stripe
   Error = Class.new(StandardError)
+  InvalidWebhookError = Class.new(Error)
 
   def initialize(secret_key:, webhook_secret:)
+    raise Error, "Stripe webhook secret must be configured" if webhook_secret.blank?
+
     @client = Stripe::StripeClient.new(secret_key)
     @webhook_secret = webhook_secret
   end
@@ -18,8 +21,15 @@ class Provider::Stripe
   end
 
   def process_webhook_later(webhook_body, sig_header)
-    thin_event = client.parse_thin_event(webhook_body, sig_header, webhook_secret)
-    StripeEventHandlerJob.perform_later(thin_event.id)
+    event = Stripe::Webhook.construct_event(webhook_body, sig_header, webhook_secret)
+    snapshot = event.to_hash
+    unless snapshot[:object] == "event" && snapshot[:id].is_a?(String) && snapshot[:id].present? &&
+        snapshot[:type].is_a?(String) && snapshot[:type].present? &&
+        snapshot[:data].is_a?(Hash) && snapshot[:data][:object].is_a?(Hash)
+      raise InvalidWebhookError, "Expected a v1 event snapshot"
+    end
+
+    StripeEventHandlerJob.perform_later(event.id)
   end
 
   def create_checkout_session(plan:, family_id:, family_email:, success_url:, cancel_url:)
