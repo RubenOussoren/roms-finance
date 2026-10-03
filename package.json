@@ -1,6 +1,6 @@
 {
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.3"
+		"@biomejs/biome": "^2.5.15"
 	},
 	"name": "roms-finance",
 	"version": "1.1.0",
