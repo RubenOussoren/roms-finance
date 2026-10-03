@@ -123,7 +123,7 @@ Verified in the isolated `roms-dependency-validation` project:
   zero failures/errors/skips. No cassette was recorded or modified.
 - Plaid 51 focused contracts plus the same VCR replay: 17 tests, 111 assertions,
   zero failures/errors/skips. The final test now requires successful enum decoding.
-- Full integrated candidate: 1,987 unit/integration tests, 9,448 assertions,
+- Full integrated candidate: 1,987 unit/integration tests, 9,464 assertions,
   16 unchanged skips; all 72 Chromium tests (253 assertions), zero failures/errors.
 - Ruby/JavaScript lint, Brakeman, refreshed Ruby/importmap/npm audits, and
   Zeitwerk passed. JWT 3 ES256 webhook coverage runs in the integrated suite.
