@@ -129,6 +129,9 @@ GEM
     brakeman (8.1.0)
       racc
     builder (3.3.0)
+    bundler-audit (0.9.3)
+      bundler (>= 1.2.0)
+      thor (~> 1.0)
     capybara (3.40.0)
       addressable
       matrix
@@ -669,6 +672,7 @@ DEPENDENCIES
   benchmark-ips
   bootsnap
   brakeman
+  bundler-audit (~> 0.9)
   capybara
   capybara-playwright-driver
   climate_control
