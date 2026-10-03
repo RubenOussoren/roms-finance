@@ -52,6 +52,7 @@ class WebhooksController < ApplicationController
 
   def stripe
     stripe_provider = Provider::Registry.get_provider(:stripe)
+    return head :service_unavailable unless stripe_provider
 
     begin
       webhook_body = request.body.read
@@ -60,9 +61,9 @@ class WebhooksController < ApplicationController
       stripe_provider.process_webhook_later(webhook_body, sig_header)
 
       head :ok
-    rescue JSON::ParserError => error
+    rescue JSON::ParserError, Provider::Stripe::InvalidWebhookError => error
       Sentry.capture_exception(error)
-      Rails.logger.error "JSON parser error: #{error.message}"
+      Rails.logger.error "Stripe payload error: #{error.message}"
       head :bad_request
     rescue Stripe::SignatureVerificationError => error
       Sentry.capture_exception(error)
