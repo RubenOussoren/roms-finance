@@ -16,6 +16,12 @@ puts "Seeding accounts..."
 family = Family.find_by(currency: "CAD")
 return unless family
 
+# Skip if already seeded
+if family.accounts.exists?
+  puts "  Account data already exists, skipping..."
+  return
+end
+
 husband = family.users.find_by(email: "admin@roms.local")
 wife    = family.users.find_by(email: "member@roms.local")
 

@@ -8,6 +8,12 @@ puts "Seeding debt optimization..."
 family = Family.find_by(currency: "CAD")
 return unless family
 
+# Skip if already seeded
+if family.debt_optimization_strategies.exists?
+  puts "  Debt optimization data already exists, skipping..."
+  return
+end
+
 jurisdiction = Jurisdiction.find_by(country_code: "CA")
 return unless jurisdiction
 

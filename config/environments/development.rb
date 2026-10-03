@@ -68,6 +68,10 @@ Rails.application.configure do
   config.active_record.verbose_query_logs = true
   config.active_job.verbose_enqueue_logs = true
 
+  # bin/dev runs Sidekiq; use it rather than process-local async jobs that are
+  # lost when a console, runner or web process exits.
+  config.active_job.queue_adapter = :sidekiq
+
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 

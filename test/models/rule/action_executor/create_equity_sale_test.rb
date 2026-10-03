@@ -4,6 +4,9 @@ class Rule::ActionExecutor::CreateEquitySaleTest < ActiveSupport::TestCase
   include EntriesTestHelper
 
   setup do
+    # Keep the sale price within seven days of the fixtures' April 15 vesting date.
+    travel_to Time.zone.local(2026, 4, 20)
+
     @family = families(:dylan_family)
     @rule = rules(:one)
     @equity_account = accounts(:equity_compensation)

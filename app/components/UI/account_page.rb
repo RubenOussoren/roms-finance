@@ -1,11 +1,12 @@
 class UI::AccountPage < ApplicationComponent
-  attr_reader :account, :chart_view, :chart_period
+  attr_reader :account, :chart_view, :chart_period, :balance_only
 
   renders_one :activity_feed, ->(feed_data:, pagy:, search:) { UI::Account::ActivityFeed.new(feed_data: feed_data, pagy: pagy, search: search) }
   renders_one :milestone_tracker, -> { UI::Account::MilestoneTracker.new(account: account) }
 
-  def initialize(account:, chart_view: nil, chart_period: nil, active_tab: nil)
+  def initialize(account:, chart_view: nil, chart_period: nil, active_tab: nil, balance_only: false)
     @account = account
+    @balance_only = balance_only
     @chart_view = chart_view
     @chart_period = chart_period
     @active_tab = active_tab
@@ -38,6 +39,8 @@ class UI::AccountPage < ApplicationComponent
   end
 
   def tabs
+    return [] if balance_only
+
     case account.accountable_type
     when "Investment"
       [ :activity, :holdings ]

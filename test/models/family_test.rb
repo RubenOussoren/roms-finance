@@ -8,6 +8,20 @@ class FamilyTest < ActiveSupport::TestCase
     @family = @syncable
   end
 
+  test "destroying family removes owned accounts before users" do
+    family = Family.create!(name: "Disposable demo family")
+    owner = family.users.create!(email: "disposable@example.com", password: "password", role: "admin")
+    account = family.accounts.create!(name: "Checking", balance: 100, currency: "CAD",
+      created_by_user: owner, accountable: Depository.new)
+    family.syncs.create!(status: :completed)
+    account.syncs.create!(status: :completed)
+
+    assert_difference [ "Family.count", "User.count", "Account.count" ], -1 do
+      family.destroy!
+    end
+    assert_not Account.exists?(account.id)
+  end
+
   # JurisdictionAware concern tests
   test "family has jurisdiction based on country" do
     @family.update!(country: "CA")

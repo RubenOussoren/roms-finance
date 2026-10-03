@@ -1,4 +1,4 @@
-<%# locals: (account:, title:, subtitle: nil) %>
+<%# locals: (account:, title:, subtitle: nil, read_only: false) %>
 
 <header class="space-y-4">
   <% if account.is_joint? && !account.owned_by?(Current.user) %>
@@ -19,7 +19,7 @@
             <% if account.is_joint? %>
               <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">Joint</span>
             <% end %>
-            <% if account.draft? %>
+            <% if account.draft? && !read_only %>
               <%= render DS::Link.new(
                   text: "Complete setup",
                   href: edit_account_path(account),
@@ -36,25 +36,27 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-1 ml-auto">
-      <% if Rails.env.development? || self_hosted? %>
-        <%= icon(
-            "refresh-cw",
-            as_button: true,
-            size: "sm",
-            href: if account.plaid_account_id.present?
-                    sync_plaid_item_path(account.plaid_account.plaid_item)
-                  elsif account.snaptrade_account_id.present?
-                    sync_snaptrade_connection_path(account.snaptrade_account.snaptrade_connection)
-                  else
-                    sync_account_path(account)
-                  end,
-            disabled: account.syncing?,
-            frame: :_top
-          ) %>
-      <% end %>
+    <% unless read_only %>
+      <div class="flex items-center gap-1 ml-auto">
+        <% if Rails.env.development? || self_hosted? %>
+          <%= icon(
+              "refresh-cw",
+              as_button: true,
+              size: "sm",
+              href: if account.plaid_account_id.present?
+                      sync_plaid_item_path(account.plaid_account.plaid_item)
+                    elsif account.snaptrade_account_id.present?
+                      sync_snaptrade_connection_path(account.snaptrade_account.snaptrade_connection)
+                    else
+                      sync_account_path(account)
+                    end,
+              disabled: account.syncing?,
+              frame: :_top
+            ) %>
+        <% end %>
 
-      <%= render "accounts/show/menu", account: account %>
-    </div>
+        <%= render "accounts/show/menu", account: account %>
+      </div>
+    <% end %>
   </div>
 </header>

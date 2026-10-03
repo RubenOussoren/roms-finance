@@ -8,6 +8,12 @@ puts "Seeding projections..."
 family = Family.find_by(currency: "CAD")
 return unless family
 
+# Skip if already seeded
+if family.projection_assumptions.exists?
+  puts "  Projection data already exists, skipping..."
+  return
+end
+
 pag_2025 = ProjectionStandard.find_by(code: "PAG_2025")
 
 unless pag_2025

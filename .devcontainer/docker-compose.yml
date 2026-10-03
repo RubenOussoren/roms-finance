@@ -29,37 +29,38 @@ services:
     environment:
       <<: *rails_env
 
+    # bin/dev starts Sidekiq via Procfile.dev after dependencies are installed;
+    # no standalone worker service is needed.
     depends_on:
-      - db
-      - redis
-
-  worker:
-    build:
-      context: ..
-      dockerfile: .devcontainer/Dockerfile
-    command: bundle exec sidekiq
-    restart: unless-stopped
-    environment:
-      <<: *rails_env
-    depends_on:
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
+    image: redis:7-alpine
     restart: unless-stopped
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   db:
-    image: postgres:latest
+    image: postgres:16-alpine
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
       <<: *db_env
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   postgres-data:

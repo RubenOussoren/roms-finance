@@ -13,7 +13,7 @@ family = Family.find_by(currency: "CAD")
 return unless family
 
 # Skip if already seeded
-if Account.where(accountable_type: "EquityCompensation").exists?
+if family.accounts.where(accountable_type: "EquityCompensation").exists?
   puts "  Equity compensation data already exists, skipping..."
   return
 end
@@ -141,4 +141,11 @@ AccountPermission.create!(account: apple_options, user: wife, visibility: "balan
 AccountPermission.create!(account: prev_employer, user: wife, visibility: "balance_only")
 
 puts "  Created 3 cross-spouse permission records"
+
+# Use the historical prices seeded in 14_investments to populate vested balances
+# and charts; merely creating grants leaves these demo accounts valued at zero.
+[ alphabet_rsus, apple_options, prev_employer ].each do |account|
+  account.accountable.regenerate_vesting_valuations!
+end
+
 puts "Equity compensation seed completed!"

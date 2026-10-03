@@ -14,8 +14,9 @@ class Family < ApplicationRecord
     [ "YYYY.MM.DD", "%Y.%m.%d" ]
   ].freeze
 
-  has_many :users, dependent: :destroy
+  # Account ownership is required; remove accounts before their owners.
   has_many :accounts, dependent: :destroy
+  has_many :users, dependent: :destroy
   has_many :invitations, dependent: :destroy
 
   has_many :imports, dependent: :destroy

@@ -15,6 +15,12 @@ puts "Seeding transactions..."
 family = Family.find_by(currency: "CAD")
 return unless family
 
+# Skip if already seeded (opening valuations do not count as transactions)
+if family.entries.where(entryable_type: "Transaction").exists?
+  puts "  Transaction data already exists, skipping..."
+  return
+end
+
 # ============================================================================
 # Account lookups
 # ============================================================================

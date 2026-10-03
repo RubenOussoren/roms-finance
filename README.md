@@ -110,10 +110,38 @@ All providers auto-disable when unconfigured. Set the relevant environment varia
 ### Prerequisites
 
 - Ruby 3.4 (see `.ruby-version`)
+- Node.js 22 LTS (for JavaScript tooling and browser tests)
 - PostgreSQL 16+
 - Redis
 
-### Setup
+### Docker development sandbox
+
+With Docker Engine and Compose v2 installed, use the tracked development configuration
+(not the production `compose.example.yml`):
+
+```sh
+cp .env.local.example .env.local
+# Optional provider credentials can remain empty.
+export LOCAL_UID=$(id -u) LOCAL_GID=$(id -g)
+docker compose -f compose.dev.yml up -d --build
+docker compose -f compose.dev.yml logs -f app
+```
+
+Visit http://localhost:3000 once the app is healthy. The sandbox runs Rails,
+Tailwind and Sidekiq together via `bin/dev`, with PostgreSQL 16 and Redis 7 on
+an internal network. It installs locked dependencies with Bundler and `npm ci`,
+prepares the database on startup, and keeps database and gem data in named volumes.
+A fresh database is seeded automatically; restarts do not reset existing data.
+
+`DEV_BIND_ADDRESS` (default `127.0.0.1`) and `DEV_PORT` (default `3000`) control
+host access. For example, set them to your sandbox's private IP and `3100` when
+access from another machine on the private network is needed. **Do not expose
+this development server or its demo credentials to the public internet.**
+
+The VS Code devcontainer uses the same Dockerfile, but intentionally keeps its
+app container idle; run `bin/dev` in its terminal after creation.
+
+### Local setup
 
 ```sh
 git clone https://github.com/RubenOussoren/roms-finance.git
@@ -123,14 +151,53 @@ bin/setup
 bin/dev
 ```
 
-Visit http://localhost:3000. Seeds create a realistic Canadian family with 20 accounts, 37 months of transactions, investment holdings, and a pre-simulated Smith Manoeuvre strategy.
+Visit http://localhost:3000. On a fresh database, seeds create a realistic Canadian family with 23 accounts (including equity compensation), 37 months of transactions, investment holdings, and a pre-simulated Smith Manoeuvre strategy.
 
 | Credential | Email               | Password   | Role                  |
 | ---------- | ------------------- | ---------- | --------------------- |
 | Admin      | `admin@roms.local`  | `password` | Full access           |
 | Member     | `member@roms.local` | `password` | Per-user privacy demo |
 
-To reload demo data from scratch: `rake demo_data:default`
+To reload demo data from scratch: `bin/rails demo_data:default` (or
+`docker compose -f compose.dev.yml exec app bin/rails demo_data:default`).
+**This deletes existing application data; use only on a disposable development database.**
+`db:prepare` on an already prepared database does not reload the demo.
+`db:seed` can be rerun without duplicating the demo financial records; its guards
+skip existing datasets rather than repairing a partially loaded dataset.
+
+### Sandbox verification
+
+Always override `POSTGRES_DB` and `REDIS_URL` for tests: the app service explicitly
+sets the development database name, even when `RAILS_ENV` changes.
+
+```sh
+docker compose -f compose.dev.yml exec -e RAILS_ENV=test -e POSTGRES_DB=roms_test \
+  -e REDIS_URL=redis://redis:6379/2 app bin/rails db:prepare
+docker compose -f compose.dev.yml exec -e RAILS_ENV=test -e POSTGRES_DB=roms_test \
+  -e REDIS_URL=redis://redis:6379/2 -e PARALLEL_WORKERS=2 app bin/rails test
+docker compose -f compose.dev.yml exec app bin/rubocop
+docker compose -f compose.dev.yml exec app npm run lint
+docker compose -f compose.dev.yml exec app bin/brakeman --no-pager
+docker compose -f compose.dev.yml exec app bin/importmap audit
+docker compose -f compose.dev.yml exec app npm audit
+```
+
+For headless system tests, provision Chromium in the running development container:
+
+```sh
+docker compose -f compose.dev.yml exec -u 0 app npx playwright install-deps chromium
+docker compose -f compose.dev.yml exec app npx playwright install chromium
+docker compose -f compose.dev.yml exec -e RAILS_ENV=test -e POSTGRES_DB=roms_test \
+  -e REDIS_URL=redis://redis:6379/2 -e CI=true -e DISABLE_PARALLELIZATION=true \
+  app bin/rails test:system
+```
+
+The installed browser and its OS dependencies are container-local; install them
+again after recreating the container. PostgreSQL and Redis have Compose
+healthchecks; `/up` checks Rails boot. Use `docker compose -f compose.dev.yml ps`
+and the app logs to check all three `bin/dev` processes. Stop without removing
+data using `docker compose -f compose.dev.yml down` (do not add `-v` unless you
+intend to delete the volumes).
 
 ## Contributing
 
