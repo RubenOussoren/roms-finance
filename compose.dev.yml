@@ -1,0 +1,87 @@
+name: roms-finance-sandbox
+
+services:
+  bundle-init:
+    image: busybox:1.37
+    user: "0:0"
+    volumes:
+      - bundle_cache:/bundle
+    command: ["sh", "-c", "chown -R ${LOCAL_UID:-1000}:${LOCAL_GID:-1000} /bundle"]
+    restart: "no"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: roms_development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d roms_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    working_dir: /workspace
+    init: true
+    restart: unless-stopped
+
+    depends_on:
+      bundle-init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    environment:
+      RAILS_ENV: development
+      DB_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: roms_development
+      REDIS_URL: redis://redis:6379/1
+      BUNDLE_PATH: /bundle
+      HOST: 0.0.0.0
+      PORT: 3000
+      HOME: /tmp/roms-home
+
+    volumes:
+      - .:/workspace
+      - bundle_cache:/bundle
+
+    ports:
+      - "${DEV_BIND_ADDRESS:-127.0.0.1}:${DEV_PORT:-3000}:3000"
+
+    command: ["bin/dev-entrypoint"]
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/up"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 20
+
+volumes:
+  postgres_data:
+  redis_data:
+  bundle_cache:

@@ -10,7 +10,7 @@
   "remoteEnv": {
     "PATH": "/workspace/bin:${containerEnv:PATH}"
   },
-  "postCreateCommand": "bundle install && npm install",
+  "postCreateCommand": "bundle install && npm ci && bin/rails db:prepare",
   "customizations": {
     "vscode": {
       "extensions": [

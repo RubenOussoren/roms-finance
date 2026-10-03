@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+# Container restarts can reuse the PID recorded by a previous Rails process.
+# This entrypoint is for the container that owns the development server only.
+rm -f tmp/pids/server.pid
+mkdir -p "${HOME}"
+
+bundle check || bundle install
+npm ci
+bin/rails db:prepare
+
+exec bin/dev "$@"
