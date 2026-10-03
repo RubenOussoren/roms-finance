@@ -16,6 +16,30 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "balance-only viewers do not render account details or holdings requests" do
+    viewer = users(:family_member)
+    sign_in viewer
+
+    %i[investment equity_compensation loan].each do |fixture|
+      account = accounts(fixture)
+      account.account_permissions.create!(user: viewer, visibility: "balance_only")
+
+      get account_url(account)
+      assert_response :success
+      assert_select "p", text: "You have balance-only access to this account"
+      assert_select "[data-testid='account-details']", count: 0
+      assert_select "turbo-frame[src*='/holdings']", count: 0
+      assert_select "a[href=?]", sync_account_path(account), count: 0
+    end
+  end
+
+  test "full-access investment viewers still load holdings" do
+    get account_url(accounts(:investment))
+    assert_response :success
+    assert_select "[data-testid='account-details']", count: 1
+    assert_select "turbo-frame[src*='/holdings']", count: 1
+  end
+
   test "should sync account" do
     post sync_account_url(@account)
     assert_redirected_to account_url(@account)
