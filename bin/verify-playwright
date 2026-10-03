@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+require "json"
+require "playwright"
+
+root = File.expand_path("..", __dir__)
+expected = Playwright::COMPATIBLE_PLAYWRIGHT_VERSION.strip
+
+begin
+  versions = %w[@playwright/test playwright playwright-core].to_h do |package|
+    path = File.join(root, "node_modules", package, "package.json")
+    [ package, JSON.parse(File.read(path)).fetch("version") ]
+  end
+rescue Errno::ENOENT, JSON::ParserError, KeyError => error
+  abort "Cannot read installed Playwright packages: #{error.message}. Run npm ci first."
+end
+
+mismatches = versions.reject { |_package, version| version == expected }
+unless mismatches.empty?
+  abort "Playwright version mismatch: Ruby requires #{expected}, npm has #{versions.inspect}. Update Ruby/npm together and run npm ci."
+end
+
+puts "Playwright Ruby/npm compatibility verified: #{expected}"
