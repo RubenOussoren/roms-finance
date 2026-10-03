@@ -178,6 +178,7 @@ docker compose -f compose.dev.yml exec -e RAILS_ENV=test -e POSTGRES_DB=roms_tes
 docker compose -f compose.dev.yml exec app bin/rubocop
 docker compose -f compose.dev.yml exec app npm run lint
 docker compose -f compose.dev.yml exec app bin/brakeman --no-pager
+docker compose -f compose.dev.yml exec app bundle exec bundler-audit check --update
 docker compose -f compose.dev.yml exec app bin/importmap audit
 docker compose -f compose.dev.yml exec app npm audit
 ```
