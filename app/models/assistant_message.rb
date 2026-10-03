@@ -30,9 +30,8 @@ class AssistantMessage < Message
     model_info = RubyLLM.models.find(ai_model)
     return 0 unless model_info
 
-    input_cost = (input_tokens || 0) * (model_info.input_price_per_million || 0) / 1_000_000.0
-    output_cost = (output_tokens || 0) * (model_info.output_price_per_million || 0) / 1_000_000.0
-    ((input_cost + output_cost) * 100).round # cents
+    tokens = RubyLLM::Tokens.new(input: input_tokens || 0, output: output_tokens || 0)
+    ((model_info.cost_for(tokens).total || 0) * 100).round # cents
   rescue
     0
   end
