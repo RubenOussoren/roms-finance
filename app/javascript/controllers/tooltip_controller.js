@@ -77,7 +77,7 @@ export default class extends Controller {
         flip(),
         shift({ padding: 5 }),
       ],
-    }).then(({ x, y, placement, middlewareData }) => {
+    }).then(({ x, y }) => {
       Object.assign(this.tooltipTarget.style, {
         left: `${x}px`,
         top: `${y}px`,

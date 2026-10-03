@@ -33,7 +33,7 @@ export default class extends Controller {
     }
   }
 
-  restoreScroll(event) {
+  restoreScroll(_event) {
     if (!this.element.id) return
 
     if (this.constructor.scrollPositions[this.element.id]) {

@@ -144,7 +144,7 @@ export default class extends Controller {
     }
   }
 
-  autoAdjust(e) {
+  autoAdjust(_e) {
     const currentRGBA = this.picker.getColor();
     const adjustedRGBA = this.darkenColor(currentRGBA).toString();
     this.picker.setColor(adjustedRGBA);
@@ -157,7 +157,7 @@ export default class extends Controller {
     this.selectionTarget.style.display = display;
   }
 
-  backgroundColor([r, g, b, a], percentage) {
+  backgroundColor([r, g, b], percentage) {
     const mixedR = Math.round(
       r * (percentage / 100) + 255 * (1 - percentage / 100),
     );

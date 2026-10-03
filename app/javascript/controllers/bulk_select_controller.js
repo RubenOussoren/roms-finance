@@ -96,7 +96,9 @@ export default class extends Controller {
 
   _resetFormInputs(form, paramName) {
     const existingInputs = form.querySelectorAll(`input[name='${paramName}']`);
-    existingInputs.forEach((input) => input.remove());
+    existingInputs.forEach((input) => {
+      input.remove();
+    });
   }
 
   _rowsForGroup(group) {

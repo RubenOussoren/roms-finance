@@ -170,7 +170,7 @@ export default class extends Controller {
 
   #selectCommand(index) {
     const commands = this._currentCommands;
-    if (!commands || !commands[index]) return;
+    if (!commands?.[index]) return;
 
     this.inputTarget.value = commands[index].text;
     this.#hideCommandMenu();

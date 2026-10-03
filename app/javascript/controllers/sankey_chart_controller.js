@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import * as d3 from "d3";
-import { sankey, sankeyLinkHorizontal } from "d3-sankey";
+import { sankey } from "d3-sankey";
 
 // Connects to data-controller="sankey-chart"
 export default class extends Controller {

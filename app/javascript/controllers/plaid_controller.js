@@ -70,7 +70,7 @@ export default class extends Controller {
     }
   };
 
-  handleEvent = (eventName, metadata) => {
+  handleEvent = (_eventName, _metadata) => {
     // no-op
   };
 
