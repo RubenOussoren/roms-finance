@@ -204,14 +204,6 @@ class Provider::PlaidContractTest < ActiveSupport::TestCase
     })
 
     # v48 corrects the generated enum to the value the API actually emits.
-    # Keep the baseline incompatibility explicit rather than skipping coverage.
-    if Gem.loaded_specs.fetch("plaid").version < Gem::Version.new("48.0.0")
-      error = assert_raises(ArgumentError) { @plaid.get_item_liabilities(ACCESS_TOKEN) }
-      assert_match(/invalid value for "type"/, error.message)
-      assert_requested stub, times: 1
-      return
-    end
-
     response = @plaid.get_item_liabilities(ACCESS_TOKEN)
 
     assert_instance_of Plaid::LiabilitiesObject, response
