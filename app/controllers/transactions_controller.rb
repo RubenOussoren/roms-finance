@@ -2,11 +2,15 @@ class TransactionsController < ApplicationController
   include EntryableResource
 
   before_action :store_params!, only: :index
+  before_action :set_form_options, only: %i[new create]
 
   def new
-    super
-    @income_categories = Current.family.categories.incomes.alphabetically
-    @expense_categories = Current.family.categories.expenses.alphabetically
+    account = full_access_accounts.find(params[:account_id]) if params[:account_id].present?
+    @entry = Current.family.entries.new(
+      account: account,
+      currency: account ? account.currency : Current.family.currency,
+      entryable: Transaction.new
+    )
   end
 
   def index
@@ -110,6 +114,12 @@ class TransactionsController < ApplicationController
   end
 
   private
+    def set_form_options
+      @transaction_accounts = full_access_accounts.manual.active.alphabetically
+      @income_categories = Current.family.categories.incomes.alphabetically
+      @expense_categories = Current.family.categories.expenses.alphabetically
+    end
+
     def per_page
       params[:per_page].to_i.positive? ? params[:per_page].to_i : 20
     end

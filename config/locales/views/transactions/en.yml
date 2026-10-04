@@ -4,6 +4,8 @@ en:
     form:
       account: Account
       account_prompt: Select an Account
+      no_writable_accounts: "No writable manual accounts are available. Add a manual account or ask its owner for full access."
+      add_account: Add an account
       amount: Amount
       category: Category
       category_prompt: Select a Category
