@@ -15,7 +15,7 @@ class ValuationsController < ApplicationController
   end
 
   def confirm_update
-    @entry = Current.family.entries.find(params[:id])
+    set_entry
     @account = @entry.account
     @entry.assign_attributes(entry_params.merge(currency: @account.currency))
 

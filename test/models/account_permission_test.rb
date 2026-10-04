@@ -58,6 +58,14 @@ class AccountPermissionTest < ActiveSupport::TestCase
     assert permission.valid?
   end
 
+  test "user must be in same family as account for every visibility" do
+    %w[full balance_only hidden].each do |visibility|
+      permission = AccountPermission.new(account: @account, user: users(:empty), visibility: visibility)
+      assert_not permission.valid?
+      assert_includes permission.errors[:user], "must be in the same family as the account"
+    end
+  end
+
   # Scopes
   test "for_user scope returns permissions for given user" do
     p1 = AccountPermission.create!(account: @account, user: @member, visibility: "full")

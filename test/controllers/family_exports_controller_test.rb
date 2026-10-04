@@ -89,4 +89,48 @@ class FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to settings_profile_path
     assert_equal "This export file is no longer available. Please generate a new report.", flash[:alert]
   end
+
+  [ :family_admin, :family_member ].each do |viewer|
+    test "#{viewer} cannot download foreign family export" do
+      requester = users(:empty)
+      export = requester.family.family_exports.create!(status: "completed", requested_by_user: requester)
+      export.export_file.attach(io: StringIO.new("private foreign export"), filename: "private.zip", content_type: "application/zip")
+      original_export = export.reload.attributes
+      sign_in users(viewer)
+
+      assert_no_difference [ "FamilyExport.count", "ActiveStorage::Attachment.count" ] do
+        get download_family_export_path(export)
+      end
+
+      assert_response :not_found
+      assert_no_match "private foreign export", response.body
+      assert_nil response.headers["Content-Disposition"]
+      assert_equal original_export, export.reload.attributes
+      assert export.export_file.attached?
+    end
+  end
+
+  test "member can download own export but not another requester's export" do
+    export = @family.family_exports.create!(status: "completed", requested_by_user: @non_admin)
+    export.export_file.attach(io: StringIO.new("private requester export"), filename: "private.zip", content_type: "application/zip")
+    sign_in @non_admin
+
+    get download_family_export_path(export)
+    assert_response :success
+    assert_equal "private requester export", response.body
+    assert_equal "application/zip", response.content_type
+    assert_match "attachment", response.headers["Content-Disposition"]
+
+    export.update!(requested_by_user: @admin)
+    original_export = export.attributes
+    assert_no_difference [ "FamilyExport.count", "ActiveStorage::Attachment.count" ] do
+      get download_family_export_path(export)
+    end
+
+    assert_response :not_found
+    assert_no_match "private requester export", response.body
+    assert_nil response.headers["Content-Disposition"]
+    assert_equal original_export, export.reload.attributes
+    assert export.export_file.attached?
+  end
 end

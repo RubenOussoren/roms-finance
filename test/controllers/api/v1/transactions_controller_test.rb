@@ -353,6 +353,81 @@ end
     assert transaction_data["transfer"].key?("other_account")
   end
 
+  %w[hidden balance_only foreign_family].each do |access|
+    test "#{access} transactions are excluded and cannot be read or mutated" do
+      owner = access == "foreign_family" ? users(:empty) : users(:family_member)
+      account = owner.family.accounts.create!(
+        name: "Private #{access} account",
+        created_by_user: owner,
+        balance: 9876,
+        currency: "USD",
+        accountable: Depository.new
+      )
+      unless access == "foreign_family"
+        account.account_permissions.create!(user: @user, visibility: access)
+      end
+      entry = account.entries.create!(
+        name: "Private #{access} transaction",
+        amount: 4321,
+        currency: "USD",
+        date: Date.current,
+        entryable: Transaction.new
+      )
+      original_entry = entry.attributes
+      original_transaction = entry.transaction.attributes
+      original_account = account.reload.attributes
+
+      get api_v1_transactions_url, headers: api_headers(@api_key)
+      assert_response :success
+      refute_includes JSON.parse(response.body)["transactions"].map { |t| t["id"] }, entry.transaction.id
+      assert_no_match entry.name, response.body
+      assert_no_match account.name, response.body
+
+      get api_v1_transactions_url, params: { account_id: account.id }, headers: api_headers(@api_key)
+      assert_response :success
+      assert_empty JSON.parse(response.body)["transactions"]
+      assert_equal 0, JSON.parse(response.body).dig("pagination", "total_count")
+
+      assert_no_difference [ "Entry.count", "Transaction.count" ] do
+        assert_no_enqueued_jobs do
+          get api_v1_transaction_url(entry.transaction), headers: api_headers(@api_key)
+          assert_response :not_found
+          assert_equal "not_found", JSON.parse(response.body)["error"]
+          assert_no_match entry.name, response.body
+          assert_no_match account.name, response.body
+
+          put api_v1_transaction_url(entry.transaction),
+              params: { transaction: { name: "Unauthorized update", amount: 1 } },
+              headers: api_headers(@api_key)
+          assert_response :not_found
+          assert_equal "not_found", JSON.parse(response.body)["error"]
+          assert_no_match entry.name, response.body
+          assert_no_match account.name, response.body
+
+          delete api_v1_transaction_url(entry.transaction), headers: api_headers(@api_key)
+          assert_response :not_found
+          assert_equal "not_found", JSON.parse(response.body)["error"]
+          assert_no_match entry.name, response.body
+          assert_no_match account.name, response.body
+
+          post api_v1_transactions_url,
+               params: { transaction: { account_id: account.id, name: "Unauthorized create", amount: 1, date: Date.current, currency: "USD" } },
+               headers: api_headers(@api_key)
+          assert_response :not_found
+          assert_equal "not_found", JSON.parse(response.body)["error"]
+          assert_equal "Account not found", JSON.parse(response.body)["message"]
+          assert_no_match entry.name, response.body
+          assert_no_match account.name, response.body
+          refute JSON.parse(response.body).key?("account")
+        end
+      end
+
+      assert_equal original_entry, entry.reload.attributes
+      assert_equal original_transaction, entry.transaction.reload.attributes
+      assert_equal original_account, account.reload.attributes
+    end
+  end
+
   private
 
     def api_headers(api_key)

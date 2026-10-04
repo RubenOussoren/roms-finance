@@ -95,6 +95,11 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       }, status: :unprocessable_entity
     end
 
+  rescue ActiveRecord::RecordNotFound
+    render json: {
+      error: "not_found",
+      message: "Account not found"
+    }, status: :not_found
   rescue => e
     Rails.logger.error "TransactionsController#create error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
