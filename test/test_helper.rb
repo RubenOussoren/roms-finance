@@ -1,13 +1,14 @@
+ENV["RAILS_ENV"] ||= "test"
+
 if ENV["COVERAGE"] == "true"
   require "simplecov"
   SimpleCov.start "rails" do
     enable_coverage :branch
+    command_name ENV.fetch("COVERAGE_NAME", "rails-unit-integration")
   end
 end
 
 require_relative "../config/environment"
-
-ENV["RAILS_ENV"] ||= "test"
 
 # Set Plaid to sandbox mode for tests
 ENV["PLAID_ENV"] = "sandbox"
