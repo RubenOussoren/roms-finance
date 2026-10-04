@@ -29,6 +29,7 @@ class AutonomyRunnerTest(unittest.TestCase):
         self.git('add', 'bin', '.term-llm')
         self.git('commit', '-m', 'Fixture')
         self.env = os.environ.copy()
+        self.env['AUTONOMY_WORKSPACE_CONFIRMED'] = 'issue-151'
         self.env['PATH'] = str(self.root / 'bin') + ':' + self.env['PATH']
         self.checkpoint = self.root / '.git/roms-autonomy-checkpoint.json'
         (self.root / '.git/roms-autonomy-resources.json').write_text('{}')
@@ -69,6 +70,11 @@ class AutonomyRunnerTest(unittest.TestCase):
         self.assertEqual('needs-reconciliation', self.state()['status'])
         self.assertEqual(1, self.state()['unsuccessful_repair_approaches'])
         self.run_cli('run', 1)
+
+    def test_missing_operator_confirmation_does_not_charge_iteration(self):
+        del self.env['AUTONOMY_WORKSPACE_CONFIRMED']
+        self.run_cli('run', 1)
+        self.assertEqual(0, self.state()['iterations_started'])
 
     def test_budget_is_not_reset_on_resume(self):
         state = self.state()
