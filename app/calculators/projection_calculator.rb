@@ -1,15 +1,18 @@
 # 🌍 Universal: Adaptive growth projection calculator
-# Pure function calculator with no side effects
+# Financial formulas with optional date and random inputs for reproducible projections.
+# Defaults read the current date and global randomness when called.
 class ProjectionCalculator
   include PercentileZScores
 
   attr_reader :principal, :rate, :contribution, :currency
 
-  def initialize(principal:, rate:, contribution: 0, currency: "CAD")
+  def initialize(principal:, rate:, contribution: 0, currency: "CAD", as_of: nil, random: nil)
     @principal = principal.to_d
     @rate = rate.to_d
     @contribution = contribution.to_d
     @currency = currency
+    @as_of = as_of
+    @random = random
   end
 
   # Calculate future value at a specific month
@@ -34,7 +37,7 @@ class ProjectionCalculator
     (1..months).map do |month|
       {
         month: month,
-        date: Date.current + month.months,
+        date: (@as_of || Date.current) + month.months,
         balance: future_value_at_month(month).round(2),
         cumulative_contribution: (contribution * month).round(2),
         growth: (future_value_at_month(month) - principal - (contribution * month)).round(2)
@@ -121,7 +124,7 @@ class ProjectionCalculator
 
       {
         month: month,
-        date: Date.current + month.months,
+        date: (@as_of || Date.current) + month.months,
         p10: sim_values[(simulations * 0.10).to_i],
         p25: sim_values[(simulations * 0.25).to_i],
         p50: sim_values[(simulations * 0.50).to_i],
@@ -148,7 +151,7 @@ class ProjectionCalculator
 
       {
         month: month,
-        date: Date.current + month.months,
+        date: (@as_of || Date.current) + month.months,
         p10: percentiles[:p10],
         p25: percentiles[:p25],
         p50: percentiles[:p50],
@@ -172,11 +175,15 @@ class ProjectionCalculator
       balance.round(2)
     end
 
+    def random_draw
+      @random ? @random.rand : rand
+    end
+
     def gaussian_random
       # Box-Muller transform for normal distribution
       # Guard: clamp u1 to avoid log(0) = -Infinity
-      u1 = [ rand, Float::EPSILON ].max
-      u2 = rand
+      u1 = [ random_draw, Float::EPSILON ].max
+      u2 = random_draw
       Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math::PI * u2)
     end
 end

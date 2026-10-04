@@ -262,6 +262,93 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     end
   end
 
+  test "explicit date and fresh seeded generators reproduce outputs despite clock and global draws" do
+    inputs = { principal: 10000, rate: 0.06, contribution: 500, as_of: Date.new(2024, 1, 31) }
+    first = nil
+
+    travel_to Time.zone.local(2024, 2, 10) do
+      calc = ProjectionCalculator.new(**inputs, random: Random.new(12345))
+      calc.expects(:rand).never
+      first = dated_projections(calc)
+    end
+
+    100.times { Kernel.rand }
+
+    travel_to Time.zone.local(2026, 7, 15) do
+      calc = ProjectionCalculator.new(**inputs, random: Random.new(12345))
+      calc.expects(:rand).never
+      assert_equal first, dated_projections(calc)
+    end
+  end
+
+  test "default dates follow the clock on each call rather than initialization" do
+    calc = nil
+    travel_to Time.zone.local(2024, 1, 31) do
+      calc = ProjectionCalculator.new(principal: 1000, rate: 0, random: Random.new(42))
+    end
+
+    [ Date.new(2024, 2, 29), Date.new(2025, 2, 28) ].each do |today|
+      travel_to Time.zone.local(today.year, today.month, today.day) do
+        dated_projections(calc).each do |results|
+          assert_equal [ Date.new(today.year, 3, today.day), Date.new(today.year, 4, today.day), Date.new(today.year, 5, today.day) ], results.map { |row| row[:date] }
+        end
+      end
+    end
+  end
+
+  test "default dates retain per-row clock reads in every dated output method" do
+    calc = ProjectionCalculator.new(principal: 1000, rate: 0, as_of: nil, random: Random.new(42))
+    # Preserve even a clock change during a single projection, not just between calls.
+    Date.expects(:current).times(9).returns(*Array.new(3) { [ Date.new(2024, 1, 31), Date.new(2024, 2, 1), Date.new(2024, 2, 2) ] }.flatten)
+
+    dated_projections(calc).each do |results|
+      assert_equal [ Date.new(2024, 2, 29), Date.new(2024, 4, 1), Date.new(2024, 5, 2) ], results.map { |row| row[:date] }
+    end
+  end
+
+  test "explicit month end dates use original calendar anchor and preserve known balances" do
+    {
+      Date.new(2024, 1, 31) => [ Date.new(2024, 2, 29), Date.new(2024, 3, 31), Date.new(2024, 4, 30) ],
+      Date.new(2025, 1, 31) => [ Date.new(2025, 2, 28), Date.new(2025, 3, 31), Date.new(2025, 4, 30) ],
+      Date.new(2024, 2, 29) => [ Date.new(2024, 3, 29), Date.new(2024, 4, 29), Date.new(2024, 5, 29) ]
+    }.each do |as_of, dates|
+      calc = ProjectionCalculator.new(principal: 1000, rate: 0.12, contribution: 100, as_of: as_of, random: Random.new(42))
+      Date.expects(:current).never
+      projections = dated_projections(calc, volatility: 0)
+
+      projections.each { |results| assert_equal dates, results.map { |row| row[:date] } }
+      # Monthly growth at 1%, then a $100 end-of-month contribution.
+      expected_balances = [ 1110.to_d, 1221.10.to_d, 1333.31.to_d ]
+      assert_equal expected_balances, projections.first.map { |row| row[:balance] }
+      assert_equal [ 100.to_d, 200.to_d, 300.to_d ], projections.first.map { |row| row[:cumulative_contribution] }
+      assert_equal [ 10.to_d, 21.10.to_d, 33.31.to_d ], projections.first.map { |row| row[:growth] }
+      projections.drop(1).each do |results|
+        [ :p10, :p25, :p50, :p75, :p90, :mean ].each do |key|
+          assert_equal expected_balances, results.map { |row| row[key] }
+        end
+      end
+    end
+  end
+
+  test "explicit generator retains Box-Muller zero guard and draw order" do
+    random = mock("random generator")
+    random.expects(:rand).twice.returns(0.0)
+    calc = ProjectionCalculator.new(principal: 1000, rate: 0, random: random)
+    calc.expects(:rand).never
+
+    expected = Math.sqrt(-2 * Math.log(Float::EPSILON))
+    assert_in_delta expected, calc.send(:gaussian_random), 1e-12
+    assert calc.project(months: 1).first[:balance].finite?
+  end
+
+  test "default generator preserves instance rand stubs and Box-Muller formula" do
+    calc = ProjectionCalculator.new(principal: 1000, rate: 0, random: nil)
+    calc.expects(:rand).twice.returns(0.5, 0.25)
+
+    expected = Math.sqrt(-2 * Math.log(0.5)) * Math.cos(2 * Math::PI * 0.25)
+    assert_in_delta expected, calc.send(:gaussian_random), 1e-12
+  end
+
   test "calculate_percentiles_for_value handles edge cases" do
     calc = ProjectionCalculator.new(principal: 1000, rate: 0.06, contribution: 0)
 
@@ -285,4 +372,14 @@ class ProjectionCalculatorTest < ActiveSupport::TestCase
     assert_equal 0.0, zero_percentiles[:p50]
     assert_equal 0.0, zero_percentiles[:p90]
   end
+
+  private
+
+    def dated_projections(calc, volatility: 0.18)
+      [
+        calc.project(months: 3),
+        calc.project_with_percentiles(months: 3, volatility: volatility, simulations: 10),
+        calc.project_with_analytical_bands(months: 3, volatility: volatility)
+      ]
+    end
 end
