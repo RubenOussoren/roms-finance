@@ -1,0 +1,117 @@
+#!/usr/bin/env ruby
+# Checks the shared development foundation, not every historical document.
+require "pathname"
+require "yaml"
+
+class DevelopmentDocsCheck
+  SKILLS = %w[calculator commit db migration pag-check phase-review pr pre-pr release review setup simulator test].freeze
+  DOCUMENTS = %w[AGENTS.md CONTRIBUTING.md docs/DEVELOPER_GUIDE.md docs/architecture/current-state.md docs/architecture/financial-contracts.md docs/architecture/decisions/0001-rails-modular-monolith.md docs/development/workflow.md docs/development/assessment-2026-10.md docs/development/roadmap.md docs/development/foundation-validation-2026-10.md docs/development/hardening-validation-2026-10.md].freeze
+  CURSOR_RULES = %w[agent-guidance debt-optimization financial-architecture investment-projections project-design testing view_conventions].freeze
+  ADAPTERS = { "CLAUDE.md" => "AGENTS.md", ".claude/skills" => "../.skills" }.freeze
+
+  attr_reader :errors
+
+  def initialize(root)
+    @root = Pathname(root).expand_path
+    @errors = []
+  end
+
+  def run
+    @errors.clear
+    ADAPTERS.each { |path, target| check_adapter(path, target) }
+    DOCUMENTS.each { |path| check_document(@root.join(path)) }
+    check_skills
+    check_cursor
+    errors.empty?
+  end
+
+  private
+
+    def check_adapter(path, target)
+      file = @root.join(path)
+      return errors << "#{path}: expected symlink to #{target}" unless file.symlink? && file.readlink.to_s == target
+
+      errors << "#{path}: broken adapter" unless file.exist?
+    end
+
+    def check_skills
+      files = @root.glob(".skills/*/SKILL.md")
+      actual = files.map { |file| file.parent.basename.to_s }.sort
+      errors << "Skill inventory differs: expected #{SKILLS.sort}, got #{actual}" unless actual == SKILLS.sort
+      files.each do |file|
+        metadata = frontmatter(file)
+        errors << "#{relative(file)}: name must match directory" unless metadata["name"] == file.parent.basename.to_s
+        check_description(file, metadata)
+      end
+      @root.glob(".skills/**/*.md").each { |file| check_document(file) }
+    end
+
+    def check_cursor
+      files = @root.glob(".cursor/rules/*.mdc")
+      actual = files.map { |file| file.basename(".mdc").to_s }.sort
+      errors << "Cursor routing inventory differs: expected #{CURSOR_RULES.sort}, got #{actual}" unless actual == CURSOR_RULES.sort
+      files.each do |file|
+        metadata = frontmatter(file)
+        check_description(file, metadata)
+        expected = file.basename.to_s == "agent-guidance.mdc"
+        errors << "#{relative(file)}: invalid alwaysApply" unless metadata["alwaysApply"] == expected
+        unless expected || (metadata["globs"].is_a?(Array) && metadata["globs"].all? { |glob| glob.is_a?(String) } && !metadata["globs"].empty?)
+          errors << "#{relative(file)}: missing contextual globs"
+        end
+        check_document(file)
+      end
+    end
+
+    def frontmatter(file)
+      text = file.read
+      match = text.match(/\A---\r?\n(.*?)\r?\n---(?:\r?\n|\z)/m)
+      return (errors << "#{relative(file)}: missing frontmatter"; {}) unless match
+
+      metadata = YAML.safe_load(match[1])
+      return metadata if metadata.is_a?(Hash)
+
+      errors << "#{relative(file)}: frontmatter must be a mapping"
+      {}
+    rescue Psych::Exception => error
+      errors << "#{relative(file)}: invalid YAML (#{error.class})"
+      {}
+    end
+
+    def check_description(file, metadata)
+      value = metadata["description"]
+      errors << "#{relative(file)}: missing description" unless value.is_a?(String) && !value.strip.empty?
+    end
+
+    def check_document(file)
+      return errors << "#{relative(file)}: missing document" unless file.file?
+
+      # Inline Markdown destinations only; code blocks, external URLs and anchors are not checked.
+      text = file.read.gsub(/^```[^\n]*\n.*?^```[^\n]*(?:\n|\z)/m, "")
+      text.scan(/\[[^\]\n]*\]\(([^\s)]+)\)/).flatten.each do |destination|
+        next if destination.start_with?("#")
+
+        if destination.start_with?("mdc:")
+          target = @root.join(destination.delete_prefix("mdc:").split("#", 2).first)
+        else
+          next if destination.match?(/\A[a-z][a-z0-9+.-]*:/i)
+
+          target = file.parent.join(destination.split("#", 2).first)
+        end
+        errors << "#{relative(file)}: broken local link #{destination}" unless target.exist?
+      end
+    end
+
+    def relative(file)
+      file.relative_path_from(@root).to_s
+    end
+end
+
+if $PROGRAM_NAME == __FILE__
+  check = DevelopmentDocsCheck.new(File.join(__dir__, ".."))
+  if check.run
+    puts "Development docs verified: canonical adapters, #{DevelopmentDocsCheck::SKILLS.size} skills, metadata and local link paths."
+  else
+    warn check.errors.join("\n")
+    exit 1
+  end
+end

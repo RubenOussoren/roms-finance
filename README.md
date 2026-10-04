@@ -105,6 +105,10 @@ All providers auto-disable when unconfigured. Set the relevant environment varia
 
 ## Development Setup
 
+Contributors: start with the [developer guide](docs/DEVELOPER_GUIDE.md) and
+[contribution workflow](CONTRIBUTING.md). The [engineering roadmap](docs/development/roadmap.md)
+tracks architecture, safety and AI-development improvements separately from product features.
+
 > If you want to **self-host** the app, use the [Quick Start](#quick-start-self-hosting) above instead.
 
 ### Prerequisites

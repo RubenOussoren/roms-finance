@@ -2,7 +2,7 @@
 
 **Purpose**: This document captures the original **design vision** for integrating investment dashboard and HELOC tool concepts into the Rails application. It served as a planning artifact during early phases.
 
-> **WARNING — Aspirational document**: Code examples in this file reflect the *original design vision*, not the current implementation. Several patterns were implemented differently (e.g., `Projectable` concern was replaced by `Account::ProjectionFacade`, `TaxCalculatorConfig` model was replaced by `JurisdictionAware` concern, `run(months:)` API was replaced by `simulate!`). For current architecture, see the Cursor rules in `.cursor/rules/` and the actual source code.
+> **WARNING — Aspirational document**: Code examples in this file reflect the *original design vision*, not the current implementation. Several patterns were implemented differently (e.g., `Projectable` concern was replaced by `Account::ProjectionFacade`, `TaxCalculatorConfig` model was replaced by `JurisdictionAware` concern, `run(months:)` API was replaced by `simulate!`). For current architecture, see [current-state.md](current-state.md), [financial contracts](financial-contracts.md), and the actual source code. This document is historical and must not direct implementation or establish regulatory compliance.
 
 ---
 
@@ -22,7 +22,7 @@ We are building a **comprehensive personal finance platform** that goes beyond s
 
 ## Implementation Status
 
-For current implementation status, see git log and phase review reports in `docs/reviews/`. For planned features, see `docs/FEATURE_ROADMAP.md`.
+For current implementation status, see [current architecture](current-state.md), the dated [assessment](../development/assessment-2026-10.md), and git history. For planned features, see `docs/FEATURE_ROADMAP.md`.
 
 **Note**: The `investment-dashboard/` directory contains a **Python prototype** used for requirements discovery and proof-of-concept only. All production implementation is pure Rails/Ruby - no Python microservice integration.
 
