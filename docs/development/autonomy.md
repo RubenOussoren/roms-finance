@@ -86,8 +86,10 @@ phase lock held as well when performing a supervised pilot phase.
 The helper uses disposable `compose run --rm --no-deps` processes for ordinary
 checks. Browser checks reuse the already-equipped app container with a temporary
 snapshot of the selected branch's tracked source and scoped tests, not its retained
-development source or server. Existing dependencies are reused read-only; only
-newly created temporary snapshots are cleaned up. No host ports are published.
+development source or server. Ordinary checks mount bundle/npm dependencies
+read-only; browser checks use disposable copies rather than writable links to
+retained dependencies. Only newly created temporary snapshots are cleaned up.
+No host ports are published.
 The test process receives `env -i`, explicit test DB/Redis and disabled parallelization.
 [test guard](../../test/tooling/autonomy_guard.rb) disables dotenv and credentials,
 blocks external Ruby HTTP, prevents VCR recording and restricts Playwright requests
