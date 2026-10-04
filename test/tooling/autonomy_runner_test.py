@@ -57,7 +57,7 @@ class AutonomyRunnerTest(unittest.TestCase):
         return json.loads(self.checkpoint.read_text())
 
     def test_charges_iteration_and_checkpoints_success(self):
-        self.fake_cli("from pathlib import Path\nPath('tmp/autonomy-result.json').write_text('{\"status\":\"complete\",\"unsuccessful_repair_approaches\":0}')\n")
+        self.fake_cli("import sys\nassert '--done-file' in sys.argv\nassert sys.argv[sys.argv.index('--max') + 1] == '1'\nfrom pathlib import Path\nPath('tmp/autonomy-result.json').write_text('{\"status\":\"complete\",\"unsuccessful_repair_approaches\":0}')\n")
         self.run_cli('run', 0)
         self.assertEqual(1, self.state()['iterations_started'])
         self.assertEqual('checkpointed', self.state()['status'])
