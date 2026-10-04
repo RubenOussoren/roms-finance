@@ -58,6 +58,8 @@ if (state['schema_version'], state['mission_issue'], state['worktree'], state['b
     sys.exit('Checkpoint identity mismatch: supervised reconciliation required')
 if state['status'] not in ('initialized', 'checkpointed') or state['pending_external_action']:
     sys.exit('Unsettled prior run/action: supervised reconciliation required')
+if os.environ.get('AUTONOMY_WORKSPACE_CONFIRMED') != 'issue-151':
+    sys.exit('Operator must interactively confirm the pilot workspace before headless auto mode; see docs/development/autonomy.md')
 if state['iterations_started'] >= 5 or state['unsuccessful_repair_approaches'] >= 2 or state['implementation_pr']:
     sys.exit('Pilot budget exhausted or already published')
 if git('status', '--porcelain'):

@@ -279,3 +279,44 @@ results. Archive the consumed `tmp/autonomy-result.json` with iteration evidence
 before another run; do not discard an unknown outcome. `run` refuses a stale result,
 identity mismatch, exhausted budget, existing pilot PR or unreconciled action.
 Stopping after publication is final for this pilot; another issue needs approval.
+
+## Current blocker: explicit primary-workspace confirmation
+
+The installed CLI intentionally treats loop `auto` mode as unattended. It cannot
+confirm a proposed primary workspace without a previously remembered **human**
+confirmation. `--read-dir`/`--write-dir` do not replace that confirmation, and
+no approval transport exists in a headless auto loop. The bootstrap pilot therefore
+stopped before application implementation. Do not use `yolo`, populate the CLI's
+trust ledger manually, spoof UI input or route denied reads through shell/subagents.
+
+The runner now requires operator attestation
+`AUTONOMY_WORKSPACE_CONFIRMED=issue-151` before charging another iteration.
+This flag does **not** grant CLI permission or bypass its checks. Set it only
+after an actual authorized interactive confirmation. On a real terminal, from
+the pilot worktree, the operator can use the supported prompt surface:
+
+```sh
+term-llm --no-session chat --approval prompt --tools read_file \
+  --read-dir . --write-dir .
+```
+
+Ask only: “Read AGENTS.md; do not change files, run tests or implement anything.”
+Inspect the workspace shown in the confirmation dialog. A session-only approval
+does not carry into a new headless loop. A remembered approval persists and may
+cover registered linked worktrees of this same Git repository; approve that scope
+only if acceptable, then quit. Do not change global model configuration or services.
+If remembered scope is not acceptable, ask for an interactive-runner alternative;
+none is installed by this setup.
+
+After the parent reconciles the stopped checkpoint and preserves **3 charged
+iterations / 1 unsuccessful repair approach**, resume at most two more iterations:
+
+```sh
+AUTONOMY_WORKSPACE_CONFIRMED=issue-151 bin/autonomy-run run
+```
+
+The completion-condition startup fix succeeded. The subsequent explicit read/write
+root repair failed to satisfy the separate human confirmation gate and is the one
+unsuccessful repair approach. A second unsuccessful distinct repair stops the pilot.
+No implementation PR, focused regression/browser evidence or pilot review has yet
+been produced; setup infrastructure/baseline evidence is not a completed pilot.
