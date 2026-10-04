@@ -60,7 +60,8 @@ if any(a.startswith('-') or '..' in a or ':' in a for a in args[1:]):
     sys.exit('Only explicit test paths/names accepted')
 print(f'Validating branch={branch} sha={output(["git", "rev-parse", "HEAD"])} source={root}; DB=roms_autonomy_test Redis=roms-autonomy-test-redis', flush=True)
 cmd = compose + ['run', '--rm', '--no-deps', '-T', '--user', f'{os.getuid()}:{os.getgid()}', '--entrypoint', 'env',
-    '-v', f'{root}:/workspace', '-v', f'{source}/node_modules:/workspace/node_modules:ro']
+    '-v', f'{root}:/workspace', '-v', f'{source}/node_modules:/workspace/node_modules:ro',
+    '-v', 'roms-finance-sandbox_bundle_cache:/bundle:ro']
 # Browser binaries already installed INSIDE existing app, copied separately to a disposable host cache.
 cache = source / 'tmp/roms-autonomy-browser-cache'
 if cache.exists():
@@ -100,9 +101,9 @@ if args[0] == 'test' and any(path.startswith('test/system/') for path in args[1:
                 paths += assets.encode() + b'\0'
         archive = subprocess.run(['tar', '--null', '-T', '-', '-cf', '-'], input=paths, capture_output=True, check=True).stdout
         subprocess.run(compose + ['exec', '-T', 'app', 'tar', '-xf', '-', '-C', snapshot], input=archive, check=True)
-        subprocess.run(compose + ['exec', '-T', 'app', 'ln', '-s', '/workspace/node_modules', snapshot + '/node_modules'], check=True)
+        subprocess.run(compose + ['exec', '-T', 'app', 'cp', '-R', '/bundle', '/workspace/node_modules', snapshot], check=True)
         env_args = cmd[cmd.index('app') + 1:]
-        env_args = [arg.replace('/workspace/test/tooling/', snapshot + '/test/tooling/').replace('PLAYWRIGHT_BROWSERS_PATH=/autonomy-browsers', 'PLAYWRIGHT_BROWSERS_PATH=/tmp/roms-home/.cache/ms-playwright') for arg in env_args]
+        env_args = [arg.replace('/workspace/test/tooling/', snapshot + '/test/tooling/').replace('BUNDLE_PATH=/bundle', 'BUNDLE_PATH=' + snapshot + '/bundle').replace('PLAYWRIGHT_BROWSERS_PATH=/autonomy-browsers', 'PLAYWRIGHT_BROWSERS_PATH=/tmp/roms-home/.cache/ms-playwright') for arg in env_args]
         code = subprocess.call(compose + ['exec', '-T', '-w', snapshot, 'app', 'env'] + env_args)
         screenshots = output(compose + ['exec', '-T', 'app', 'find', snapshot, '-path', '*/tmp/screenshots/*.png', '-type', 'f']).splitlines()
         for screenshot in screenshots:
