@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Branch-bound disposable validation; never starts retained services or prepares data implicitly."""
+import fcntl
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def output(args):
+    return subprocess.check_output(args, text=True).strip()
+
+
+root = Path(output(['git', 'rev-parse', '--show-toplevel']))
+os.chdir(root)
+branch = output(['git', 'branch', '--show-current'])
+if not branch or branch == 'main':
+    sys.exit('Feature worktree required')
+common = Path(output(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir']))
+lock = open(common / 'roms-autonomy-test.lock', 'a')
+try:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit('Another disposable test command is active')
+compose = ['sudo', '-n', 'docker', 'compose', '-f', str(root / 'compose.dev.yml')]
+resource = ['sudo', '-n', 'docker', 'compose', '-f', str(root / '.term-llm/resources.compose.yml')]
+record = json.loads((common / 'roms-autonomy-resources.json').read_text())
+if branch == 'automation/bootstrap-2026-10' and str(root) == record['setup_worktree']:
+    pass
+else:
+    checkpoint = json.loads((common / 'roms-autonomy-checkpoint.json').read_text())
+    if (str(root), branch, output(['git', 'rev-parse', 'HEAD'])) != (checkpoint['worktree'], checkpoint['branch'], checkpoint['head_sha']):
+        sys.exit('Validation worktree/branch/SHA differs from checkpoint')
+redis = json.loads(output(resource + ['ps', '--format', 'json']))
+labels = dict(item.split('=', 1) for item in redis['Labels'].split(','))
+if (redis['ID'] != record['redis_id'] or redis['Name'] != 'roms-autonomy-test-redis'
+        or labels.get('finance.roms.autonomy.owner') != 'bootstrap-2026-10'
+        or labels.get('finance.roms.autonomy.disposable') != 'true'
+        or redis['Project'] != 'roms-autonomy-resources'
+        or redis['Networks'] != 'roms-finance-sandbox_default'
+        or any(p['PublishedPort'] != 0 for p in (redis['Publishers'] or []))):
+    sys.exit('Dedicated Redis identity/ownership/network/port mismatch; do not adopt')
+marker = output(compose + ['exec', '-T', 'db', 'psql', '-U', 'postgres', '-d', 'postgres', '-Atc', "SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname='roms_autonomy_test'"])
+if marker != 'ROMS autonomy disposable bootstrap-2026-10 synthetic only':
+    sys.exit('Disposable DB ownership not established')
+if output(resource + ['exec', '-T', 'test-redis', 'redis-cli', 'PING']) != 'PONG':
+    sys.exit('Dedicated test Redis unavailable')
+# Read-only existing toolchain mounts; never reuse the development server/source.
+source = Path(output(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'])).parent
+args = sys.argv[1:]
+allowed = {'test', 'zeitwerk:check', 'db:schema:load', 'db:fixtures:load', 'assets:precompile', 'preflight', 'docs', 'rubocop', 'brakeman', 'js-lint'}
+if not args or args[0] not in allowed:
+    sys.exit('Usage: bin/autonomy-check {test [files...]|zeitwerk:check|assets:precompile|db:schema:load|db:fixtures:load}; schema/fixtures need scoped approval')
+if args[0].startswith('db:') and os.environ.get('AUTONOMY_PREPARE_APPROVED') != 'bootstrap-2026-10':
+    sys.exit('Explicit disposable preparation approval required')
+if args[0] not in {'test', 'rubocop'} and len(args) != 1:
+    sys.exit('This command takes no additional arguments')
+if any(a.startswith('-') or '..' in a or ':' in a for a in args[1:]):
+    sys.exit('Only explicit test paths/names accepted')
+print(f'Validating branch={branch} sha={output(["git", "rev-parse", "HEAD"])} source={root}; DB=roms_autonomy_test Redis=roms-autonomy-test-redis', flush=True)
+cmd = compose + ['run', '--rm', '--no-deps', '-T', '--user', f'{os.getuid()}:{os.getgid()}', '--entrypoint', 'env',
+    '-v', f'{root}:/workspace', '-v', f'{source}/node_modules:/workspace/node_modules:ro']
+# Browser binaries already installed INSIDE existing app, copied separately to a disposable host cache.
+cache = source / 'tmp/roms-autonomy-browser-cache'
+if cache.exists():
+    cmd += ['-v', f'{cache}:/autonomy-browsers:ro']
+cmd += ['app', '-i', 'PATH=/usr/local/bin:/usr/bin:/bin', 'HOME=/tmp',
+    'BUNDLE_PATH=/bundle', 'LANG=C.UTF-8', 'RAILS_ENV=test', 'DB_HOST=db', 'POSTGRES_USER=postgres',
+    'POSTGRES_PASSWORD=postgres', 'POSTGRES_DB=roms_autonomy_test',
+    'REDIS_URL=redis://roms-autonomy-test-redis:6379/0', 'CACHE_REDIS_URL=redis://roms-autonomy-test-redis:6379/0',
+    'DISABLE_PARALLELIZATION=true', 'CI=true', 'SECRET_KEY_BASE=autonomy-synthetic-only',
+    'PLAYWRIGHT_BROWSERS_PATH=/autonomy-browsers', 'RUBYOPT=-r/workspace/.term-llm/test_guard.rb',
+    'bundle', 'exec', 'ruby']
+if args == ['preflight']:
+    cmd += ['.term-llm/preflight.rb']
+elif args == ['docs']:
+    cmd += ['bin/check-development-docs']
+elif args[0] == 'rubocop':
+    cmd += ['bin/rubocop'] + args[1:]
+elif args == ['brakeman']:
+    cmd += ['bin/brakeman', '--no-pager']
+elif args == ['js-lint']:
+    cmd = cmd[:-3] + ['npm', 'run', 'lint']
+else:
+    cmd += ['bin/rails'] + args
+sys.exit(subprocess.call(cmd))

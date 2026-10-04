@@ -1,0 +1,15 @@
+name: autonomy-pilot
+description: "Bounded ROMS Finance issue #151 pilot; requires the repository runner's safety gates"
+agents_md: "true"
+tools:
+  enabled: [read_file, glob, grep, write_file, edit_file, shell, ask_user, spawn_agent]
+shell:
+  auto_run: false
+spawn:
+  max_parallel: 2
+  max_depth: 1
+  allowed_agents: [developer, codebase, web-researcher]
+max_turns: 100
+search: false
+memory:
+  insights_expansion: false
