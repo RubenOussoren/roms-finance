@@ -6,7 +6,8 @@ module AccountAccessible
       left_joins(:account_permissions)
         .where(
           "accounts.created_by_user_id = :uid OR " \
-          "account_permissions.id IS NULL OR " \
+          "accounts.is_joint = true OR " \
+          "NOT EXISTS (SELECT 1 FROM account_permissions ap WHERE ap.account_id = accounts.id AND ap.user_id = :uid) OR " \
           "(account_permissions.user_id = :uid AND account_permissions.visibility != 'hidden')",
           uid: user.id
         )
@@ -17,6 +18,7 @@ module AccountAccessible
       left_joins(:account_permissions)
         .where(
           "accounts.created_by_user_id = :uid OR " \
+          "accounts.is_joint = true OR " \
           "(account_permissions.user_id = :uid AND account_permissions.visibility = 'full') OR " \
           "NOT EXISTS (SELECT 1 FROM account_permissions ap WHERE ap.account_id = accounts.id AND ap.user_id = :uid)",
           uid: user.id
@@ -28,12 +30,14 @@ module AccountAccessible
       joins(:account_permissions)
         .where(account_permissions: { user_id: user.id, visibility: "balance_only" })
         .where.not(created_by_user_id: user.id)
+        .where(is_joint: false)
     }
 
     scope :hidden_from, ->(user) {
       joins(:account_permissions)
         .where(account_permissions: { user_id: user.id, visibility: "hidden" })
         .where.not(created_by_user_id: user.id)
+        .where(is_joint: false)
     }
 
     scope :owned_by, ->(user) {

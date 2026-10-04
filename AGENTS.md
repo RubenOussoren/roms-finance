@@ -1,33 +1,81 @@
-# Repository Guidelines
+# Repository guidance for development agents
 
-## Project Structure & Module Organization
+ROMS Finance is a Rails financial application. This is the canonical, tool-neutral
+agent guide. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[developer guide](docs/DEVELOPER_GUIDE.md) before changing code. Runtime versions
+come from `.ruby-version`, lockfiles and CI/container configuration, not this file.
 
-ROMS Finance is a Rails 8 application. Core domain code lives in `app/models/`, financial math in `app/calculators/`, and multi-step debt simulations in `app/services/`. Controllers, views, jobs, mailers, and ViewComponents follow standard Rails paths under `app/`. JavaScript is in `app/javascript/`, Tailwind tokens are in `app/assets/tailwind/`, and assets are in `public/` or `app/assets/images/`. Tests mirror the app structure in `test/`, with fixtures in `test/fixtures/`, VCR cassettes in `test/vcr_cassettes/`, and snapshots in `test/golden_masters/`. Documentation belongs in `docs/`.
+## Working agreement
 
-## Build, Test, and Development Commands
+- Read affected code, tests and existing patterns before editing. Preserve unrelated
+  work. Use a dedicated branch/worktree for meaningful changes; keep patches scoped.
+- Plan multi-step work and delegate bounded tasks when useful. Give parallel agents
+  non-overlapping write ownership; retain integration and verification responsibility.
+- Prefer Rails and existing dependencies over a new framework. Do not rewrite the app
+  or move directories merely to match a proposed architecture.
+- Ask before changing financial assumptions, access policy, destructive data operations,
+  or irreversible rollout behavior. Never run migrations, resets or demo-data tasks
+  automatically. Inspect scripts and targets before execution.
+- Do not read/expose credentials or local secret files, use live provider data in tests,
+  start/restart services, or operate on production without scoped authorization.
+- Commit, push, PR creation and release mutations require user authorization. Never
+  push directly to `main` unless explicitly requested. No force pushes or history
+  rewriting without specific authorization.
 
-- `bin/setup`: install dependencies and prepare local development.
-- `bin/dev`: start Rails, Sidekiq, and the Tailwind watcher.
-- `bin/rails db:prepare`: create, migrate, and seed the database as needed.
-- `rake demo_data:default`: reload realistic demo data for manual testing.
-- `bin/rails test`: run the Minitest suite.
-- `bin/rails test test/models/account_test.rb:42`: run a single test by line.
-- `bin/rubocop`: lint Ruby.
-- `npm run lint` / `npm run lint:fix`: check or fix JavaScript with Biome.
-- `bin/brakeman`: run Rails security analysis.
+## Architecture and design
 
-## Coding Style & Naming Conventions
+Read [current architecture](docs/architecture/current-state.md),
+[financial contracts](docs/architecture/financial-contracts.md), and
+[ADR 0001](docs/architecture/decisions/0001-rails-modular-monolith.md).
 
-Use Ruby 3.4 and standard Rails naming: snake_case files, CamelCase classes, and tests ending in `_test.rb`. Keep business logic in models unless it is a multi-step process with external state. Use `Current.user` and `Current.family` for request context. Prefer Hotwire, Turbo frames, native HTML, and server-side formatting over client-heavy JavaScript. For UI styling, use tokens from `app/assets/tailwind/roms-design-system.css`, such as `text-primary`, `bg-container`, and `border-primary`. Biome formats JavaScript with double quotes.
+- Retain the Rails modular monolith: models own associations, invariants and domain
+  queries; POROs/concerns organize cohesive behavior. Use explicit orchestration for
+  multi-step workflows where it improves clarity—not a mandatory service abstraction.
+- `app/calculators/` is the financial computation home; `app/services/` contains debt
+  simulators. Existing classes are not uniformly pure. New numerical kernels should
+  take explicit inputs, dates and random sources and avoid DB/network/cache effects.
+- Family is the tenancy root. `Current.user` / `Current.family` are request context,
+  not authorization. Scope lookups by family **and** account visibility; balance-only
+  access must not disclose details. Jobs carry explicit context, not ambient `Current`.
+- Preserve signed-entry, currency, rounding and rate conventions. Missing data is not
+  zero. Financial corrections need independent expected values and documented sources.
+- Use existing provider registry/concepts and normalize external results at the edge.
+  Test success, missing configuration, errors, retries and idempotency as appropriate.
+- Keep controllers thin and UI Hotwire-first: native HTML, Turbo, Stimulus,
+  ViewComponents, server formatting and functional Tailwind tokens in
+  `app/assets/tailwind/roms-design-system.css`. Use the `icon` helper.
+- Follow surrounding localization conventions; do not introduce a blanket i18n bypass.
+  Use connection-pool `with_connection` for raw SQL. Consider callbacks, auditability,
+  constraints and transactions before bulk writes.
 
-## Testing Guidelines
+## Task routing
 
-Use Minitest. Place tests in the matching `test/` directory, and prefer focused unit coverage for calculators, models, providers, and financial edge cases. Use fixtures and VCR cassettes for deterministic provider behavior. Run `bin/rails test` before opening a PR; use `bin/rails test:system` only for UI flows that need browser coverage.
+Canonical recipes live in `.skills/`; tool directories are adapters, not copies.
+Load the relevant `SKILL.md` before task-specific work:
 
-## Commit & Pull Request Guidelines
+| Task | Skills |
+| --- | --- |
+| Environment / database | `setup`, `db`; `migration` for schema/backfill work |
+| Financial implementation | `calculator`, `simulator`; `pag-check` for planning assumptions |
+| Validation | `test`, `pre-pr` |
+| Requested review / phase audit | `review`, `phase-review` |
+| Authorized publication | `commit`, `pr`, `release` |
 
-Recent commits use concise, imperative summaries such as `Fix equity compensation balance overestimation`. Keep commits scoped to one change. PRs should target `main`, describe the behavior change, link issues with `fixes #123` when relevant, and pass GitHub checks before review. Include screenshots for visible UI changes and note migrations, new env vars, or provider behavior changes.
+Skills supplement this guide and the shared human references. If instructions
+contradict code/configuration, investigate and correct the docs; do not silently
+change behavior to satisfy stale examples. Tool availability/discovery must be
+verified; manually read canonical skills when automatic loading is unavailable.
 
-## Security & Configuration Tips
+## Verification and handoff
 
-Copy `.env.local.example` to `.env.local` and keep secrets out of git. Optional integrations auto-disable when unconfigured; document any new required env var in `README.md` or `docs/hosting/docker.md`. Run `bin/brakeman` for security-sensitive changes.
+Commands and safe local/container usage are in
+[development workflow](docs/development/workflow.md). Use Minitest, fixtures,
+VCR and independently derived financial expectations. Run focused tests first,
+then applicable lint/security and full-suite checks before PR readiness. Test DB
+and Redis isolation must be verified before any test task. Do not automatically
+"fix" a failed check by resetting data, updating dependencies or skipping tests.
+
+Inspect `git diff`; report what changed, exact checks/results, blocked/unrun
+checks, remaining risks and any altered financial outputs. Historical validation
+is not a fresh test result. Persist durable knowledge in shared docs/ADRs, not
+only conversations or provider-specific instructions.

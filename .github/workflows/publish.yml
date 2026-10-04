@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Git ref (tag or commit SHA) to build'
+        description: 'Git branch, tag or commit SHA to build (manual runs publish SHA-only tags)'
         required: true
         type: string 
         default: 'main'
@@ -22,12 +22,34 @@ permissions:
   contents: read
 
 jobs:
+  resolve:
+    name: Resolve publication revision
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+    steps:
+      - name: Check out requested revision
+        uses: actions/checkout@v7
+        with:
+          # Pushes use the event SHA, not a branch/tag that could move before checkout.
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Resolve immutable SHA
+        id: revision
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
   ci:
+    needs: [ resolve ]
     uses: ./.github/workflows/ci.yml
+    with:
+      checkout_ref: ${{ needs.resolve.outputs.sha }}
 
   build:
     name: Build docker image
-    needs: [ ci ]
+    needs: [ resolve, ci ]
 
     timeout-minutes: 60
 
@@ -41,7 +63,7 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -61,12 +83,16 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: latest=auto
+          # Manual runs are SHA-only, even when the target is main or a version tag.
+          # Only push events promote rolling channels and derive semver from the event tag.
+          flavor: latest=false
+          labels: |
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.sha }}
           tags: |
-            type=sha,format=long
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=stable,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=sha-${{ needs.resolve.outputs.sha }}
+            type=semver,pattern={{version}},value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+            type=raw,value=stable,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
@@ -82,4 +108,4 @@ jobs:
           provenance: false
           # https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#adding-a-description-to-multi-arch-images
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=A multi-arch Docker image for the ROMS Finance Rails app
-          build-args: BUILD_COMMIT_SHA=${{ github.sha }}
+          build-args: BUILD_COMMIT_SHA=${{ needs.resolve.outputs.sha }}

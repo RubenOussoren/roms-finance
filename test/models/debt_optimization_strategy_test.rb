@@ -163,6 +163,120 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
     assert_equal 1, strategy.months_accelerated
   end
 
+  test "unchanged reruns replace rows without changing numerical results or reports" do
+    travel_to Time.zone.local(2026, 1, 15) do
+      @strategy.update!(simulation_months: 3)
+      chart = @strategy.chart_series_builder
+      audit = @strategy.audit_trail
+      @strategy.run_simulation!
+      rows = simulation_rows(@strategy)
+      ids = @strategy.ledger_entries.pluck(:id)
+      series = chart.all_series
+      report = audit.generate_summary_report
+
+      @strategy.run_simulation!
+
+      assert_equal rows, simulation_rows(@strategy)
+      assert_empty ids & @strategy.ledger_entries.pluck(:id)
+      assert_equal 9, @strategy.ledger_entries.size
+      assert_equal series, chart.all_series
+      assert_equal report, audit.generate_summary_report
+      assert @strategy.simulated?
+    end
+  end
+
+  test "changed unsaved inputs rerun with fresh ledger chart and audit output" do
+    travel_to Time.zone.local(2026, 1, 15) do
+      @strategy.update!(simulation_months: 3)
+      @strategy.run_simulation!
+      chart = @strategy.chart_series_builder
+      audit = @strategy.audit_trail
+      old_series = chart.debt_comparison_series
+      old_report = audit.generate_annual_report(2026)
+      @strategy.ledger_entries.load
+
+      @strategy.simulation_months = 2
+      @strategy.rental_income += 1000
+      @strategy.run_simulation!
+
+      assert_equal 6, @strategy.ledger_entries.size
+      assert_equal 2, chart.debt_comparison_series[:strategy].size
+      assert_not_equal old_series, chart.debt_comparison_series
+      assert_equal @strategy.rental_income * 2, audit.generate_annual_report(2026)[:rental_income][:total_gross_income]
+      assert_not_equal old_report, audit.generate_annual_report(2026)
+      assert_equal @strategy.rental_income, @strategy.reload.rental_income
+    end
+  end
+
+  test "rerun clears payoff acceleration when shortened horizon no longer reaches payoff" do
+    @strategy.update!(simulation_months: 300)
+    @strategy.run_simulation!
+    assert_not_nil @strategy.months_accelerated
+
+    @strategy.simulation_months = 2
+    @strategy.run_simulation!
+
+    assert_nil @strategy.reload.months_accelerated
+    assert_equal 0, @strategy.chart_series_builder.summary_metrics[:months_accelerated]
+    assert_equal 0, @strategy.audit_trail.generate_summary_report[:totals][:months_accelerated]
+  end
+
+  test "switching to baseline clears comparison metrics from previous simulation" do
+    @strategy.update!(simulation_months: 2)
+    @strategy.run_simulation!
+    assert_not_nil @strategy.net_benefit
+
+    @strategy.strategy_type = "baseline"
+    @strategy.run_simulation!
+
+    assert_equal [ "baseline" ], @strategy.ledger_entries.distinct.pluck(:scenario_type)
+    assert_nil @strategy.reload.total_interest_saved
+    assert_nil @strategy.total_tax_benefit
+    assert_nil @strategy.net_benefit
+    assert_nil @strategy.months_accelerated
+    assert_empty @strategy.chart_series_builder.summary_metrics
+    assert_nil @strategy.audit_trail.generate_summary_report
+  end
+
+  test "failed rerun rolls back replacement inputs summaries and status" do
+    @strategy.update!(simulation_months: 2, status: "active")
+    @strategy.run_simulation!
+    @strategy.update!(status: "active")
+    original = @strategy.attributes
+    rows = simulation_rows(@strategy)
+    ids = @strategy.ledger_entries.pluck(:id)
+    @strategy.simulation_months = 3
+    failing_simulator = Object.new
+    strategy = @strategy
+    failing_simulator.define_singleton_method(:simulate!) do
+      BaselineSimulator.new(strategy).simulate!
+      raise "simulation failed after baseline insert"
+    end
+    @strategy.stubs(:simulator).returns(failing_simulator)
+
+    assert_raises(RuntimeError) { @strategy.run_simulation! }
+
+    assert_equal original, @strategy.reload.attributes
+    assert_equal rows, simulation_rows(@strategy)
+    assert_equal ids.sort, @strategy.ledger_entries.pluck(:id).sort
+  end
+
+  test "failed final save rolls back a completed simulation and preserves active status" do
+    @strategy.update!(simulation_months: 2)
+    @strategy.run_simulation!
+    @strategy.update!(status: "active")
+    original = @strategy.attributes
+    rows = simulation_rows(@strategy)
+    ids = @strategy.ledger_entries.pluck(:id)
+    @strategy.stubs(:save!).raises(ActiveRecord::RecordInvalid.new(@strategy))
+
+    assert_raises(ActiveRecord::RecordInvalid) { @strategy.run_simulation! }
+
+    assert_equal original, @strategy.reload.attributes
+    assert_equal rows, simulation_rows(@strategy)
+    assert_equal ids.sort, @strategy.ledger_entries.pluck(:id).sort
+  end
+
   test "for_family scope returns strategies for specific family" do
     strategies = DebtOptimizationStrategy.for_family(@family)
     assert strategies.all? { |s| s.family_id == @family.id }
@@ -279,4 +393,12 @@ class DebtOptimizationStrategyTest < ActiveSupport::TestCase
   test "DEFAULT_PROVINCE constant is ON" do
     assert_equal "ON", DebtOptimizationStrategy::DEFAULT_PROVINCE
   end
+
+  private
+
+    def simulation_rows(strategy)
+      DebtOptimizationLedgerEntry.where(debt_optimization_strategy_id: strategy.id).order(:scenario_type, :month_number).map do |entry|
+        entry.attributes.except("id", "created_at", "updated_at")
+      end
+    end
 end

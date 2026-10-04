@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class {{CLASS_NAME}}Test < ActiveSupport::TestCase
+  test "{{KNOWN_TRAJECTORY_BEHAVIOR}}" do
+    {{CONTROL_TIME_AND_RANDOMNESS_IF_NEEDED}}
+    result = {{CLASS_NAME}}.new({{INPUTS}}).{{ENTRY_POINT}}
+
+    # {{INDEPENDENT_EXPECTED_BALANCE_AND_CASH_FLOW_DERIVATION}}
+    {{PER_PERIOD_AND_FINAL_RECONCILIATION_ASSERTIONS}}
+  end
+
+  test "{{ADVERSE_OR_BOUNDARY_SCENARIO}}" do
+    {{SCENARIO_INPUTS_AND_KNOWN_OUTCOME_ASSERTIONS}}
+  end
+end

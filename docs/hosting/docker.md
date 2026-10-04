@@ -57,8 +57,8 @@
 | `POSTGRES_DB` | `roms_production` | PostgreSQL database name |
 | `REDIS_URL` | `redis://redis:6379/1` | Redis URL for Sidekiq and Action Cable |
 | `CACHE_REDIS_URL` | `redis://redis:6379/2` | Redis URL for Rails cache store |
-| `SIDEKIQ_WEB_USERNAME` | `roms` | Username for the `/sidekiq` web dashboard |
-| `SIDEKIQ_WEB_PASSWORD` | `roms` | Password for the `/sidekiq` web dashboard |
+| `SIDEKIQ_WEB_USERNAME` | `roms` (Compose only) | Username for the `/sidekiq` web dashboard; must be explicitly set outside the example Compose setup |
+| `SIDEKIQ_WEB_PASSWORD` | _(empty; login disabled)_ | Set a unique password to enable production `/sidekiq` login; `roms` is rejected |
 | `INVITE_ONLY` | `true` | When true, only admin-invited users can register |
 | `APP_DOMAIN` | _(none)_ | Domain for email links (e.g. `finance.example.com`) |
 | `RAILS_FORCE_SSL` | `false` | Force SSL connections |
@@ -148,7 +148,7 @@ When running behind an SSL-terminating proxy:
 2. Set `APP_DOMAIN` to your public domain (e.g. `finance.example.com`) for correct link generation in emails
 3. Set `PLAID_REDIRECT_URI` to your public HTTPS URL + `/accounts` if using Plaid
 
-The compose file exposes port 3000 on the `web` service. Point your reverse proxy at `http://localhost:3000` (or the appropriate Docker network address).
+The compose file exposes port 3000 on the `web` service. Point your reverse proxy at `http://localhost:3000` (or the appropriate Docker network address). This HTTP endpoint is for local/internal proxy traffic, not direct public access. Restrict access to port 3000 so public clients cannot bypass the HTTPS proxy. Sidekiq Basic Auth credentials must only be sent over HTTPS on public networks.
 
 ## Common Operations
 
@@ -231,4 +231,8 @@ docker compose logs db
 
 ### Sidekiq dashboard credentials
 
-The Sidekiq web dashboard is available at `/sidekiq`. Default credentials are `roms`/`roms`. Change them by setting `SIDEKIQ_WEB_USERNAME` and `SIDEKIQ_WEB_PASSWORD`.
+The Sidekiq web dashboard is mounted at `/sidekiq`. In production, login is disabled (all credentials are rejected) when `SIDEKIQ_WEB_USERNAME` or `SIDEKIQ_WEB_PASSWORD` is missing or blank, or when the password is the known example default `roms`. The app and background worker still start normally; this optional configuration only controls dashboard access.
+
+To enable login, set both variables in your Compose `.env` file. The example Compose file supplies username `roms` but leaves the password empty. Generate a unique password, for example with `openssl rand -hex 32`, and set `SIDEKIQ_WEB_PASSWORD` to that value. Outside the example Compose setup there is no fallback username or password. Apply the updated environment to the web container using your normal deployment procedure.
+
+**Upgrade note:** Existing deployments using `roms`/`roms`, relying on the old implicit defaults, or using blank credentials lose production dashboard access until both variables are configured with a unique password. Application/API authentication and the development dashboard interface are unchanged. Use the HTTPS reverse proxy described above for public access.

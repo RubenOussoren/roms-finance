@@ -6,6 +6,7 @@ class AccountPermission < ApplicationRecord
 
   validates :visibility, inclusion: { in: VISIBILITIES }
   validates :user_id, uniqueness: { scope: :account_id }
+  validate :user_in_same_family
   validate :user_is_not_account_owner
   validate :joint_account_must_be_full
 
@@ -18,6 +19,13 @@ class AccountPermission < ApplicationRecord
   after_destroy :touch_account
 
   private
+
+    def user_in_same_family
+      return unless account && user
+      unless account.family_id == user.family_id
+        errors.add(:user, "must be in the same family as the account")
+      end
+    end
 
     def user_is_not_account_owner
       return unless account && user

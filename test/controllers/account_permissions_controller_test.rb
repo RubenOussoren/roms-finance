@@ -156,4 +156,43 @@ class AccountPermissionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 50, @account.account_ownerships.find_by(user_id: @owner.id).percentage
     assert_equal 50, @account.account_ownerships.find_by(user_id: @member.id).percentage
   end
+
+  test "foreign family permission rolls back preceding valid permission change" do
+    permission = @account.account_permissions.create!(user: @member, visibility: "hidden")
+    ownership = @account.account_ownerships.create!(user: @owner, percentage: 100)
+    original_permission = permission.attributes
+    original_ownership = ownership.attributes
+    original_account = @account.reload.attributes
+
+    assert_no_difference [ "AccountPermission.count", "AccountOwnership.count" ] do
+      patch account_account_permissions_url(@account), params: {
+        permissions: { @member.id => "balance_only", users(:empty).id => "hidden" },
+        ownerships: { @owner.id => "50", @member.id => "50" }
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_match "must be in the same family", response.body
+    assert_no_match users(:empty).email, response.body
+    assert_equal original_permission, permission.reload.attributes
+    assert_equal original_ownership, ownership.reload.attributes
+    assert_equal original_account, @account.reload.attributes
+    assert_nil @account.account_permissions.find_by(user: users(:empty))
+  end
+
+  test "foreign family cannot write account permissions" do
+    original_account = @account.attributes
+    sign_in users(:empty)
+
+    assert_no_difference [ "AccountPermission.count", "AccountOwnership.count" ] do
+      patch account_account_permissions_url(@account), params: {
+        permissions: { @member.id => "hidden" },
+        ownerships: { @member.id => "100" }
+      }
+    end
+
+    assert_response :not_found
+    assert_no_match @account.name, response.body
+    assert_equal original_account, @account.reload.attributes
+  end
 end

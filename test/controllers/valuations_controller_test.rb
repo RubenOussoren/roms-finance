@@ -50,4 +50,66 @@ class ValuationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 22000, @entry.amount
     assert_equal "Test notes", @entry.notes
   end
+
+  %w[hidden balance_only].each do |visibility|
+    test "#{visibility} member cannot preview valuation update" do
+      account = @entry.account
+      account.account_permissions.create!(user: users(:family_member), visibility: visibility)
+      sign_in users(:family_member)
+      original_entry = @entry.attributes
+      original_account = account.reload.attributes
+
+      assert_no_difference [ "Entry.count", "Valuation.count" ] do
+        assert_no_enqueued_jobs do
+          post confirm_update_valuation_url(@entry), params: {
+            entry: { date: Date.current.to_s, amount: 22000 }
+          }
+        end
+      end
+
+      assert_response :not_found
+      assert_no_match account.name, response.body
+      assert_select "form[action=?]", valuation_path(@entry), count: 0
+      assert_equal original_entry, @entry.reload.attributes
+      assert_equal original_account, account.reload.attributes
+    end
+  end
+
+  [ :family_admin, :family_member ].each do |viewer|
+    test "#{viewer} can preview valuation update with full access without persisting" do
+      sign_in users(viewer)
+      original_entry = @entry.attributes
+      original_account = @entry.account.attributes
+
+      assert_no_enqueued_jobs do
+        post confirm_update_valuation_url(@entry), params: {
+          entry: { date: Date.current.to_s, amount: 22000 }
+        }
+      end
+
+      assert_response :success
+      assert_select "form[action=?]", valuation_path(@entry)
+      assert_select "input[name='entry[amount]']" do |inputs|
+        assert_equal 22000.to_d, inputs.first["value"].to_d
+      end
+      assert_equal original_entry, @entry.reload.attributes
+      assert_equal original_account, @entry.account.reload.attributes
+    end
+  end
+
+  test "foreign family cannot preview valuation update" do
+    sign_in users(:empty)
+    original_entry = @entry.attributes
+
+    assert_no_enqueued_jobs do
+      post confirm_update_valuation_url(@entry), params: {
+        entry: { date: Date.current.to_s, amount: 22000 }
+      }
+    end
+
+    assert_response :not_found
+    assert_no_match @entry.account.name, response.body
+    assert_select "form[action=?]", valuation_path(@entry), count: 0
+    assert_equal original_entry, @entry.reload.attributes
+  end
 end

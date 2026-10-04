@@ -1,41 +1,53 @@
 # Contributing to ROMS Finance
 
-Originally forked from [Maybe Finance](https://github.com/maybe-finance/maybe). Check issues and PRs in **this** repository.
+Originally forked from [Maybe Finance](https://github.com/maybe-finance/maybe).
+Use issues and PRs in this repository. Check existing work before starting;
+prefer focused changes aligned with the application's financial product goals.
 
-It means so much that you're interested in contributing! Seriously. Thank you. The entire community benefits from these contributions!
+## Start here
 
-## House Rules
+1. Read the [developer guide](docs/DEVELOPER_GUIDE.md),
+   [current architecture](docs/architecture/current-state.md) and
+   [financial contracts](docs/architecture/financial-contracts.md).
+2. Follow [README development setup](README.md#development-setup) for Docker,
+   devcontainer or local prerequisites. Do not use production Compose for development.
+3. Use [development workflow](docs/development/workflow.md) for safe validation.
+   Setup, migrations and demo reloads have side effects: inspect scripts and targets.
+4. Agents additionally follow [AGENTS.md](AGENTS.md); no AI tool is required to contribute.
 
-- Before contributing, familiarize yourself with our project conventions. You should read through [CLAUDE.md](CLAUDE.md), which documents our development guidelines and conventions.
-- While totally optional, consider using Cursor + VSCode or Claude Code as they will automatically apply our project conventions to your code via the `.cursor/rules` directory and `CLAUDE.md`.
-- Before contributing, please check if it already exists in existing issues or PRs
-- Given the speed at which we're moving on the codebase, we don't assign issues or "give" issues to anyone.
-- When multiple PRs are submitted for the same issue, we take the one that most succinctly & efficiently solves a given problem and stays within the scope of work.
-- Priority is generally given to previous committers as they've proven familiarity with the codebase and product.
+## Design and implementation
 
-## What should I contribute?
+Preserve the Rails modular monolith, Minitest and Hotwire-first UI. Match existing
+Ruby/Rails naming and Biome JavaScript style. Models retain invariants and domain
+queries; extract numerical kernels or workflow orchestration only where a concrete
+change benefits. Prefer existing utilities/dependencies to parallel implementations.
 
-Check out our [feature roadmap](docs/FEATURE_ROADMAP.md) and open issues to get a better idea of _what_ to contribute.
+Treat privacy, calculation correctness, currency handling and data provenance as
+first-class requirements. Fixes need regression tests. Financial changes need
+known-value expectations and documented conventions/sources, not only snapshots.
+Authorization work needs negative cross-family and account-visibility cases.
+Provider work needs deterministic boundary tests; never contact live providers
+with customer credentials during validation.
 
-In general, _full features_ that align with the project's vision (investment projections, Canadian debt optimization, multi-account tracking) are the most valuable contributions.
+Architecture proposals belong in `docs/architecture/decisions/`; unresolved ideas
+must not masquerade as current implementation. The
+[engineering roadmap](docs/development/roadmap.md) governs hardening priorities;
+[feature roadmap](docs/FEATURE_ROADMAP.md) remains a product planning artifact,
+not evidence that a feature is shipped.
 
-## Development
+## Pull requests
 
-### Setup
+- Work on a feature branch/worktree; target `main`. Keep unrelated changes out.
+- Use concise imperative commit summaries, e.g. `Fix projection date boundaries`.
+- Describe behavior, rationale, issue links (`fixes #123` when applicable), validation
+  and remaining limitations. Call out migrations, env vars, provider changes and
+  altered financial assumptions/results. Include screenshots for visible UI changes.
+- Run relevant tests, full unit/integration suite and applicable static/security checks
+  before declaring readiness; CI also runs system tests. Disclose anything blocked
+  or skipped rather than presenting it as passing. Wait for required checks/review.
+- Do not commit secrets, local environment files, customer data or unsanitized cassettes.
+  Document new required configuration in README or the hosting guide.
 
-To get setup for local development, you have two options:
-
-1. [Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers) with VSCode (see the `.devcontainer` folder)
-2. Local Development (see `bin/setup` for initial project setup)
-
-### Making a Pull Request
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request, and be sure to check the [Allow edits from maintainers](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork) option while creating your PR. This allows maintainers to collaborate with you on your PR if needed.
-6. If possible, [link your pull request to an issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword) by adding the appropriate keyword (e.g. `fixes issue #XXX`)
-7. Before requesting a review, please make sure that all [Github Checks](https://docs.github.com/en/rest/checks?apiVersion=2022-11-28) have passed and your branch is up-to-date with the `main` branch. After doing so, request a review and wait for a maintainer's approval.
-
-All PRs should target the `main` branch.
+For agents, commits, pushes, PR creation, releases and production actions require
+scoped user authorization; implementation permission alone is not publication
+permission. Never bypass checks or push directly to `main` without explicit approval.

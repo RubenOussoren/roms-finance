@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+# {{DESCRIPTION_AND_INPUT_OUTPUT_CONTRACT}}
+# Scaffold only: adapt the interface to verified callers and financial contracts.
+class {{CLASS_NAME}}
+  Result = Struct.new({{RESULT_FIELDS}}, keyword_init: true)
+
+  def initialize({{EXPLICIT_INPUT_PARAMS}})
+    {{INPUT_ASSIGNMENTS_AND_VALIDATION}}
+  end
+
+  def {{ENTRY_POINT}}
+    {{PURE_CALCULATION_LOGIC}}
+    Result.new({{RESULT_ASSIGNMENTS}})
+  end
+end

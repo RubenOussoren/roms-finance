@@ -2,14 +2,52 @@ name: CI
 
 on:
   workflow_call:
+    inputs:
+      checkout_ref:
+        description: Immutable publication SHA; empty preserves the default PR merge checkout
+        required: false
+        type: string
+        default: ""
 
 jobs:
+  development_docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Verify shared development docs and adapters
+        env:
+          PUBLICATION_CHECKOUT_REF: ${{ inputs.checkout_ref }}
+        run: |
+          # Historical publication targets can predate this new tooling. This
+          # exception never applies to PR CI (empty checkout_ref), nor to a
+          # foundation-era checkout with partially deleted tooling.
+          if [ -n "$PUBLICATION_CHECKOUT_REF" ] && [ ! -d .skills ] && [ ! -e bin/check-development-docs ]; then
+            echo "::notice::Historical publication target predates foundation tooling; existing application/security gates remain required."
+            exit 0
+          fi
+          ruby bin/check-development-docs
+          bundle exec ruby test/tooling/check_development_docs_test.rb
+          bundle exec ruby test/tooling/publish_workflow_test.rb
+
   scan_ruby:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -29,6 +67,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -57,6 +97,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -73,6 +115,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v7
@@ -102,7 +146,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -111,7 +155,7 @@ jobs:
         options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
 
       redis:
-        image: redis
+        image: redis:7-alpine
         ports:
           - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -122,6 +166,8 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -148,7 +194,19 @@ jobs:
           bin/rails db:seed
 
       - name: Unit and integration tests
+        env:
+          COVERAGE: "true"
+          COVERAGE_NAME: rails-unit-integration
         run: bin/rails test
+
+      - name: Keep unit and integration coverage evidence
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: unit-integration-coverage
+          path: coverage/
+          include-hidden-files: true
+          if-no-files-found: warn
 
       - name: System tests
         run: DISABLE_PARALLELIZATION=true bin/rails test:system

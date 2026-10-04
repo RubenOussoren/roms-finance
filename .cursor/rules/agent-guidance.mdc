@@ -1,0 +1,7 @@
+---
+description: Canonical ROMS development guidance
+alwaysApply: true
+---
+
+Read and follow [AGENTS.md](mdc:AGENTS.md). Shared developer references and
+canonical `.skills/` recipes are linked there. Do not maintain separate policy here.

@@ -68,19 +68,24 @@ class DebtOptimizationStrategy < ApplicationRecord
 
   def run_simulation!
     transaction do
-      # Clear existing ledger entries
-      ledger_entries.destroy_all
+      # Preserve callers' unsaved inputs before with_lock reloads the record.
+      # This save and the ledger replacement roll back together on failure.
+      save! if has_changes_to_save?
 
-      # Run both baseline and strategy simulations
-      simulator.simulate!
+      with_lock do
+        # Serialize the entire replacement, not just the final summary save.
+        ledger_entries.destroy_all
+        simulator.simulate!
+        calculate_summary_metrics!
 
-      # Update cached results
-      calculate_summary_metrics!
-
-      self.last_simulated_at = Time.current
-      self.status = "simulated"
-      save!
+        self.last_simulated_at = Time.current
+        self.status = "simulated"
+        save!
+      end
     end
+  ensure
+    # Simulators bulk-insert rows without updating the association's loaded target.
+    ledger_entries.reset
   end
 
   def baseline_entries
@@ -188,6 +193,12 @@ class DebtOptimizationStrategy < ApplicationRecord
   private
 
     def calculate_summary_metrics!
+      # A shorter horizon or baseline-only run may no longer have a comparison.
+      self.total_interest_saved = nil
+      self.total_tax_benefit = nil
+      self.net_benefit = nil
+      self.months_accelerated = nil
+
       baseline_final = baseline_entries.last
       strategy_final = strategy_entries.where(strategy_stopped: false).last || strategy_entries.last
 

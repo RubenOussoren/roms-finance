@@ -175,4 +175,78 @@ class AccountAccessibleTest < ActiveSupport::TestCase
   test "balance_only_for? returns false when full" do
     assert_not @account.balance_only_for?(@member)
   end
+
+  test "scopes match predicates when only another member has a permission" do
+    other_member = @family.users.create!(
+      first_name: "Other", last_name: "Member", email: "access_other@example.com", password: "password123"
+    )
+    %w[full balance_only hidden].each do |visibility|
+      permission = AccountPermission.create!(account: @account, user: other_member, visibility: visibility)
+      assert_equal :full, @account.visibility_for(@member)
+      assert_visibility_scopes_match(@member)
+      permission.destroy!
+    end
+  end
+
+  test "scopes match predicates for every viewer permission and default" do
+    assert_visibility_scopes_match(@member)
+    %w[full balance_only hidden].each do |visibility|
+      permission = AccountPermission.create!(account: @account, user: @member, visibility: visibility)
+      assert_visibility_scopes_match(@member)
+      assert_visibility_scopes_match(@admin)
+      permission.destroy!
+    end
+  end
+
+  test "joint accounts override existing hidden permissions in scopes and predicates" do
+    AccountPermission.create!(account: @account, user: @member, visibility: "hidden")
+    @account.update!(is_joint: true)
+
+    assert_equal :full, @account.visibility_for(@member)
+    assert_visibility_scopes_match(@member)
+  end
+
+  test "joint accounts override existing balance only permissions in scopes and predicates" do
+    AccountPermission.create!(account: @account, user: @member, visibility: "balance_only")
+    @account.update!(is_joint: true)
+
+    assert_equal :full, @account.visibility_for(@member)
+    assert_visibility_scopes_match(@member)
+  end
+
+  test "creator overrides existing restrictions in scopes and predicates" do
+    AccountPermission.create!(account: @account, user: @member, visibility: "hidden")
+    @account.update!(created_by_user: @member)
+
+    assert_equal :full, @account.visibility_for(@member)
+    assert_visibility_scopes_match(@member)
+  end
+
+  test "visibility scopes preserve the family boundary of their input relation" do
+    foreign_account = accounts(:other_asset)
+    foreign_account.update!(family: families(:empty), created_by_user: users(:empty), is_joint: true)
+    AccountPermission.create!(account: @account, user: @member, visibility: "balance_only")
+
+    assert_visibility_scopes_match(@member)
+    %i[accessible_by full_access_for balance_only_for hidden_from].each do |scope|
+      assert_not_includes @family.accounts.public_send(scope, @member).pluck(:id), foreign_account.id
+      assert_empty families(:empty).accounts.public_send(scope, @member).where(id: @account.id).pluck(:id)
+    end
+  end
+
+  private
+
+    def assert_visibility_scopes_match(user)
+      accounts = @family.accounts.to_a
+      {
+        accessible_by: ->(account) { account.accessible_by?(user) },
+        full_access_for: ->(account) { account.full_access_for?(user) },
+        balance_only_for: ->(account) { account.balance_only_for?(user) },
+        hidden_from: ->(account) { account.visibility_for(user) == :hidden }
+      }.each do |scope, predicate|
+        expected_ids = accounts.select(&predicate).map(&:id).sort
+        actual_ids = @family.accounts.public_send(scope, user).pluck(:id).sort
+        assert_equal expected_ids, actual_ids, "#{scope} must match instance visibility"
+      end
+    end
 end

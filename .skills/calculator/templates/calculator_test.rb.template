@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class {{CLASS_NAME}}Test < ActiveSupport::TestCase
+  test "{{KNOWN_VALUE_BEHAVIOR}}" do
+    result = {{CLASS_NAME}}.new({{INPUTS}}).{{ENTRY_POINT}}
+
+    # {{INDEPENDENT_EXPECTED_VALUE_DERIVATION_AND_UNITS}}
+    {{KNOWN_VALUE_ASSERTION_WITH_CONTRACT_APPROPRIATE_PRECISION}}
+  end
+
+  test "{{BOUNDARY_OR_INVALID_INPUT_BEHAVIOR}}" do
+    {{BOUNDARY_INPUTS_AND_BEHAVIOR_ASSERTIONS}}
+  end
+end

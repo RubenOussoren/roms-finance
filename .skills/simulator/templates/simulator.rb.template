@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+# {{DESCRIPTION_AND_STATE_OUTPUT_CONTRACT}}
+# Generic scaffold, not a debt subclass. Inspect AbstractDebtSimulator for debts.
+class {{CLASS_NAME}}
+  Result = Struct.new({{RESULT_FIELDS}}, keyword_init: true)
+  State = Struct.new({{STATE_FIELDS}}, keyword_init: true)
+
+  def initialize({{EXPLICIT_INPUT_PARAMS}})
+    {{INPUT_ASSIGNMENTS_AND_VALIDATION}}
+  end
+
+  def {{ENTRY_POINT}}
+    {{INITIAL_STATE_AND_PERIOD_TRANSITIONS}}
+    Result.new({{RESULT_ASSIGNMENTS}})
+  end
+end
