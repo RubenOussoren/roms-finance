@@ -83,10 +83,12 @@ identity collisions or unavailable access stop validation; never adopt replaceme
 Its separate `roms-autonomy-test.lock` serializes helper calls. Keep the common
 phase lock held as well when performing a supervised pilot phase.
 
-The helper uses only disposable `compose run --rm --no-deps` validation processes,
-mounting the selected worktree and reusing existing dependencies/browser cache
-read-only. It does not start a development server or publish host ports. The app
-process receives `env -i`, explicit test DB/Redis and disabled parallelization.
+The helper uses disposable `compose run --rm --no-deps` processes for ordinary
+checks. Browser checks reuse the already-equipped app container with a temporary
+snapshot of the selected branch's tracked source and scoped tests, not its retained
+development source or server. Existing dependencies are reused read-only; only
+newly created temporary snapshots are cleaned up. No host ports are published.
+The test process receives `env -i`, explicit test DB/Redis and disabled parallelization.
 [test guard](../../test/tooling/autonomy_guard.rb) disables dotenv and credentials,
 blocks external Ruby HTTP, prevents VCR recording and restricts Playwright requests
 to the current local Capybara server. This is not a general network firewall.
@@ -102,7 +104,7 @@ bin/autonomy-check docs
 bin/autonomy-check rubocop test/tooling/autonomy_guard.rb test/tooling/autonomy_preflight.rb
 bin/autonomy-check assets:precompile
 bin/autonomy-check test test/controllers/transactions_controller_test.rb
-bin/autonomy-check test test/system/transaction_account_choices_test.rb
+AUTONOMY_BROWSER_EVIDENCE=true bin/autonomy-check test test/system/transaction_account_choices_test.rb
 bin/autonomy-check zeitwerk:check
 bin/autonomy-check brakeman
 bin/autonomy-check js-lint
