@@ -21,7 +21,7 @@
 | Architecture / financial contracts | `docs/architecture/` | Boundary, formula or convention changes |
 | Architectural decisions | [decisions](architecture/decisions/0001-rails-modular-monolith.md) | Material design decisions; supersede rather than erase |
 | Test references | [golden masters](testing/golden-masters.md), [debt simulators](testing/debt-simulators.md) | Test/fixture behavior changes |
-| Product proposals | [feature roadmap](FEATURE_ROADMAP.md) | Product prioritization |
+| Product proposals / refinement | [feature roadmap](FEATURE_ROADMAP.md), [October refinement roadmap](product/refinement-roadmap-2026-10.md) and linked GitHub issues | Product prioritization and user-journey evidence |
 | Hosting / API | [Docker](hosting/docker.md), [chat API](api/chats.md) | Deployment/API changes |
 | Task recipes | `.skills/*/SKILL.md` | Procedure changes |
 | Dated assessments/reviews | `docs/development/`, `docs/reviews/` when created | Preserve original evidence; add follow-up |

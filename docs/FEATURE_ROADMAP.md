@@ -1,5 +1,13 @@
 # ROMS Finance Feature Roadmap
 
+> **October 2026 refinement update:** This February–April document is historical
+> feature planning, not proof of current journey quality. Start with the
+> [product refinement roadmap](product/refinement-roadmap-2026-10.md) and
+> [GitHub tracker #120](https://github.com/RubenOussoren/roms-finance/issues/120)
+> for the evidence-based usability/correctness tranche. Proposed future features
+> below remain proposals; historical dependency/model/tool counts are not current
+> validation claims.
+
 **Date:** February 2026
 **Last Updated:** April 2026
 **Status:** Draft specification for sprint planning
