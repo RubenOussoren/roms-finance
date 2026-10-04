@@ -105,7 +105,7 @@ def settle_group():
 
 
 try:
-    child = subprocess.Popen(['term-llm', '--no-session', 'loop', '--agent', './.term-llm/agents/autonomy-pilot', '--approval', 'auto', '--max', '1', '--max-turns', '100', prompt], start_new_session=True)
+    child = subprocess.Popen(['term-llm', '--no-session', 'loop', '--agent', './.term-llm/agents/autonomy-pilot', '--approval', 'auto', '--max', '1', '--done-file', 'tmp/autonomy-result.json:status', '--max-turns', '100', prompt], start_new_session=True)
     code = child.wait()
     settle_group()
     state['child_exit'] = code
