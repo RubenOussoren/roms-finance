@@ -43,7 +43,8 @@ x-rails-env: &rails_env
   REDIS_URL: redis://redis:6379/1
   CACHE_REDIS_URL: redis://redis:6379/2
   SIDEKIQ_WEB_USERNAME: ${SIDEKIQ_WEB_USERNAME:-roms}
-  SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-roms}
+  # Production dashboard login is disabled until a unique password is configured.
+  SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-}
 # Market data — stock prices and exchange rates. Set key in Settings > Self-Hosting or here.
 # Default: financialdata.net (300 calls/day free). Get a key: https://financialdata.net
 # MARKET_DATA_FINANCIAL_DATA_API_KEY: ${MARKET_DATA_FINANCIAL_DATA_API_KEY}
