@@ -1,5 +1,14 @@
 # AI Capabilities Upgrade — 2026 Architecture Plan
 
+> **October 2026 assessment:** Treat the completion table below as implementation
+> history, not end-to-end usability/privacy certification or current external-model
+> availability. The [product refinement roadmap](product/refinement-roadmap-2026-10.md)
+> and [evidence register](product/refinement-backlog-2026-10.md) track source-confirmed
+> tool/recovery/disclosure defects and the next grounded assistant journeys.
+> The current configurable groups reference 21 distinct functions, including
+> report/export side effects; the historical 17-tool/read-only description below
+> is not a current capability contract.
+
 **Date**: March 2026
 **Scope**: Multi-provider LLM support, expanded AI function coverage, AI memory, modernized chat UI
 **Last Updated**: March 9, 2026

@@ -1,5 +1,14 @@
 # Equity Compensation: Withdrawal Tracking
 
+> **Superseded balance proposal — 2026-10-04:** The formula below is historical,
+> not the current implementation contract. Equity now uses opening balance plus
+> sale-aware remaining grant value (`EquityCompensation#regenerate_vesting_valuations!`
+> and `FamilyProjectionCalculator#project_equity_compensation_balance`), with
+> `EquityGrantSale` records. Do not additionally subtract cash outflows without
+> proving reconciliation: a sale and its cash transfer may describe the same event.
+> Follow the [product refinement roadmap](../product/refinement-roadmap-2026-10.md)
+> and [sale lifecycle characterization #128](https://github.com/RubenOussoren/roms-finance/issues/128).
+
 ## Problem
 
 When a user sells vested GSUs and transfers proceeds to a bank account, the equity compensation account balance doesn't decrease. `regenerate_vesting_valuations!` always sets `balance = total_vested_value` based purely on the vesting schedule, ignoring any transfers/withdrawals.
