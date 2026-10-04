@@ -107,7 +107,13 @@ def settle_group():
 
 
 try:
+    if stopping:
+        state.update(status='needs-reconciliation', stop_reason='signal before launch', child_exit=130)
+        save()
+        sys.exit(130)
     child = subprocess.Popen(['term-llm', '--no-session', 'loop', '--agent', './.term-llm/agents/autonomy-pilot', '--approval', 'auto', '--read-dir', str(root), '--write-dir', str(root), '--max', '1', '--done-file', 'tmp/autonomy-result.json:status', '--max-turns', '100', prompt], start_new_session=True)
+    if stopping and child.poll() is None:
+        os.killpg(child.pid, signal.SIGTERM)
     code = child.wait()
     settle_group()
     state['child_exit'] = code

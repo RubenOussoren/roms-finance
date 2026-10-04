@@ -97,6 +97,16 @@ class AutonomyRunnerTest(unittest.TestCase):
             self.run_cli('run', 1)
         self.assertEqual(0, self.state()['iterations_started'])
 
+    def test_term_before_launch_does_not_start_cli(self):
+        self.fake_cli("from pathlib import Path\nPath('tmp/launched').write_text('unexpected')\n")
+        trigger = self.root / '.git/trigger.py'
+        trigger.write_text("import runpy, signal, sys\noriginal = signal.signal\ndef register(signum, handler):\n    original(signum, handler)\n    if signum == signal.SIGINT:\n        handler(signal.SIGTERM, None)\nsignal.signal = register\nsys.argv = ['bin/autonomy-run', 'run']\nrunpy.run_path('bin/autonomy-run', run_name='__main__')\n")
+        result = subprocess.run(['python3', str(trigger)], cwd=self.root, env=self.env, capture_output=True, timeout=5)
+        self.assertEqual(130, result.returncode, result.stderr)
+        self.assertFalse((self.root / 'tmp/launched').exists())
+        self.assertEqual('needs-reconciliation', self.state()['status'])
+        self.assertEqual(1, self.state()['iterations_started'])
+
     def test_term_reaps_managed_descendant_and_preserves_budget(self):
         self.fake_cli("import subprocess, time\nfrom pathlib import Path\nchild=subprocess.Popen(['sleep','60'])\nPath('tmp/descendant.pid').write_text(str(child.pid))\ntime.sleep(60)\n")
         parent = subprocess.Popen(['bin/autonomy-run', 'run'], cwd=self.root, env=self.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
