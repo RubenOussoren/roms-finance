@@ -86,4 +86,30 @@ elif args == ['js-lint']:
     cmd = cmd[:-3] + ['npm', 'run', 'lint']
 else:
     cmd += ['bin/rails'] + args
+# Browser dependencies are installed in the existing app, not the base image.
+# Run a branch snapshot there without changing its development source/environment.
+if args[0] == 'test' and any(path.startswith('test/system/') for path in args[1:]):
+    snapshot = output(compose + ['exec', '-T', 'app', 'mktemp', '-d', '/tmp/roms-autonomy-browser.XXXXXXXX'])
+    if not snapshot.startswith('/tmp/roms-autonomy-browser.'):
+        sys.exit('Unexpected temporary browser source path')
+    try:
+        paths = subprocess.check_output(['git', 'ls-files', '-z'])
+        paths += subprocess.check_output(['git', 'ls-files', '--others', '--exclude-standard', '-z', 'test/controllers', 'test/system'])
+        for assets in ('app/assets/builds', 'public/assets'):
+            if (root / assets).is_dir():
+                paths += assets.encode() + b'\0'
+        archive = subprocess.run(['tar', '--null', '-T', '-', '-cf', '-'], input=paths, capture_output=True, check=True).stdout
+        subprocess.run(compose + ['exec', '-T', 'app', 'tar', '-xf', '-', '-C', snapshot], input=archive, check=True)
+        subprocess.run(compose + ['exec', '-T', 'app', 'ln', '-s', '/workspace/node_modules', snapshot + '/node_modules'], check=True)
+        env_args = cmd[cmd.index('app') + 1:]
+        env_args = [arg.replace('/workspace/test/tooling/', snapshot + '/test/tooling/').replace('PLAYWRIGHT_BROWSERS_PATH=/autonomy-browsers', 'PLAYWRIGHT_BROWSERS_PATH=/tmp/roms-home/.cache/ms-playwright') for arg in env_args]
+        code = subprocess.call(compose + ['exec', '-T', '-w', snapshot, 'app', 'env'] + env_args)
+        screenshots = output(compose + ['exec', '-T', 'app', 'find', snapshot, '-path', '*/tmp/screenshots/*.png', '-type', 'f']).splitlines()
+        for screenshot in screenshots:
+            target = root / 'tmp/screenshots' / Path(screenshot).name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(compose + ['cp', 'app:' + screenshot, str(target)], check=True)
+    finally:
+        subprocess.run(compose + ['exec', '-T', 'app', 'rm', '-rf', '--', snapshot], check=True)
+    sys.exit(code)
 sys.exit(subprocess.call(cmd))
