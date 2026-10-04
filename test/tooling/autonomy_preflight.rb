@@ -1,4 +1,4 @@
-require_relative "../config/environment"
+require_relative "../../config/environment"
 require "net/http"
 raise "dotenv files enabled" unless Dotenv::Rails.files.empty?
 raise "credentials available" unless Rails.application.credentials.empty?

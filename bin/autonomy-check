@@ -24,7 +24,7 @@ try:
 except BlockingIOError:
     sys.exit('Another disposable test command is active')
 compose = ['sudo', '-n', 'docker', 'compose', '-f', str(root / 'compose.dev.yml')]
-resource = ['sudo', '-n', 'docker', 'compose', '-f', str(root / '.term-llm/resources.compose.yml')]
+resource = ['sudo', '-n', 'docker', 'compose', '-f', str(root / 'compose.autonomy-test.yml')]
 record = json.loads((common / 'roms-autonomy-resources.json').read_text())
 if branch == 'automation/bootstrap-2026-10' and str(root) == record['setup_worktree']:
     pass
@@ -70,10 +70,12 @@ cmd += ['app', '-i', 'PATH=/usr/local/bin:/usr/bin:/bin', 'HOME=/tmp',
     'POSTGRES_PASSWORD=postgres', 'POSTGRES_DB=roms_autonomy_test',
     'REDIS_URL=redis://roms-autonomy-test-redis:6379/0', 'CACHE_REDIS_URL=redis://roms-autonomy-test-redis:6379/0',
     'DISABLE_PARALLELIZATION=true', 'CI=true', 'SECRET_KEY_BASE=autonomy-synthetic-only',
-    'PLAYWRIGHT_BROWSERS_PATH=/autonomy-browsers', 'RUBYOPT=-r/workspace/.term-llm/test_guard.rb',
-    'bundle', 'exec', 'ruby']
+    'PLAYWRIGHT_BROWSERS_PATH=/autonomy-browsers', 'RUBYOPT=-r/workspace/test/tooling/autonomy_guard.rb']
+if os.environ.get('AUTONOMY_BROWSER_EVIDENCE') == 'true':
+    cmd += ['AUTONOMY_BROWSER_EVIDENCE=true']
+cmd += ['bundle', 'exec', 'ruby']
 if args == ['preflight']:
-    cmd += ['.term-llm/preflight.rb']
+    cmd += ['test/tooling/autonomy_preflight.rb']
 elif args == ['docs']:
     cmd += ['bin/check-development-docs']
 elif args[0] == 'rubocop':
