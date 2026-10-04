@@ -84,7 +84,7 @@ def stop(signum, _frame):
 
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
-prompt = Path('.term-llm/pilot-prompt.md').read_text() + '\nParent flock held; isolation preflight passed. Charged iteration: ' + str(state['iterations_started']) + '. Do not publish or commit: supervisor owns publication. At outcome write tmp/autonomy-result.json with status, unsuccessful_repair_approaches (this iteration), summary and checks. Stop immediately at two cumulative failed approaches. Current prior failures=' + str(state['unsuccessful_repair_approaches']) + '. Do not repeat an unsuccessful approach. Implementation and review requests belong to supervisor.'
+prompt = Path('.term-llm/pilot-prompt.md').read_text() + '\nVerified parent checkpoint snapshot: ' + json.dumps(state) + '\nVerified resource identity: ' + (common / 'roms-autonomy-resources.json').read_text() + '\nParent flock held; isolation preflight passed. Charged iteration: ' + str(state['iterations_started']) + '. Do not publish or commit: supervisor owns publication. At outcome write tmp/autonomy-result.json with status, unsuccessful_repair_approaches (this iteration), summary and checks. Stop immediately at two cumulative failed approaches. Current prior failures=' + str(state['unsuccessful_repair_approaches']) + '. Do not repeat an unsuccessful approach. Implementation and review requests belong to supervisor.'
 def settle_group():
     # Keep the common lock while any descendant remains. Never force-kill.
     try:
@@ -105,7 +105,7 @@ def settle_group():
 
 
 try:
-    child = subprocess.Popen(['term-llm', '--no-session', 'loop', '--agent', './.term-llm/agents/autonomy-pilot', '--approval', 'auto', '--max', '1', '--done-file', 'tmp/autonomy-result.json:status', '--max-turns', '100', prompt], start_new_session=True)
+    child = subprocess.Popen(['term-llm', '--no-session', 'loop', '--agent', './.term-llm/agents/autonomy-pilot', '--approval', 'auto', '--read-dir', str(root), '--write-dir', str(root), '--max', '1', '--done-file', 'tmp/autonomy-result.json:status', '--max-turns', '100', prompt], start_new_session=True)
     code = child.wait()
     settle_group()
     state['child_exit'] = code
