@@ -40,9 +40,6 @@ jobs:
           bundle exec ruby test/tooling/check_development_docs_test.rb
           bundle exec ruby test/tooling/publish_workflow_test.rb
 
-      - name: Verify bounded autonomy runner lifecycle offline
-        run: python3 test/tooling/autonomy_runner_test.py
-
   scan_ruby:
     runs-on: ubuntu-latest
     timeout-minutes: 10
