@@ -25,9 +25,8 @@ module AutonomyBrowserNetwork
     def create_browser_context
       super.tap do |context|
         context.route("**/*", ->(route, request) {
-          uri = URI(request.url)
           server = Capybara.current_session.server
-          if server && uri.scheme == "http" && uri.host == "127.0.0.1" && uri.port == server.port
+          if server && request.url.start_with?("http://127.0.0.1:#{server.port}/")
             route.continue
           else
             route.abort
