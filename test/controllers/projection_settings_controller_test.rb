@@ -21,7 +21,7 @@ class ProjectionSettingsControllerTest < ActionDispatch::IntegrationTest
       use_pag_defaults: "0"
     }
 
-    assert_redirected_to projections_path(tab: "investments")
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 15)
 
     @investment_account.reload
     account_assumption = @investment_account.projection_assumption
@@ -44,20 +44,20 @@ class ProjectionSettingsControllerTest < ActionDispatch::IntegrationTest
       projection_years: "10"
     }
 
-    assert_redirected_to projections_path(tab: "investments")
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 10)
 
     account_assumption.reload
     assert_equal true, account_assumption.use_pag_defaults
   end
 
-  test "update responds with turbo stream" do
+  test "update redirects turbo requests to a fresh projection page" do
     patch account_projection_settings_path(@investment_account), params: {
       expected_return: "7.0",
       projection_years: "5"
     }, as: :turbo_stream
 
-    assert_response :success
-    assert_match "turbo-stream", response.content_type
+    assert_response :see_other
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 5)
   end
 
   test "reset deletes account-specific assumption and falls back to family default" do
@@ -71,21 +71,21 @@ class ProjectionSettingsControllerTest < ActionDispatch::IntegrationTest
 
     delete reset_account_projection_settings_path(@investment_account)
 
-    assert_redirected_to projections_path(tab: "investments")
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 10)
 
     @investment_account.reload
     assert_not @investment_account.custom_projection_settings?
     assert_nil @investment_account.projection_assumption
   end
 
-  test "reset responds with turbo stream" do
+  test "reset redirects turbo requests to a fresh projection page" do
     # Create account-specific assumption first
     ProjectionAssumption.create_for_account(@investment_account, { expected_return: 0.12 })
 
     delete reset_account_projection_settings_path(@investment_account), as: :turbo_stream
 
-    assert_response :success
-    assert_match "turbo-stream", response.content_type
+    assert_response :see_other
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 10)
   end
 
   test "requires authentication" do

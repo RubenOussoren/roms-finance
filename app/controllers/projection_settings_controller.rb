@@ -1,5 +1,5 @@
 class ProjectionSettingsController < ApplicationController
-  include ActionView::RecordIdentifier
+  include ProjectionContext
 
   before_action :set_account
 
@@ -18,47 +18,14 @@ class ProjectionSettingsController < ApplicationController
       )
     end
 
-    years = projection_settings_params[:projection_years]&.to_i || 10
-
-    respond_to do |format|
-      format.html { redirect_to projections_path(tab: "investments") }
-      format.turbo_stream do
-        render turbo_stream: [
-          turbo_stream.replace(
-            dom_id(@account, :projection_chart),
-            UI::Account::ProjectionChart.new(account: @account, years: years, assumption: @assumption)
-          ),
-          turbo_stream.replace(
-            dom_id(@account, :projection_settings),
-            UI::Projections::AccountSettingsInline.new(account: @account, projection_years: years)
-          )
-        ]
-      end
-    end
+    redirect_to projections_path(projection_context(default_tab: "investments")), status: :see_other
   end
 
   def reset
     # Delete account-specific assumption to fall back to family defaults
     @account.projection_assumption&.destroy
 
-    years = params[:projection_years]&.to_i || 10
-    @assumption = @account.effective_projection_assumption
-
-    respond_to do |format|
-      format.html { redirect_to projections_path(tab: "investments") }
-      format.turbo_stream do
-        render turbo_stream: [
-          turbo_stream.replace(
-            dom_id(@account, :projection_chart),
-            UI::Account::ProjectionChart.new(account: @account.reload, years: years, assumption: @assumption)
-          ),
-          turbo_stream.replace(
-            dom_id(@account, :projection_settings),
-            UI::Projections::AccountSettingsInline.new(account: @account, projection_years: years)
-          )
-        ]
-      end
-    end
+    redirect_to projections_path(projection_context(default_tab: "investments")), status: :see_other
   end
 
   private
