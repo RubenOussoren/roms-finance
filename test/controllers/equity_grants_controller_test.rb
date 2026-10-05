@@ -1,6 +1,69 @@
 require "test_helper"
+require_relative "../support/equity_regeneration_scenario"
 
 class EquityGrantsControllerTest < ActionDispatch::IntegrationTest
+  include EquityRegenerationScenario
+
+  test "deleting the last grant synchronizes the preserved opening balance" do
+    setup_equity_regeneration_scenario(opening: 200)
+    assert_materialized_equity_balance(1200)
+    delete account_equity_grant_path(@account, @grant)
+
+    assert_redirected_to account_path(@account, tab: :grants)
+    assert_empty generated_vesting_entries
+    assert_equal 200, @anchor.reload.amount
+    assert_materialized_equity_balance(200)
+  end
+
+  test "updating the last grant to future-only synchronizes without stale valuations" do
+    setup_equity_regeneration_scenario
+    assert_materialized_equity_balance(1000)
+    patch account_equity_grant_path(@account, @grant), params: {
+      equity_grant: { grant_date: Date.current + 1.year }
+    }
+
+    assert_redirected_to account_path(@account, tab: :grants)
+    assert_empty generated_vesting_entries
+    assert_materialized_equity_balance(0)
+  end
+  %w[hidden balance_only foreign].each do |access|
+    test "#{access} viewer cannot edit or delete a grant or trigger regeneration" do
+      setup_equity_regeneration_scenario(opening: 200)
+      viewer = access == "foreign" ? users(:empty) : users(:family_member)
+      @account.account_permissions.create!(user: viewer, visibility: access) unless access == "foreign"
+      sign_in viewer
+      original_entries = @account.entries.order(:id).pluck(:id, :amount)
+      original_grant = @grant.attributes
+
+      assert_no_difference [ "EquityGrant.count", "Entry.count", "Sync.count" ] do
+        get edit_account_equity_grant_path(@account, @grant)
+        assert_response :not_found
+        assert_no_match @grant.name, response.body
+
+        patch account_equity_grant_path(@account, @grant), params: {
+          equity_grant: { grant_date: Date.current + 1.year }
+        }
+        assert_response :not_found
+
+        delete account_equity_grant_path(@account, @grant)
+        assert_response :not_found
+      end
+      assert_equal original_grant, @grant.reload.attributes
+      assert_equal original_entries, @account.entries.order(:id).pluck(:id, :amount)
+      assert_materialized_equity_balance(1200)
+    end
+  end
+
+  test "full-access member can delete a grant and synchronize" do
+    setup_equity_regeneration_scenario(opening: 200)
+    sign_in users(:family_member)
+    delete account_equity_grant_path(@account, @grant)
+
+    assert_redirected_to account_path(@account, tab: :grants)
+    assert_empty generated_vesting_entries
+    assert_materialized_equity_balance(200)
+  end
+
   setup do
     sign_in @user = users(:family_admin)
     @account = accounts(:equity_compensation)

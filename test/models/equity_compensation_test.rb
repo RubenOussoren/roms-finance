@@ -1,6 +1,87 @@
 require "test_helper"
+require_relative "../support/equity_regeneration_scenario"
 
 class EquityCompensationTest < ActiveSupport::TestCase
+  include EquityRegenerationScenario
+
+  test "last grant removal clears generated history without an opening anchor" do
+    setup_equity_regeneration_scenario
+    assert_materialized_equity_balance(1000)
+    assert_equal 1, generated_vesting_entries.count
+    @grant.destroy!
+
+    2.times do
+      @equity.reload.regenerate_vesting_valuations!
+      assert_empty generated_vesting_entries
+      assert_materialized_equity_balance(0)
+      assert_equal [ 0.to_d ], @account.balances.distinct.pluck(:balance)
+    end
+  end
+
+  test "last grant removal preserves the opening anchor and rematerializes history" do
+    setup_equity_regeneration_scenario(opening: 200)
+    assert_materialized_equity_balance(1200)
+    @grant.destroy!
+
+    2.times do
+      @equity.reload.regenerate_vesting_valuations!
+      assert_empty generated_vesting_entries
+      assert_equal 200, @anchor.reload.amount
+      assert_materialized_equity_balance(200)
+      assert_equal [ 200.to_d ], @account.balances.distinct.pluck(:balance)
+    end
+  end
+
+  test "moving all vesting to the future clears generated history" do
+    setup_equity_regeneration_scenario(opening: 200)
+    assert_materialized_equity_balance(1200)
+    @grant.update!(grant_date: Date.current + 1.year)
+    Security.any_instance.expects(:import_provider_prices).never
+
+    2.times do
+      @equity.reload.regenerate_vesting_valuations!
+      assert_empty generated_vesting_entries
+      assert_equal 200, @anchor.reload.amount
+      assert_materialized_equity_balance(200)
+      assert_equal [ 200.to_d ], @account.balances.distinct.pluck(:balance)
+    end
+  end
+
+  test "empty grant regeneration preserves manual observations and their materialized balance" do
+    setup_equity_regeneration_scenario(opening: 200)
+    manual = @account.entries.create!(name: "Manual observation", date: Date.current - 1.day,
+      amount: 350, currency: "USD", entryable: Valuation.new(kind: "reconciliation"))
+    @grant.destroy!
+
+    2.times do
+      @equity.reload.regenerate_vesting_valuations!
+      assert_empty generated_vesting_entries
+      assert_equal 200, @anchor.reload.amount
+      assert_equal 350, manual.reload.amount
+      assert_materialized_equity_balance(350)
+      assert_equal 200, @account.balances.find_by!(date: @anchor.date, currency: "USD").end_balance
+      assert_equal 350, @account.balances.find_by!(date: manual.date, currency: "USD").end_balance
+    end
+  end
+  test "empty grant regeneration preserves signed transactions under the existing forward convention" do
+    setup_equity_regeneration_scenario(opening: 200)
+    outflow = @account.entries.create!(name: "Synthetic withdrawal", date: Date.current - 2.days,
+      amount: 50, currency: "USD", entryable: Transaction.new)
+    inflow = @account.entries.create!(name: "Synthetic contribution", date: Date.current - 1.day,
+      amount: -20, currency: "USD", entryable: Transaction.new)
+    @grant.destroy!
+
+    2.times do
+      @equity.reload.regenerate_vesting_valuations!
+      assert_empty generated_vesting_entries
+      assert_equal 50, outflow.reload.amount
+      assert_equal(-20, inflow.reload.amount)
+      # Asset entry signs: 200 opening - 50 withdrawal + 20 contribution = 170.
+      assert_materialized_equity_balance(170)
+      assert_equal 150, @account.balances.find_by!(date: outflow.date, currency: "USD").end_balance
+    end
+  end
+
   test "classification is asset" do
     assert_equal "asset", EquityCompensation.classification
   end

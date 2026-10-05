@@ -141,14 +141,13 @@ class EquityCompensation < ApplicationRecord
     return unless acct
 
     grants = equity_grants.includes(:security).to_a
-    return if grants.empty?
 
-    # Collect all vesting dates across grants
+    # An empty schedule still needs cleanup and synchronization: old generated
+    # valuations must not survive the last grant's removal or a future-only edit.
     all_dates = grants.flat_map { |g| g.vesting_dates(up_to: Date.current) }.uniq.sort
-    return if all_dates.empty?
 
-    # Batch-fetch historical prices for each security
-    securities = grants.map(&:security).uniq
+    # No historical prices are needed when there are no vesting dates.
+    securities = all_dates.empty? ? [] : grants.map(&:security).uniq
     securities.each do |sec|
       sec.import_provider_prices(start_date: all_dates.first, end_date: Date.current)
     rescue => e

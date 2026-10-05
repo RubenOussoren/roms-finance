@@ -56,7 +56,7 @@ class EquityGrantsController < ApplicationController
     end
 
     def set_account
-      @account = scoped_accounts.find(params[:account_id])
+      @account = full_access_accounts.find(params[:account_id])
       raise ActiveRecord::RecordNotFound unless @account.accountable.is_a?(EquityCompensation)
     end
 
