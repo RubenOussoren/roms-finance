@@ -95,3 +95,15 @@ available, skips/blocked checks, altered assumptions/output and remaining risks.
 Label historical results with their SHA/report. Keep temporary logs under `tmp/`,
 not shared policy. Record architectural decisions in numbered ADRs; record findings
 with evidence and confidence. Publication/deployment requires separate authorization.
+
+## Projection navigation context
+
+Projection pages and account settings update/reset share navigation defaults:
+Household scope and a 10-year horizon when context is absent or invalid. A horizon
+must be a positive whole number; this does not introduce a new upper limit or
+change the UI's existing choices. Valid tabs are Overview, Investments, Debts and
+Strategies. The page defaults to Overview; account settings default to Investments
+when no valid originating tab is supplied. Context is navigation state, never
+account authorization. Settings mutations return a 303 redirect to that context;
+Turbo refreshes the enclosing projection frame, including dependent card summaries.
+Projection pages opt out of Turbo snapshot caching so Back fetches current values.

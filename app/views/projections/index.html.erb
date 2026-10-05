@@ -1,3 +1,7 @@
+<%# Financial summaries must be fetched again on browser Back, not restored from a stale snapshot. %>
+<% content_for :head do %>
+  <%= tag.meta name: "turbo-cache-control", content: "no-cache" %>
+<% end %>
 <div class="space-y-6">
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
@@ -36,7 +40,7 @@
           <% end %>
         </nav>
 
-        <%= form_with url: projections_path, method: :get, data: { controller: "auto-submit-form" } do |form| %>
+        <%= form_with url: projections_path, method: :get, data: { controller: "auto-submit-form", turbo_action: "replace" } do |form| %>
           <%= form.hidden_field :tab, value: @tab %>
           <%= form.hidden_field :scope, value: @scope %>
           <%= form.select :projection_years,
