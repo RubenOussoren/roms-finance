@@ -43,20 +43,23 @@ class Assistant::Function::GetCategories < Assistant::Function
     {
       period: params["period"] || "this_month",
       currency: family.currency,
-      categories: parent_categories.map { |cat|
+      categories: parent_categories.filter_map { |cat|
         spending = category_spending(cat, account_ids, period_range)
-        subcats = cat.subcategories.map { |sub|
+        subcats = cat.subcategories.filter_map { |sub|
           sub_spending = category_spending(sub, account_ids, period_range)
-          { name: sub.name, classification: sub.classification, spending: sub_spending }
-        }.select { |s| s[:spending].to_f > 0 }
+          next unless sub_spending.amount.positive?
+
+          { name: sub.name, classification: sub.classification, spending: sub_spending.format }
+        }
+        next unless spending.amount.positive? || subcats.any?
 
         {
           name: cat.name,
           classification: cat.classification,
-          spending: spending,
+          spending: spending.format,
           subcategories: subcats
         }
-      }.select { |c| c[:spending].to_f > 0 || c[:subcategories].any? }
+      }
     }
   end
 
@@ -67,7 +70,7 @@ class Assistant::Function::GetCategories < Assistant::Function
                  .where(category_id: category.id)
                  .where("entries.amount > 0")
                  .sum("entries.amount")
-                 .then { |sum| Money.new(sum, family.currency).format }
+                 .then { |sum| Money.new(sum, family.currency) }
     end
 
     def resolve_period(period_name)
