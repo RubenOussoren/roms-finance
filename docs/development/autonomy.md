@@ -19,8 +19,11 @@ This is a scoped pilot, not standing permission for arbitrary automation.
   implementation PR and relevant issue updates. Inspect the diff first; reconcile
   uncertain remote outcomes before retrying and reuse the recorded PR identity.
   This approval does not extend to unrelated changes or broader publication.
-- **No merge, deploy, production operation, release, protected-branch push,
-  force push, history rewriting or recurring schedule.** Do not install services.
+- Under the original pilot approval: **no merge, deploy, production operation,
+  release, protected-branch push, force push, history rewriting or recurring
+  schedule.** A later explicit maintainer instruction may authorize the named
+  PR merges; it does not create standing merge/deploy permission. Do not install
+  services.
 - Ask before changing financial assumptions, household/account access policy,
   consent/memory behavior or destructive operations. Do not mine memories or
   persist personal household information without consent.
@@ -77,24 +80,81 @@ Retain the common-directory `roms-autonomy-resources.json` and existing ownershi
   **`bootstrap-2026-10`**, disposable label, recorded container ID, sandbox network
   and no published ports. Its definition is [compose.autonomy-test.yml](../../compose.autonomy-test.yml).
 
-[bin/autonomy-check](../../bin/autonomy-check) verifies these resources and the
-recorded setup worktree or pilot checkpoint branch/worktree/SHA. Missing records,
-identity collisions or unavailable access stop validation; never adopt replacements.
+[bin/autonomy-check](../../bin/autonomy-check) verifies the Redis identity,
+DB ownership comment and recorded setup worktree or pilot checkpoint
+branch/worktree/SHA. The retained app/database containers are not ID-pinned;
+these checks are not proof against replacement of the entire sandbox. Re-verify
+local environment identity at each handoff. Missing records, Redis identity
+collisions or unavailable access stop validation; never adopt replacements.
 Its separate `roms-autonomy-test.lock` serializes helper calls. Keep the common
 phase lock held as well when performing a supervised pilot phase.
 
-The helper uses disposable `compose run --rm --no-deps` processes for ordinary
-checks. Browser checks reuse the already-equipped app container with a temporary
-snapshot of the selected branch's tracked source and scoped tests, not its retained
-development source or server. Ordinary checks mount bundle/npm dependencies
-read-only; browser checks use disposable copies rather than writable links to
-retained dependencies. Only newly created temporary snapshots are cleaned up.
-No host ports are published.
-The test process receives `env -i`, explicit test DB/Redis and disabled parallelization.
+Both ordinary and browser checks consume the **same frozen source policy**:
+tracked files, nonignored new files under `app`, `bin`, `config`, `lib`, `db`,
+`test`, `docs` and `tooling`, and explicit generated `app/assets/builds` and
+`public/assets`. Other new roots must be deliberately included in that policy
+before validation. Credentials, dotenv files (except examples), secret/private
+state, `.git`, logs, tempfiles and dependency directories are excluded without
+reading their contents. Tracked `vendor/javascript` and `vendor/assets` are
+application source and are included; installed `vendor/bundle` is not. Unsafe,
+escaping or secret-targeting symlinks are refused.
+The helper prints HEAD and a SHA256 digest of captured paths, modes and contents;
+for dirty worktrees report **HEAD plus digest**, not only HEAD. Later edits are
+not in that capture. Successful asset precompilation copies only new/changed
+approved build files back; application source is never copied back.
+
+Ordinary checks use a uniquely named detached `compose run --no-deps` container
+with restart disabled and read-only bundle/npm mounts. Docker wait plus inspected
+exit state confirms settlement before non-force removal of that owned container.
+Browser checks reuse the already-equipped app container with a uniquely named
+temporary copy of that same frozen capture and disposable dependency copies,
+not its retained development source/server. Archive copying preserves the
+verified matching sandbox user UID/GID. Daemon-side dependency/test commands
+write unique completion/exit markers; CLI attachment exit alone is not completion.
+These markers prove the invoked command returned, not general process-tree
+supervision. Supported browser tests must use normal Rails/Capybara/Playwright
+shutdown of owned children; do not use this path for daemonizing tests. If shutdown
+is abnormal or surviving owned work is suspected, establish settlement through
+supervised reconciliation rather than relying only on a marker or reusing resources.
+Only helper-owned temporary snapshots and containers are cleaned. No host ports
+are published. The test process receives `env -i`, explicit test DB/Redis and
+disabled parallelization.
+
+SIGINT/SIGTERM (including repeated signals) stop scheduling further validation,
+but **wait for already-started operations to settle** before cleaning snapshots
+or releasing the test lock. A hung operation intentionally remains locked; do
+not interrupt it with SIGKILL just to obtain the lock. Before capture/launch the
+helper writes `roms-autonomy-pending.json` and an owned operation directory in
+the common Git directory. SIGKILL, disconnected Docker operations or uncertain
+settlement retain that private record/snapshot and block future helper calls,
+even if the old PID no longer exists. They are not public artifacts.
+
+### Supervised validation reconciliation
+
+Do not automatically delete a pending record or infer settlement from age/PID.
+Under both common phase and test locks, inspect the record's operation ID,
+phase, owned paths/container/marker and the actual sandbox. For ordinary work,
+confirm the **recorded owned container** is exited (not just its CLI) and inspect
+its exit code/logs before non-force removal. For browser work, confirm the
+recorded daemon-side completion marker/exit code or otherwise establish that
+all owned work has ended; never restart/kill the retained app to force settlement.
+If launch outcome, ownership or completion is unknown, stop and retain state.
+Only after verified settlement may the supervisor clean the exact owned paths
+and pending record and record the evidence in the checkpoint. A capture-only
+failure with no daemon work can be reconciled on that narrower evidence.
+Reconciliation is supervised recovery, not permission to reset data/start services.
+
 [test guard](../../test/tooling/autonomy_guard.rb) disables dotenv and credentials,
 blocks external Ruby HTTP, prevents VCR recording and restricts Playwright requests
 to the current local Capybara server. This is not a general network firewall.
 Never read local secrets or call live financial, AI, payment or email providers.
+
+Offline helper regression tests require Python 3 and Git, not Rails, Docker,
+secrets or test data, and run in the development-docs CI job:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/tooling -p autonomy_check_test.py -v
+```
 
 ## Actual helper commands
 

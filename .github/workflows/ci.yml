@@ -39,6 +39,8 @@ jobs:
           ruby bin/check-development-docs
           bundle exec ruby test/tooling/check_development_docs_test.rb
           bundle exec ruby test/tooling/publish_workflow_test.rb
+          test -f test/tooling/autonomy_check_test.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test/tooling -p autonomy_check_test.py -v
 
   scan_ruby:
     runs-on: ubuntu-latest
