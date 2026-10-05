@@ -1,0 +1,15 @@
+name: roms-autonomy-resources
+services:
+  test-redis:
+    image: redis:7-alpine
+    container_name: roms-autonomy-test-redis
+    labels:
+      finance.roms.autonomy.owner: bootstrap-2026-10
+      finance.roms.autonomy.disposable: "true"
+    networks: [sandbox]
+    command: [redis-server, --save, "", --appendonly, "no"]
+    restart: "no"
+networks:
+  sandbox:
+    external: true
+    name: roms-finance-sandbox_default
