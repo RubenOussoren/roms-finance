@@ -76,7 +76,7 @@
     <%= render UI::Projections::NetWorthProjectionChart.new(
       projection_data: net_worth_projection,
       years: projection_years,
-      family: family
+      current_net_worth_money: balance_sheet.net_worth_money
     ) %>
   <% end %>
 
