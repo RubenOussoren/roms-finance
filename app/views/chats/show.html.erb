@@ -10,6 +10,10 @@
       </div>
 
       <div id="messages" class="grow overflow-y-auto p-4 space-y-6 pb-24 lg:pb-4" data-chat-target="messages" role="log" aria-live="polite">
+        <% if @chat.legacy_context? %>
+          <p class="text-xs text-secondary" role="note">Older unlinked messages remain visible but are excluded from AI context. Send a new prompt to continue; unlinked replies cannot be retried.</p>
+        <% end %>
+
         <% if @chat.conversation_messages.any? %>
           <% @chat.conversation_messages.ordered.each do |message| %>
             <%= render message %>
@@ -20,9 +24,11 @@
           </div>
         <% end %>
 
-        <% if @chat.error.present? && @chat.needs_assistant_response? %>
-          <%= render "chats/error", chat: @chat %>
-        <% end %>
+        <div id="chat-error-container">
+          <% if @chat.error.present? %>
+            <%= render "chats/error", chat: @chat %>
+          <% end %>
+        </div>
       </div>
 
       <%# DESKTOP - Chat form %>

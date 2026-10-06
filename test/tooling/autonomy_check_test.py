@@ -209,6 +209,86 @@ class LifecycleTests(Fixture):
         h.validate_cli(['db:schema:load'], {'AUTONOMY_PREPARE_APPROVED': 'bootstrap-2026-10'})
         h.validate_cli(['test', 'test/models/account_test.rb'], {})
 
+    def test_issue145_migration_requires_its_own_approval(self):
+        for env in [{}, {'AUTONOMY_PREPARE_APPROVED': 'bootstrap-2026-10'},
+                    {'AUTONOMY_MIGRATE_APPROVED': 'wrong'}]:
+            with self.assertRaises(h.HarnessError):
+                h.validate_cli(['db:issue145:migrate'], env)
+        h.validate_cli(['db:issue145:migrate'], {'AUTONOMY_MIGRATE_APPROVED': 'issue-145'})
+        with self.assertRaises(h.HarnessError):
+            h.validate_cli(['db:issue145:migrate', 'extra'], {'AUTONOMY_MIGRATE_APPROVED': 'issue-145'})
+        command = h.validation_command(['db:issue145:migrate'], '/workspace', '/bundle', '/browser', {})
+        self.assertIn('POSTGRES_DB=roms_autonomy_test', command)
+        self.assertIn('AUTONOMY_MIGRATE_APPROVED=issue-145', command)
+        self.assertEqual(command[-4:], ['bundle', 'exec', 'ruby', 'tooling/migrate_issue145.rb'])
+
+    def test_issue145_schema_copyback_is_version_and_source_bound(self):
+        schema = self.file('db/schema.rb', 'old')
+        before = h.hashlib.sha256(schema.read_bytes()).hexdigest()
+        snapshot = self.snapshot()
+        (snapshot / 'db').mkdir()
+        source = snapshot / 'db/schema.rb'
+        source.write_text('wrong version')
+        with self.assertRaises(h.HarnessError):
+            h.publish_issue145_schema(snapshot, self.root, before)
+        source.write_text('version: 2026_10_06_030003')
+        schema.write_text('unrelated edit')
+        with self.assertRaises(h.HarnessError):
+            h.publish_issue145_schema(snapshot, self.root, before)
+        self.assertEqual(schema.read_text(), 'unrelated edit')
+        schema.write_text('old')
+        h.publish_issue145_schema(snapshot, self.root, before)
+        self.assertEqual(schema.read_text(), source.read_text())
+        schema.unlink()
+        schema.symlink_to(source)
+        with self.assertRaises(h.HarnessError):
+            h.publish_issue145_schema(snapshot, self.root, before)
+
+    def test_test_commands_cannot_inherit_preparation_approval(self):
+        approvals = {'AUTONOMY_PREPARE_APPROVED': 'bootstrap-2026-10',
+                     'AUTONOMY_MIGRATE_APPROVED': 'issue-145'}
+        test = h.validation_command(['test'], '/workspace', '/bundle', '/browser', approvals)
+        self.assertFalse(any(v.startswith('AUTONOMY_PREPARE_APPROVED=') or
+                             v.startswith('AUTONOMY_MIGRATE_APPROVED=') for v in test))
+        migration = h.validation_command(['db:issue145:migrate'], '/workspace', '/bundle', '/browser', approvals)
+        self.assertNotIn('AUTONOMY_PREPARE_APPROVED=bootstrap-2026-10', migration)
+        self.assertIn('AUTONOMY_MIGRATE_APPROVED=issue-145', migration)
+        preparation = h.validation_command(['db:schema:load'], '/workspace', '/bundle', '/browser', approvals)
+        self.assertIn('AUTONOMY_PREPARE_APPROVED=bootstrap-2026-10', preparation)
+
+    def test_failed_migration_retains_settled_operation(self):
+        self.file('db/schema.rb', 'baseline')
+        original = self.git_output
+        def migration_git(args):
+            if '--show-current' in args:
+                return 'automation/issue-145'
+            return original(args)
+        with self.main_patches(), mock.patch.object(h, 'output', side_effect=migration_git), \
+             mock.patch.object(h, 'ordinary', return_value=1):
+            self.assertEqual(h.main(['db:issue145:migrate'], {'AUTONOMY_MIGRATE_APPROVED': 'issue-145'}), 1)
+        record = json.loads((self.common / 'roms-autonomy-pending.json').read_text())
+        self.assertTrue(Path(record['snapshot']).exists())
+        self.assertEqual((self.root / 'db/schema.rb').read_text(), 'baseline')
+
+    def test_schema_edit_during_capture_refuses_migration_launch(self):
+        schema = self.file('db/schema.rb', 'baseline')
+        freeze = h.freeze_source
+        original = self.git_output
+        def migration_git(args):
+            if '--show-current' in args:
+                return 'automation/issue-145'
+            return original(args)
+        def capture_then_edit(root, destination):
+            digest = freeze(root, destination)
+            schema.write_text('unrelated edit during capture')
+            return digest
+        with self.main_patches(), mock.patch.object(h, 'output', side_effect=migration_git), \
+             mock.patch.object(h, 'freeze_source', side_effect=capture_then_edit), \
+             mock.patch.object(h, 'ordinary') as launch:
+            self.assertEqual(h.main(['db:issue145:migrate'], {'AUTONOMY_MIGRATE_APPROVED': 'issue-145'}), 1)
+            launch.assert_not_called()
+        self.assertEqual(schema.read_text(), 'unrelated edit during capture')
+
     def test_pending_refuses_reuse_without_cleanup(self):
         pending = h.Pending(self.common, self.root, 'head')
         with self.main_patches(), mock.patch.object(h, 'verify_resources') as resources:

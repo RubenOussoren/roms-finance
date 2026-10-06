@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_030003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -671,19 +671,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_120000) do
 
   create_table "messages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "ai_model"
+    t.integer "attempt_number"
     t.uuid "chat_id", null: false
     t.text "content"
+    t.integer "conversation_turn"
     t.integer "cost_cents"
     t.datetime "created_at", null: false
     t.boolean "debug", default: false
+    t.datetime "execution_claimed_at"
     t.integer "input_tokens"
+    t.uuid "origin_user_message_id"
     t.integer "output_tokens"
     t.string "provider_id"
     t.boolean "reasoning", default: false
+    t.uuid "replaces_message_id"
     t.string "status", default: "complete", null: false
     t.string "type", null: false
     t.datetime "updated_at", null: false
+    t.index ["chat_id", "conversation_turn"], name: "index_messages_on_chat_and_turn", unique: true, where: "(conversation_turn IS NOT NULL)"
     t.index ["chat_id"], name: "index_messages_on_chat_id"
+    t.index ["id", "chat_id"], name: "index_messages_on_id_and_chat", unique: true
+    t.index ["origin_user_message_id", "attempt_number"], name: "index_messages_on_origin_and_attempt", unique: true, where: "(origin_user_message_id IS NOT NULL)"
+    t.index ["replaces_message_id"], name: "index_messages_on_replaced_attempt", unique: true, where: "(replaces_message_id IS NOT NULL)"
+    t.check_constraint "conversation_turn IS NULL OR type::text = 'UserMessage'::text AND conversation_turn > 0", name: "messages_conversation_turn_shape"
+    t.check_constraint "origin_user_message_id IS NULL AND attempt_number IS NULL AND replaces_message_id IS NULL AND execution_claimed_at IS NULL OR type::text = 'AssistantMessage'::text AND origin_user_message_id IS NOT NULL AND attempt_number IS NOT NULL AND attempt_number > 0 AND conversation_turn IS NULL AND origin_user_message_id <> id AND (attempt_number = 1 AND replaces_message_id IS NULL OR attempt_number > 1 AND replaces_message_id IS NOT NULL AND replaces_message_id <> id)", name: "messages_response_attempt_shape"
   end
 
   create_table "milestones", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1214,6 +1225,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_120000) do
   add_foreign_key "message_feedbacks", "messages"
   add_foreign_key "message_feedbacks", "users"
   add_foreign_key "messages", "chats"
+  add_foreign_key "messages", "messages", column: ["origin_user_message_id", "chat_id"], primary_key: ["id", "chat_id"], name: "fk_messages_origin_in_chat", deferrable: :deferred
+  add_foreign_key "messages", "messages", column: ["replaces_message_id", "chat_id"], primary_key: ["id", "chat_id"], name: "fk_messages_replacement_in_chat", deferrable: :deferred
   add_foreign_key "milestones", "accounts"
   add_foreign_key "mobile_devices", "users"
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"

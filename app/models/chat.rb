@@ -23,24 +23,66 @@ class Chat < ApplicationRecord
     end
   end
 
+  class RetryUnavailable < StandardError; end
+
   def needs_assistant_response?
-    conversation_messages.ordered.last.role != "assistant"
+    prompt = latest_explicit_prompt
+    prompt.present? && !linked_attempts(prompt).where(status: :complete).exists?
   end
 
-  def retry_last_message!
-    update!(error: nil)
+  def response_in_progress?
+    messages.where(type: "AssistantMessage", status: :pending).where.not(origin_user_message_id: nil).exists?
+  end
 
-    last_message = conversation_messages.ordered.last
+  def legacy_context?
+    messages.where(type: "UserMessage", conversation_turn: nil).exists? ||
+      messages.where(type: "AssistantMessage", origin_user_message_id: nil).exists?
+  end
 
-    if last_message.present? && last_message.role == "user"
+  def retry_last_message!(message_id: nil, recover_interrupted: false)
+    created = false
+    attempt = with_lock do
+      source = if message_id.present?
+        messages.find(message_id)
+      else
+        prompt = latest_explicit_prompt
+        linked_attempts(prompt).order(attempt_number: :desc).first if prompt
+      end
+      unless source.is_a?(AssistantMessage) && source.origin_user_message&.conversation_turn.present?
+        raise RetryUnavailable, "This reply has no explicit prompt link. Send a new prompt to continue."
+      end
 
-      ask_assistant_later(last_message)
+      replacement = source.replacement
+      next replacement if replacement
+      source.with_lock do
+        if source.pending? && recover_interrupted && source.stalled?
+          # Explicitly abandon idle output; this does not prove the worker is dead.
+          source.update!(status: :failed)
+        end
+      end
+      next source if source.pending?
+
+      inflight = linked_attempts(source.origin_user_message).find_by(status: :pending)
+      next inflight if inflight
+
+      # Branch from the latest attempt so one origin has a single replacement chain.
+      latest = linked_attempts(source.origin_user_message).order(attempt_number: :desc).first
+      if latest.id != source.id
+        raise RetryUnavailable, "A newer attempt exists. Retry the latest reply instead."
+      end
+      created = true
+      messages.create!(type: "AssistantMessage", content: "", status: :pending,
+        ai_model: source.origin_user_message.ai_model,
+        origin_user_message: source.origin_user_message, replaces_message: source,
+        attempt_number: source.attempt_number + 1)
     end
+    enqueue_attempt(attempt) if created
+    attempt
   end
 
   def add_error(e)
     update! error: e.to_json
-    broadcast_append target: "messages", partial: "chats/error", locals: { chat: self }
+    broadcast_update target: "chat-error-container", partial: "chats/error", locals: { chat: self }
   end
 
   def clear_error
@@ -53,12 +95,30 @@ class Chat < ApplicationRecord
   end
 
   def ask_assistant_later(message)
-    clear_error
-    AssistantResponseJob.perform_later(message)
+    attempt, created = reserve_initial_attempt(message)
+    enqueue_attempt(attempt) if created
+    attempt
   end
 
+  # Direct synchronous callers use the same reservation and execution claim as jobs.
   def ask_assistant(message)
     assistant.respond_to(message)
+  end
+
+  def reserve_initial_attempt(message)
+    unless message.is_a?(UserMessage) && message.persisted? && message.chat_id == id && message.conversation_turn.present?
+      raise RetryUnavailable, "Send a new prompt to request a reply; legacy prompts cannot be inferred."
+    end
+    with_lock do
+      existing = linked_attempts(message).find_by(attempt_number: 1)
+      next [ existing, false ] if existing
+      [ messages.create!(type: "AssistantMessage", content: "", status: :pending,
+          ai_model: message.ai_model, origin_user_message: message, attempt_number: 1), true ]
+    end
+  end
+
+  def authoritative_response_for(prompt)
+    linked_attempts(prompt).where(status: :complete).order(attempt_number: :desc).first
   end
 
   def conversation_messages
@@ -72,7 +132,11 @@ class Chat < ApplicationRecord
   def generate_summary
     return if summary.present?
 
-    msgs = conversation_messages.ordered.limit(10)
+    # Apply the same explicit-link boundary to summary requests as normal replies.
+    msgs = messages.where(type: "UserMessage").where.not(conversation_turn: nil)
+      .order(conversation_turn: :asc).limit(10).flat_map do |prompt|
+        [ prompt, authoritative_response_for(prompt) ].compact
+      end.first(10)
     return if msgs.size < 4
 
     provider = Provider::Registry.for_concept(:llm).providers.first
@@ -85,6 +149,26 @@ class Chat < ApplicationRecord
     text = response.data&.messages&.first&.output_text
     update!(summary: text) if text.present?
   rescue => e
-    Rails.logger.error("Chat summary generation failed: #{e.message}")
+    Rails.logger.error("Chat summary generation failed (#{e.class})")
   end
+
+  private
+    def latest_explicit_prompt
+      messages.where(type: "UserMessage").where.not(conversation_turn: nil).order(conversation_turn: :desc).first
+    end
+
+    def linked_attempts(prompt)
+      messages.where(type: "AssistantMessage", origin_user_message_id: prompt.id)
+    end
+
+    def enqueue_attempt(attempt)
+      clear_error
+      job = AssistantResponseJob.perform_later(attempt)
+      raise "Enqueue rejected" unless job
+    rescue
+      attempt.with_lock do
+        attempt.update!(status: :failed) if attempt.pending? && attempt.execution_claimed_at.nil?
+      end
+      add_error(Provider::Error.new("The reply could not be queued. Please retry this reply."))
+    end
 end

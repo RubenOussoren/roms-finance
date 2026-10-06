@@ -2,14 +2,14 @@ require "test_helper"
 
 class AssistantMessageTest < ActiveSupport::TestCase
   test "assistant message starts pending and transitions to complete" do
-    msg = AssistantMessage.create!(chat: chats(:one), content: "", ai_model: "gpt-5.4", status: :pending)
+    msg = claimed_attempt
     assert msg.pending?
     msg.update!(content: "Hello! Here is your response.", status: :complete)
     assert msg.complete?
   end
 
   test "append_text! batches writes" do
-    msg = AssistantMessage.create!(chat: chats(:one), content: "", ai_model: "gpt-5.4", status: :pending)
+    msg = claimed_attempt
     msg.start_streaming!
 
     10.times { msg.append_text!("word ") }
@@ -19,7 +19,7 @@ class AssistantMessageTest < ActiveSupport::TestCase
   end
 
   test "flush_buffer! is no-op when buffer is empty" do
-    msg = AssistantMessage.create!(chat: chats(:one), content: "", ai_model: "gpt-5.4", status: :pending)
+    msg = claimed_attempt
     msg.start_streaming!
     msg.flush_buffer!
     assert_equal "", msg.content
@@ -42,4 +42,12 @@ class AssistantMessageTest < ActiveSupport::TestCase
     msg = AssistantMessage.new(ai_model: "gpt-5.4", input_tokens: nil, output_tokens: nil)
     assert_equal 0, msg.calculate_cost
   end
+  private
+    def claimed_attempt
+      chat = chats(:one)
+      prompt = chat.messages.create!(type: "UserMessage", content: "Streaming prompt", ai_model: "gpt-5.4")
+      attempt = chat.messages.find_by!(origin_user_message_id: prompt.id, attempt_number: 1)
+      assert attempt.claim_execution!
+      attempt
+    end
 end
