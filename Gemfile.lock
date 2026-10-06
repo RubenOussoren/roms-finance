@@ -238,7 +238,7 @@ GEM
       thor
     highline (3.1.2)
       reline
-    hotwire-livereload (2.0.0)
+    hotwire-livereload (2.1.1)
       actioncable (>= 7.0.0)
       listen (>= 3.0.0)
       railties (>= 7.0.0)
