@@ -82,6 +82,23 @@ class PublishWorkflowTest < Minitest::Test
     end
   end
 
+  def test_ci_test_budget_covers_setup_and_both_required_suites
+    job = @ci.fetch("jobs").fetch("test")
+    assert_equal 20, job.fetch("timeout-minutes")
+    refute job.fetch("continue-on-error", false)
+    required = {
+      "Unit and integration tests" => "bin/rails test",
+      "System tests" => "DISABLE_PARALLELIZATION=true bin/rails test:system"
+    }
+    required.each do |name, command|
+      step = job.fetch("steps").find { |entry| entry["name"] == name }
+      refute_nil step, name
+      assert_equal command, step.fetch("run")
+      refute step.key?("if"), "#{name} must run unconditionally after successful setup"
+      refute step.fetch("continue-on-error", false), "#{name} must remain a required gate"
+    end
+  end
+
   def test_service_versions_match_sandbox
     services = @ci.fetch("jobs").fetch("test").fetch("services")
     assert_equal "postgres:16-alpine", services.fetch("postgres").fetch("image")

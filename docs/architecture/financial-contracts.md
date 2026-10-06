@@ -146,3 +146,16 @@ rounding, missing-data, date, jurisdiction and persistence behavior. Separate a
 structural extraction from a financial correction so numerical differences are
 explainable. See [current state](current-state.md) for effects that must first
 be moved to explicit orchestration boundaries.
+
+## Assistant tax report: candidate interest evidence
+
+`Assistant::Function::GenerateTaxReport` does not classify deductible interest.
+It lists date-filtered, full-access HELOC entries whose names contain `interest`,
+independently of debt-strategy existence. CSV rows include the source entry ID,
+date, account/entry names, recorded signed amount, entry currency and an explicit
+review status. Formula-prefixed textual evidence is escaped for spreadsheet use;
+numeric signs are preserved. The tool summary supplies candidate count, review
+status and limitations, not a deductible-interest total. An empty candidate set
+is not a determination of zero eligible deductions. Borrowed-fund purpose and
+jurisdictional eligibility require source-record/professional review. Other
+income/proceeds currency aggregation limitations remain separate work (#142).

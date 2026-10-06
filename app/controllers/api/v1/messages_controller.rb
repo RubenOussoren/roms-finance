@@ -13,7 +13,6 @@ class Api::V1::MessagesController < Api::V1::BaseController
     )
 
     if @message.save
-      AssistantResponseJob.perform_later(@message)
       render :show, status: :created
     else
       render json: { error: "Failed to create message", details: @message.errors.full_messages }, status: :unprocessable_entity
@@ -21,20 +20,19 @@ class Api::V1::MessagesController < Api::V1::BaseController
   end
 
   def retry
-    last_message = @chat.messages.ordered.last
-
-    if last_message&.type == "AssistantMessage"
-      new_message = @chat.messages.create!(
-        type: "AssistantMessage",
-        content: "",
-        ai_model: last_message.ai_model
-      )
-
-      AssistantResponseJob.perform_later(new_message)
-      render json: { message: "Retry initiated", message_id: new_message.id }, status: :accepted
-    else
-      render json: { error: "No assistant message to retry" }, status: :unprocessable_entity
-    end
+    attempt = @chat.retry_last_message!(message_id: params[:message_id],
+      recover_interrupted: ActiveModel::Type::Boolean.new.cast(params[:recover_interrupted]))
+    render json: {
+      message: "Retry initiated",
+      attempt_id: attempt.id,
+      message_id: attempt.id,
+      origin_user_message_id: attempt.origin_user_message_id,
+      status: attempt.status
+    }, status: :accepted
+  rescue Chat::RetryUnavailable => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Message not found" }, status: :not_found
   end
 
   private

@@ -9,6 +9,7 @@ class TransactionsController < ApplicationController
     @entry = Current.family.entries.new(
       account: account,
       currency: account ? account.currency : Current.family.currency,
+      date: Date.current,
       entryable: Transaction.new
     )
   end
@@ -61,6 +62,10 @@ class TransactionsController < ApplicationController
   def create
     account = full_access_accounts.find(params.dig(:entry, :account_id))
     @entry = account.entries.new(entry_params)
+    submitted_amount = params.dig(:entry, :amount)
+    if submitted_amount.present? && !BigDecimal(submitted_amount.to_s, exception: false)&.finite?
+      @entry.amount = nil
+    end
 
     if @entry.save
       @entry.sync_account_later
@@ -74,6 +79,10 @@ class TransactionsController < ApplicationController
         format.turbo_stream { stream_redirect_back_or_to(account_path(@entry.account)) }
       end
     else
+      if params.dig(:entry, :amount).present? && @entry.amount.nil?
+        @entry.errors.delete(:amount)
+        @entry.errors.add(:amount, :not_a_number)
+      end
       render :new, status: :unprocessable_entity
     end
   end
@@ -115,6 +124,8 @@ class TransactionsController < ApplicationController
 
   private
     def set_form_options
+      nature = action_name == "create" ? params.dig(:entry, :nature) : params[:nature]
+      @transaction_nature = nature == "inflow" ? "inflow" : "outflow"
       @transaction_accounts = full_access_accounts.manual.active.alphabetically
       @income_categories = Current.family.categories.incomes.alphabetically
       @expense_categories = Current.family.categories.expenses.alphabetically
