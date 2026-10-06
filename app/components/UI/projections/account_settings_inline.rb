@@ -1,10 +1,12 @@
 # Compact inline settings panel for account projection cards
 class UI::Projections::AccountSettingsInline < ApplicationComponent
-  attr_reader :account, :projection_years
+  attr_reader :account, :projection_years, :tab, :scope
 
-  def initialize(account:, projection_years: 10)
+  def initialize(account:, projection_years: 10, tab: "investments", scope: :household)
     @account = account
     @projection_years = projection_years
+    @tab = tab
+    @scope = scope
   end
 
   def assumption
@@ -45,10 +47,6 @@ class UI::Projections::AccountSettingsInline < ApplicationComponent
 
   def settings_frame_id
     helpers.dom_id(account, :projection_settings)
-  end
-
-  def chart_frame_id
-    helpers.dom_id(account, :projection_chart)
   end
 
   def form_url

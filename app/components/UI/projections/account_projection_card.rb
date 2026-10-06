@@ -2,11 +2,12 @@
 class UI::Projections::AccountProjectionCard < ApplicationComponent
   include Milestoneable
 
-  attr_reader :account, :projection_years
+  attr_reader :account, :projection_years, :scope
 
-  def initialize(account:, projection_years: 10)
+  def initialize(account:, projection_years: 10, scope: :household)
     @account = account
     @projection_years = projection_years
+    @scope = scope
   end
 
   def current_balance_formatted
