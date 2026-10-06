@@ -47,7 +47,9 @@
           class: "form-field__input",
           inline: true,
           placeholder: "100",
-          value: if options[:value]
+          value: if options.key?(:raw_value)
+            options[:raw_value]
+          elsif options[:value]
             sprintf("%.#{currency.default_precision}f", options[:value])
           elsif form.object && form.object.respond_to?(amount_method)
             val = form.object.public_send(amount_method)
