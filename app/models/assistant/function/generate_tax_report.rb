@@ -7,7 +7,7 @@ class Assistant::Function::GenerateTaxReport < Assistant::Function
     end
 
     def description
-      "Generate a downloadable CSV report summarizing income, expenses by category, deductible interest, and capital gains for tax preparation. This is informational only, not tax advice."
+      "Generate a downloadable CSV report summarizing income, expenses by category, candidate HELOC interest entries requiring review, and trade proceeds for tax preparation. This is informational only, not tax advice."
     end
   end
 
@@ -26,7 +26,12 @@ class Assistant::Function::GenerateTaxReport < Assistant::Function
     income_data = statement.income_totals(period: period)
     expense_data = statement.expense_totals(period: period)
 
-    total_deductible_interest = 0
+    # Name matching is evidence for review, never evidence of tax eligibility.
+    candidate_interest_entries = Entry.where(account: full_access_accounts.where(accountable_type: "Loan", subtype: "heloc"), date: start_date..end_date)
+      .where("name ILIKE ?", "%interest%")
+      .includes(:account)
+      .order(:date, :id)
+    interest_review_limitations = "Candidates match HELOC entry names containing 'interest'; amounts retain their recorded sign and currency. Account type, name matching and debt-strategy existence do not establish use of borrowed funds, jurisdictional eligibility or deductibility. Review source records with a qualified tax professional; no deductible total is calculated."
     total_sell_proceeds = 0
 
     export = generate_csv_report(export_type: "tax_report", start_date: start_date, end_date: end_date) do |csv|
@@ -51,25 +56,14 @@ class Assistant::Function::GenerateTaxReport < Assistant::Function
 
       csv << [ "Total Expenses", expense_data.total.to_s, family.currency ]
 
-      # Deductible HELOC interest (if Smith Manoeuvre exists)
-      if family.debt_optimization_strategies.exists?
-        csv << []
-        csv << [ "--- Deductible Interest (Smith Manoeuvre) ---" ]
-        csv << %w[Account InterestPaid Currency]
+      # Source entries, not tax classifications or a cross-currency deductible total.
+      csv << []
+      csv << [ "--- Candidate HELOC Interest Entries (Requires Review) ---" ]
+      csv << [ interest_review_limitations ]
+      csv << %w[EntryID Date Account EntryName RecordedAmount Currency ReviewStatus]
 
-        heloc_accounts = full_access_accounts.where(accountable_type: "Loan", subtype: "heloc")
-        interest_by_account = Entry.where(account: heloc_accounts, date: start_date..end_date)
-          .where("name ILIKE ?", "%interest%")
-          .group(:account_id)
-          .sum(:amount)
-
-        heloc_accounts.each do |account|
-          interest = (interest_by_account[account.id] || 0).abs
-          total_deductible_interest += interest
-          csv << [ account.name, interest.to_s, account.currency ]
-        end
-
-        csv << [ "Total Deductible Interest", total_deductible_interest.to_s, family.currency ]
+      candidate_interest_entries.each do |entry|
+        csv << [ entry.id, entry.date.iso8601, candidate_evidence_text(entry.account.name), candidate_evidence_text(entry.name), entry.amount.to_s, entry.currency, "Requires review; eligibility not established" ]
       end
 
       # Capital gains from trades (if investment accounts exist)
@@ -114,10 +108,19 @@ class Assistant::Function::GenerateTaxReport < Assistant::Function
         currency: family.currency,
         total_income: Money.new(income_data.total, family.currency).format,
         total_expenses: Money.new(expense_data.total, family.currency).format,
-        deductible_interest: Money.new(total_deductible_interest, family.currency).format,
+        candidate_interest_entries_count: candidate_interest_entries.size,
+        interest_review_status: "Requires review; eligibility not established",
+        interest_review_limitations: interest_review_limitations,
         total_sell_proceeds: Money.new(total_sell_proceeds, family.currency).format,
         disclaimer: "This report is for informational purposes only and does not constitute tax advice."
       }
     )
   end
+  private
+    # CSV quoting alone does not keep spreadsheet formulas literal. Apply only to
+    # textual evidence; recorded negative amounts must retain their numeric sign.
+    def candidate_evidence_text(value)
+      text = value.to_s
+      text.match?(/\A[ \t\r\n]*[=+@-]|\A[\t\r\n]/) ? "'#{text}" : text
+    end
 end
