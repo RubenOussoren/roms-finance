@@ -77,6 +77,15 @@ Browser setup must match the locked Ruby/npm/Chromium toolchain. Rails equivalen
 of compilation/loading checks are `bin/rails zeitwerk:check` and a relevant asset
 build when applicable, with safe environment/configuration established first.
 
+The combined CI `test` job has a **20-minute total timeout**, including service,
+package, dependency/browser and database setup, unit/integration tests, artifacts
+and system tests. The former 10-minute budget repeatedly cancelled passing suites.
+This is execution headroom, not a relaxed test gate: both suites remain required,
+failures are not ignored, and other jobs retain their existing timeouts. A timeout
+still blocks merge even if logs contain passing test summaries. Inspect step timings
+before changing the budget again; it does not make tests faster or guarantee that a
+hung job will finish.
+
 `npm run lint` is Biome lint only. `npm run format:check` and `npm run style:check`
 are broader/nonrequired checks with documented existing formatting debt; do not claim
 lint proves formatting or silently reformat the repository. Use autofix only for an
@@ -107,3 +116,14 @@ when no valid originating tab is supplied. Context is navigation state, never
 account authorization. Settings mutations return a 303 redirect to that context;
 Turbo refreshes the enclosing projection frame, including dependent card summaries.
 Projection pages opt out of Turbo snapshot caching so Back fetches current values.
+
+## Guideline defaults and contributions
+
+Account projection settings treat submitted monthly contributions as user cash-flow
+inputs, independently of guideline return, inflation and volatility defaults. With
+guideline defaults selected, a submitted contribution is persisted, including an
+explicit zero; an omitted contribution preserves its previous value. Applying a
+standard does not alter unrelated cash-flow settings or the family's defaults.
+If no standard is configured, existing market assumptions are retained while the
+submitted contribution is still saved. Return/contribution timing, FX and guideline
+selection conventions are unchanged.
