@@ -12,6 +12,12 @@ module AutonomyCredentials
   end
 end
 Rails::Application.prepend(AutonomyCredentials)
+# Tests may load fixtures, but may never reconstruct an out-of-date schema.
+require "active_record"
+require "active_record/tasks/database_tasks"
+require_relative "autonomy_schema_guard"
+AutonomySchemaGuard.install!
+
 require "webmock"
 WebMock.enable!
 WebMock.disable_net_connect!(allow_localhost: true)

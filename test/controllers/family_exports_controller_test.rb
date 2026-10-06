@@ -66,6 +66,27 @@ class FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     assert_match "attachment", response.headers["Content-Disposition"]
   end
 
+  test "member downloads candidate tax evidence from actual tool result without deductible claims" do
+    account = @family.accounts.create!(name: "Synthetic personal HELOC", accountable: Loan.new, subtype: "heloc", currency: "USD", balance: 0, created_by_user: @admin)
+    entry = account.entries.create!(name: "=HYPERLINK(\"https://example.invalid\",\"interest personal use\")", date: Date.new(2026, 1, 15), amount: "-42", currency: "USD", entryable: Transaction.new)
+    sign_in @non_admin
+    function = Assistant::Function::GenerateTaxReport.new(@non_admin)
+    tool = Provider::RubyLlm::FunctionToolAdapter.new([ function ]).tool_classes.sole.new
+    result = tool.call(start_date: "2026-01-01", end_date: "2026-01-31")
+    export = FamilyExport.find(result[:download_path].split("/")[-2])
+    assert export.reload.downloadable?
+    assert_equal @non_admin.id, export.requested_by_user_id
+    get result[:download_path]
+    assert_response :success
+    assert_match "attachment", response.headers["Content-Disposition"]
+    assert_equal export.export_file.download, response.body
+    assert_includes CSV.parse(response.body), [ entry.id, "2026-01-15", account.name, "'#{entry.name}", "-42.0", "USD", "Requires review; eligibility not established" ]
+    assert_match(/jurisdictional eligibility/, response.body)
+    assert_match(/Candidate HELOC Interest Entries/, response.body)
+    assert_match(/eligibility not established/, response.body)
+    refute_match(/Deductible Interest/, response.body)
+  end
+
   test "cannot download incomplete export" do
     export = @family.family_exports.create!(status: "processing")
 

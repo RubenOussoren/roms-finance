@@ -32,7 +32,8 @@
       <% accounts.each do |account| %>
         <%= render UI::Projections::AccountProjectionCard.new(
           account: account,
-          projection_years: projection_years
+          projection_years: projection_years,
+          scope: @scope
         ) %>
       <% end %>
     </div>
