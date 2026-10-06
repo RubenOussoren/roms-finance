@@ -135,7 +135,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Covers service/dependency/browser setup plus both suites. The previous
+    # 10-minute budget repeatedly cancelled otherwise passing test runs.
+    timeout-minutes: 20
 
     env:
       PLAID_CLIENT_ID: foo

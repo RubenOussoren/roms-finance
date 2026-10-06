@@ -15,8 +15,9 @@
     </summary>
 
     <div class="px-4 pb-4 border-t border-secondary pt-4">
-      <%= form_with url: form_url, method: :patch, data: { controller: "auto-submit-form", turbo_frame: chart_frame_id } do |form| %>
-        <%= form.hidden_field :projection_years, value: projection_years %>
+      <%= form_with url: form_url, method: :patch, data: { controller: "auto-submit-form", turbo_frame: "projections-content", turbo_action: "replace" } do |form| %>
+        <%= form.hidden_field :tab, value: tab %>
+        <%= form.hidden_field :scope, value: scope %>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div class="space-y-1">
@@ -71,14 +72,6 @@
                 data: { "auto-submit-form-target": "auto", action: "change->auto-submit-form#submit" } %>
             <label class="text-sm text-secondary">Use conservative Canadian standards <%= helpers.finance_tooltip("PAG 2025") %></label>
           </div>
-
-          <% if custom_settings? %>
-            <%= button_to "Reset to family defaults",
-                reset_url,
-                method: :delete,
-                class: "text-xs text-link hover:underline",
-                data: { turbo_frame: settings_frame_id, confirm: "Reset to family default settings?" } %>
-          <% end %>
         </div>
 
         <% if use_pag_defaults? %>
@@ -86,6 +79,15 @@
             FP Canada PAG 2025: <%= expected_return_percent %>% return, <%= inflation_percent %>% inflation, <%= volatility_percent %>% volatility.
           </p>
         <% end %>
+      <% end %>
+      <% if custom_settings? %>
+        <%= button_to "Reset to family defaults",
+            reset_url,
+            method: :delete,
+            params: { tab: tab, scope: scope, projection_years: projection_years },
+            class: "mt-3 text-xs text-link hover:underline",
+            form: { data: { turbo_frame: "projections-content", turbo_action: "replace" } },
+            data: { confirm: "Reset to family default settings?" } %>
       <% end %>
     </div>
   </details>

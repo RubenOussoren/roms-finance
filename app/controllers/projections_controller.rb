@@ -1,11 +1,13 @@
 class ProjectionsController < ApplicationController
+  include ProjectionContext
   layout -> { false if turbo_frame_request? }
 
   def index
     @family = Current.family
-    @projection_years = params[:projection_years]&.to_i || 10
-    @tab = params[:tab] || "overview"
-    @scope = valid_scope_param
+    context = projection_context
+    @projection_years = context[:projection_years]
+    @tab = context[:tab]
+    @scope = context[:scope].to_sym
     @show_scope_toggle = @family.multi_user?
 
     case @tab
@@ -74,11 +76,6 @@ class ProjectionsController < ApplicationController
       @strategies = strategies
     end
 
-    def valid_scope_param
-      scope = params[:scope]
-      %w[personal household].include?(scope) ? scope.to_sym : :household
-    end
-
     def scope_filtered_accounts
       @scope == :personal ? Current.family.accounts.with_ownership_for(Current.user) : scoped_accounts
     end
@@ -95,10 +92,11 @@ class ProjectionsController < ApplicationController
     # Cache key that invalidates when:
     # 1. Account data syncs (latest_sync_completed_at via build_cache_key)
     # 2. Account records change (accounts.maximum(:updated_at) via build_cache_key)
-    # 3. Projection assumptions change (projection_assumptions.maximum(:updated_at))
+    # 3. Any projection assumption is created, updated or deleted (including a non-latest row)
     def projection_cache_key(suffix)
       base = @family.build_cache_key("projection_#{suffix}", invalidate_on_data_updates: true)
-      pa_version = @family.projection_assumptions.maximum(:updated_at)&.to_i || 0
+      assumptions = @family.projection_assumptions.order(:id).pluck(:id, :updated_at)
+      pa_version = Digest::SHA256.hexdigest(assumptions.map { |id, updated_at| "#{id}:#{updated_at&.iso8601(6)}" }.join("|"))
       "#{base}_pa#{pa_version}_scope#{@scope}_user#{Current.user.id}"
     end
 end

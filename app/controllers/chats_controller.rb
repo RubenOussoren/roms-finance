@@ -43,8 +43,11 @@ class ChatsController < ApplicationController
   end
 
   def retry
-    @chat.retry_last_message!
+    @chat.retry_last_message!(message_id: params[:message_id],
+      recover_interrupted: ActiveModel::Type::Boolean.new.cast(params[:recover_interrupted]))
     redirect_to chat_path(@chat)
+  rescue Chat::RetryUnavailable => e
+    redirect_to chat_path(@chat), alert: e.message
   end
 
   private

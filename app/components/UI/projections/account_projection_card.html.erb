@@ -44,7 +44,7 @@
     </div>
 
     <%# Inline projection settings %>
-    <%= render UI::Projections::AccountSettingsInline.new(account: account, projection_years: projection_years) %>
+    <%= render UI::Projections::AccountSettingsInline.new(account: account, projection_years: projection_years, tab: tab_name, scope: scope) %>
 
     <%= render UI::Projections::MilestonesSection.new(account: account, tab_name: "investments") %>
   </div>
