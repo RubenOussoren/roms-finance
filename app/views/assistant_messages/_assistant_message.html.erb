@@ -1,6 +1,32 @@
 <%# locals: (assistant_message:) %>
 
 <div id="<%= dom_id(assistant_message) %>" role="article" aria-label="Assistant message">
+  <% origin = assistant_message.origin_user_message %>
+  <% active_attempt = origin && assistant_message.chat.messages.where(type: "AssistantMessage", origin_user_message_id: origin.id, status: :pending).exists? %>
+  <% if assistant_message.failed? %>
+    <p class="text-xs text-destructive" role="status">FAILED — This response was not completed and is excluded from AI context.</p>
+    <% if origin&.conversation_turn.present? && !active_attempt && !assistant_message.replacement %>
+      <%= button_to "Retry", retry_chat_path(assistant_message.chat), method: :post,
+          params: { message_id: assistant_message.id },
+          class: "px-3 py-2 rounded-lg text-sm text-primary bg-container hover:bg-container-inset",
+          data: { turbo_submits_with: "Retrying..." } %>
+    <% elsif !origin&.conversation_turn.present? %>
+      <p class="text-xs text-secondary">Send a new prompt to continue; this unlinked reply cannot be retried.</p>
+    <% end %>
+  <% elsif assistant_message.pending? %>
+    <% if assistant_message.stalled? && origin&.conversation_turn.present? %>
+      <p class="text-xs text-secondary" role="status">No response update for five minutes. You can stop this attempt and retry. Any late output from it will be ignored; its history will remain visible.</p>
+      <%= button_to "Stop and retry", retry_chat_path(assistant_message.chat), method: :post,
+          params: { message_id: assistant_message.id, recover_interrupted: true },
+          class: "px-3 py-2 rounded-lg text-sm text-primary bg-container hover:bg-container-inset",
+          data: { turbo_submits_with: "Retrying..." } %>
+    <% else %>
+      <p class="text-xs text-secondary" role="status">Generating response...</p>
+    <% end %>
+  <% elsif assistant_message.previous_version? %>
+    <p class="text-xs text-secondary" role="status">Previous version — a newer successful response is used in AI context.</p>
+  <% end %>
+
   <% if assistant_message.reasoning? %>
     <details class="group mb-1">
       <summary class="flex items-center gap-2">
@@ -34,9 +60,11 @@
             </button>
           </div>
 
-          <% if assistant_message == assistant_message.chat.messages.where(type: "AssistantMessage").order(:created_at).last %>
+          <% if origin&.conversation_turn.present? && !active_attempt && !assistant_message.replacement %>
             <%= button_to retry_chat_path(assistant_message.chat),
                 method: :post,
+                params: { message_id: assistant_message.id },
+                data: { turbo_submits_with: "Regenerating..." },
                 class: "p-1 rounded text-secondary hover:text-primary",
                 aria: { label: "Regenerate response" } do %>
               <%= icon("refresh-cw", size: "sm") %>
