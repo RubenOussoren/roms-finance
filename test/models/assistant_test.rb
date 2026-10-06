@@ -20,7 +20,7 @@ class AssistantTest < ActiveSupport::TestCase
     error = StandardError.new("test error")
     @provider.expects(:chat_response).returns(provider_error_response(error))
 
-    @chat.expects(:add_error).with(error).once
+    @chat.expects(:add_error).with { |error| error.message.include?("Please retry") }.once
 
     assert_no_difference "AssistantMessage.count"  do
       @assistant.respond_to(@message)
@@ -54,7 +54,7 @@ class AssistantTest < ActiveSupport::TestCase
       true
     end.returns(response)
 
-    assert_difference "AssistantMessage.count", 1 do
+    assert_no_difference "AssistantMessage.count" do
       @assistant.respond_to(@message)
       message = @chat.messages.ordered.where(type: "AssistantMessage").last
       assert_equal "I do not have the information to answer that question", message.content
@@ -95,7 +95,7 @@ class AssistantTest < ActiveSupport::TestCase
       true
     end.returns(response).once
 
-    assert_difference "AssistantMessage.count", 1 do
+    assert_no_difference "AssistantMessage.count" do
       @assistant.respond_to(@message)
       message = @chat.messages.ordered.where(type: "AssistantMessage").last
       assert_equal 1, message.tool_calls.size

@@ -1,18 +1,12 @@
 <%# locals: (chat:) %>
 
-<div id="chat-error" class="px-3 py-2 bg-red-50 text-destructive border border-red-200 theme-dark:bg-red-900/20 theme-dark:text-red-400 theme-dark:border-red-800 rounded-lg">
+<div id="chat-error" class="px-3 py-2 bg-red-50 text-destructive border border-red-200 theme-dark:bg-red-900/20 theme-dark:text-red-400 theme-dark:border-red-800 rounded-lg" role="status">
   <% if chat.debug_mode? %>
     <div class="overflow-x-auto text-xs p-4 bg-red-100 theme-dark:bg-red-900/30 rounded-md mb-2">
       <code><%= chat.error %></code>
     </div>
   <% end %>
 
-  <div class="flex items-center justify-between gap-2">
-    <p class="text-xs text-destructive">Failed to generate response.  Please try again.</p>
-
-    <%= render DS::Button.new(
-      text: "Retry",
-      href: retry_chat_path(chat),
-    ) %>
-  </div>
+  <p class="text-xs text-destructive">Failed to generate response. Use Retry on the failed response to try that prompt again. If AI is unavailable, check AI configuration in Settings.</p>
+  <p class="text-xs text-secondary">Send a new prompt if the failed reply has no explicit prompt link.</p>
 </div>
