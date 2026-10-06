@@ -107,3 +107,14 @@ when no valid originating tab is supplied. Context is navigation state, never
 account authorization. Settings mutations return a 303 redirect to that context;
 Turbo refreshes the enclosing projection frame, including dependent card summaries.
 Projection pages opt out of Turbo snapshot caching so Back fetches current values.
+
+## Guideline defaults and contributions
+
+Account projection settings treat submitted monthly contributions as user cash-flow
+inputs, independently of guideline return, inflation and volatility defaults. With
+guideline defaults selected, a submitted contribution is persisted, including an
+explicit zero; an omitted contribution preserves its previous value. Applying a
+standard does not alter unrelated cash-flow settings or the family's defaults.
+If no standard is configured, existing market assumptions are retained while the
+submitted contribution is still saved. Return/contribution timing, FX and guideline
+selection conventions are unchanged.

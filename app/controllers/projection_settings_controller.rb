@@ -8,7 +8,13 @@ class ProjectionSettingsController < ApplicationController
     @assumption = get_or_create_account_assumption
 
     if projection_settings_params[:use_pag_defaults] == "1"
+      # Guideline defaults govern market assumptions, not the user's cash flow.
+      if projection_settings_params.key?(:monthly_contribution)
+        @assumption.monthly_contribution = projection_settings_params[:monthly_contribution]
+      end
       @assumption.apply_pag_defaults!
+      # Without a configured standard, apply_pag_defaults! does not save.
+      @assumption.save! if @assumption.changed?
     else
       @assumption.update!(
         expected_return: projection_settings_params[:expected_return].to_f / 100,
