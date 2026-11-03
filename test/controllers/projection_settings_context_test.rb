@@ -74,8 +74,8 @@ class ProjectionSettingsContextControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "invalid context uses documented defaults without imposing a new horizon cap" do
-    [ nil, "", "bogus", "0", "-20", "20junk", "2.5" ].each do |years|
+  test "invalid context and unsupported horizons use documented defaults" do
+    [ nil, "", "bogus", "0", "-20", "20junk", "2.5", "15", "40", "1000000000" ].each do |years|
       context = { tab: "external", scope: "external", projection_years: years }
       patch account_projection_settings_path(@investment), params: context.merge(
         expected_return: "0", volatility: "0", monthly_contribution: "200"
@@ -90,7 +90,7 @@ class ProjectionSettingsContextControllerTest < ActionDispatch::IntegrationTest
       assert_select "select[name='projection_years'] option[selected][value='10']"
     end
     patch account_projection_settings_path(@investment), params: { projection_years: 40 }
-    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 40)
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 10)
   end
 
   test "context cannot bypass hidden or cross-family account access on either action" do

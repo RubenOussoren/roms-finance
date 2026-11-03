@@ -24,14 +24,16 @@ class ProjectionSettingsController < ApplicationController
       )
     end
 
-    redirect_to projections_path(projection_context(default_tab: "investments")), status: :see_other
+    redirect_to projections_path(projection_context(default_tab: "investments")), status: :see_other,
+      flash: { projection_horizon_notice: projection_horizon_notice }
   end
 
   def reset
     # Delete account-specific assumption to fall back to family defaults
     @account.projection_assumption&.destroy
 
-    redirect_to projections_path(projection_context(default_tab: "investments")), status: :see_other
+    redirect_to projections_path(projection_context(default_tab: "investments")), status: :see_other,
+      flash: { projection_horizon_notice: projection_horizon_notice }
   end
 
   private

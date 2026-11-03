@@ -109,9 +109,11 @@ with evidence and confidence. Publication/deployment requires separate authoriza
 
 Projection pages and account settings update/reset share navigation defaults:
 Household scope and a 10-year horizon when context is absent or invalid. A horizon
-must be a positive whole number; this does not introduce a new upper limit or
-change the UI's existing choices. Valid tabs are Overview, Investments, Debts and
-Strategies. The page defaults to Overview; account settings default to Investments
+must be one of the supported UI choices: 5, 10, 20 or 30 years. Other supplied
+values fall back to 10 years with a notice, retaining valid tab, scope and submitted
+settings. Validation happens before projection output is allocated. Valid tabs are
+Overview, Investments, Debts and Strategies. The page defaults to Overview;
+account settings default to Investments
 when no valid originating tab is supplied. Context is navigation state, never
 account authorization. Settings mutations return a 303 redirect to that context;
 Turbo refreshes the enclosing projection frame, including dependent card summaries.

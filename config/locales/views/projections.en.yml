@@ -1,0 +1,3 @@
+en:
+  projections:
+    unsupported_horizon: "Choose a forecast horizon of 5, 10, 20 or 30 years. Showing %{years} years instead."

@@ -11,14 +11,14 @@ class ProjectionsControllerTest < ActionDispatch::IntegrationTest
     setup_projection_scope_scenario
     sign_in @viewer
 
-    get projections_url(projection_years: 1, scope: "household")
+    get projections_url(projection_years: 5, scope: "household")
     assert_response :success
-    assert_overview_values(current: 500, projected: 620, growth: 120)
+    assert_overview_values(current: 500, projected: 1100, growth: 600)
 
     travel 2.seconds do
       @hidden.update!(balance: 9_000)
-      get projections_url(projection_years: 1, scope: "household")
-      assert_overview_values(current: 500, projected: 620, growth: 120)
+      get projections_url(projection_years: 5, scope: "household")
+      assert_overview_values(current: 500, projected: 1100, growth: 600)
     end
   end
 
@@ -26,9 +26,9 @@ class ProjectionsControllerTest < ActionDispatch::IntegrationTest
     setup_projection_scope_scenario
     sign_in @viewer
 
-    get projections_url(projection_years: 1, scope: "personal")
+    get projections_url(projection_years: 5, scope: "personal")
     assert_response :success
-    assert_overview_values(current: 200, projected: 320, growth: 120)
+    assert_overview_values(current: 200, projected: 800, growth: 600)
   end
 
   test "should get index" do
