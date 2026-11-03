@@ -17,11 +17,11 @@ class ProjectionSettingsControllerTest < ActionDispatch::IntegrationTest
       expected_return: "8.0",
       monthly_contribution: "1000",
       volatility: "20.0",
-      projection_years: "15",
+      projection_years: "20",
       use_pag_defaults: "0"
     }
 
-    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 15)
+    assert_redirected_to projections_path(tab: "investments", scope: "household", projection_years: 20)
 
     @investment_account.reload
     account_assumption = @investment_account.projection_assumption

@@ -6,6 +6,7 @@ class ProjectionsController < ApplicationController
     @family = Current.family
     context = projection_context
     @projection_years = context[:projection_years]
+    @projection_horizon_notice = projection_horizon_notice || flash[:projection_horizon_notice]
     @tab = context[:tab]
     @scope = context[:scope].to_sym
     @show_scope_toggle = @family.multi_user?
