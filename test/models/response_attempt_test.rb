@@ -361,6 +361,9 @@ class ResponseAttemptTest < ActiveSupport::TestCase
   end
 
   test "pending recovery requires explicit consent and more than five minutes without persisted activity" do
+    # Freeze before persistence so setup time cannot move the exact-threshold check
+    # past updated_at + STALL_AFTER (even when the wall clock crosses a second).
+    freeze_time
     prompt = create_prompt("Question")
     attempt = initial_attempt(prompt)
     assert_no_enqueued_jobs only: AssistantResponseJob do

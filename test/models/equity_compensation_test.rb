@@ -423,7 +423,10 @@ class EquityCompensationTest < ActiveSupport::TestCase
   test "backfill_sales_from_transactions creates sales from positive entries" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
-    grant = ec.equity_grants.order(:grant_date).first
+    # The RSU and option fixtures share a grant date. Give FIFO a unique oldest
+    # grant rather than relying on the database's ordering of tied dates.
+    grant = equity_grants(:rsu_grant)
+    grant.update!(grant_date: equity_grants(:option_grant).grant_date - 1.day)
 
     Security::Price.find_or_create_by!(security: grant.security, date: Date.new(2025, 6, 15), price: 180.0, currency: "USD")
 
@@ -445,10 +448,40 @@ class EquityCompensationTest < ActiveSupport::TestCase
     assert_in_delta 10.0, sale.units.to_f, 0.01
   end
 
+  test "backfill_sales_from_transactions derives option units from the spread for the oldest grant" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    grant = equity_grants(:option_grant)
+    grant.update!(grant_date: equity_grants(:rsu_grant).grant_date - 1.day)
+
+    Security::Price.find_or_create_by!(security: grant.security, date: Date.new(2025, 6, 15), price: 180.0, currency: "USD")
+    entry = account.entries.create!(
+      name: "Option sale proceeds",
+      date: Date.new(2025, 6, 15),
+      amount: 1800,
+      currency: account.currency,
+      entryable: Transaction.new
+    )
+
+    assert_difference "EquityGrantSale.count", 1 do
+      ec.backfill_sales_from_transactions!
+    end
+
+    sale = EquityGrantSale.find_by!(entry: entry)
+    assert_equal grant, sale.equity_grant
+    assert_equal entry.date, sale.date
+    # $1,800 proceeds / ($180 market price - $150 strike) = 60 options.
+    assert_in_delta 60.0, sale.units.to_f, 0.01
+    assert_equal 1800, sale.proceeds
+  end
+
   test "backfill_sales_from_transactions is idempotent" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
-    grant = ec.equity_grants.order(:grant_date).first
+    # The RSU and option fixtures share a grant date. Give FIFO a unique oldest
+    # grant rather than relying on the database's ordering of tied dates.
+    grant = equity_grants(:rsu_grant)
+    grant.update!(grant_date: equity_grants(:option_grant).grant_date - 1.day)
 
     Security::Price.find_or_create_by!(security: grant.security, date: Date.new(2025, 6, 15), price: 180.0, currency: "USD")
     entry = account.entries.create!(
