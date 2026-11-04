@@ -94,9 +94,9 @@ class Assistant
         assistant_message.ai_model = data[:model].presence || effective_model
 
         # Track token usage
-        assistant_message.input_tokens = data[:input_tokens] || 0
-        assistant_message.output_tokens = data[:output_tokens] || 0
-        assistant_message.cost_cents = assistant_message.calculate_cost
+        assistant_message.input_tokens = data[:input_tokens]
+        assistant_message.output_tokens = data[:output_tokens]
+        assistant_message.cost_cents = assistant_message.calculate_cost(dispatched_model: effective_model)
 
         # Persist any tool calls that RubyLLM executed during the conversation
         if data[:tool_calls_log].present?

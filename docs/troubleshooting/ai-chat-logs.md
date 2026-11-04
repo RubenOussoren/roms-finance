@@ -65,8 +65,17 @@ end
 
 ### Cost analysis
 
+Costs are registry-based estimates, not provider invoices. `cost_cents: nil`
+means unknown, including missing pricing/usage and pending/failed attempts without a
+reported cost; do not treat those attempts as free. SQL/Rails `SUM` silently
+ignores nulls, so the queries below return **known subtotals**, not complete spend
+when any cost is null. Check `AssistantMessage.where(cost_cents: nil).count`
+alongside them. Historical zeros may also reflect unavailable pricing before
+#195; stored history is not backfilled, so those zeros can understate spend.
+AI Usage shows `Unknown` or a known subtotal plus `+ unknown` for null costs.
+
 ```ruby
-# Total cost across all messages
+# Known cost subtotal across all messages
 AssistantMessage.sum(:cost_cents)
 
 # Cost per day
@@ -76,7 +85,7 @@ AssistantMessage.group("DATE(created_at)").sum(:cost_cents)
 Chat.joins(:messages)
     .where(messages: { type: "AssistantMessage" })
     .group("chats.id", "chats.title")
-    .order(Arel.sql("SUM(messages.cost_cents) DESC"))
+    .order(Arel.sql("SUM(messages.cost_cents) DESC NULLS LAST"))
     .limit(10)
     .sum("messages.cost_cents")
 ```
