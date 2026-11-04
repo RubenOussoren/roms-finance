@@ -475,6 +475,30 @@ class EquityCompensationTest < ActiveSupport::TestCase
     assert_equal 1800, sale.proceeds
   end
 
+  test "backfill_sales_from_transactions sells same-date grants from the earlier-created grant" do
+    ec = equity_compensations(:one)
+    account = accounts(:equity_compensation)
+    security = equity_grants(:rsu_grant).security
+    shared = { equity_compensation: ec, security: security, total_units: 500, grant_date: Date.new(2022, 1, 1),
+      cliff_months: 0, vesting_period_months: 12, vesting_frequency: "monthly" }
+    # The later-created row is inserted first, so insertion order cannot explain a pass.
+    later = EquityGrant.create!(shared.merge(grant_type: "rsu", grant_price: 100, created_at: 1.day.ago))
+    earlier = EquityGrant.create!(shared.merge(grant_type: "stock_option", strike_price: 150,
+      expiration_date: Date.new(2032, 1, 1), option_type: "iso", created_at: 2.days.ago))
+
+    Security::Price.find_or_create_by!(security: security, date: Date.new(2025, 6, 15), price: 180.0, currency: "USD")
+    entry = account.entries.create!(name: "Sale proceeds", date: Date.new(2025, 6, 15), amount: 1800,
+      currency: account.currency, entryable: Transaction.new)
+
+    ec.backfill_sales_from_transactions!
+
+    sale = EquityGrantSale.find_by!(entry: entry)
+    assert_equal earlier, sale.equity_grant
+    # $1,800 proceeds / ($180 price - $150 strike) = 60 options, not 10 RSUs from the later grant.
+    assert_in_delta 60.0, sale.units.to_f, 0.01
+    assert_not_equal later, sale.equity_grant
+  end
+
   test "backfill_sales_from_transactions is idempotent" do
     ec = equity_compensations(:one)
     account = accounts(:equity_compensation)
