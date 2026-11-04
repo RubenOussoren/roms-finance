@@ -14,6 +14,18 @@ class Provider::RubyLlmTest < ActiveSupport::TestCase
     RubyLLM.config.openai_api_key = @api_key
   end
 
+  test "support requires both a catalogued model and configured provider" do
+    assert @provider.supports_model?("gpt-5-mini")
+    RubyLLM.config.openai_api_key = nil
+    refute @provider.supports_model?("gpt-5-mini")
+  end
+
+  test "unknown and blank models are not supported" do
+    refute @provider.supports_model?("synthetic-unavailable-model")
+    refute @provider.supports_model?(nil)
+    refute @provider.supports_model?("")
+  end
+
   test "plain chat uses Chat Completions and maps model and token usage" do
     stub_chat("Hello", usage: { prompt_tokens: 12, completion_tokens: 4 })
 

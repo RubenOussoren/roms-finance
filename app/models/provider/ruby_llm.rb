@@ -4,7 +4,11 @@ class Provider::RubyLlm < Provider
   Error = Class.new(Provider::Error)
 
   def supports_model?(model)
-    ::RubyLLM.models.find(model).present?
+    return false if model.blank?
+
+    # Resolve through the same path as RubyLLM.chat: catalog membership alone
+    # does not mean the model's provider is configured. This performs no request.
+    ::RubyLLM::Models.resolve(model).last.configured?
   rescue
     false
   end
