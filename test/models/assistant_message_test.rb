@@ -33,9 +33,27 @@ class AssistantMessageTest < ActiveSupport::TestCase
     assert_equal 6, msg.calculate_cost
   end
 
-  test "calculate_cost returns 0 for unknown model" do
+  test "calculate_cost returns nil for unknown models instead of false zero" do
     msg = AssistantMessage.new(ai_model: "nonexistent-model", input_tokens: 1000, output_tokens: 500)
-    assert_equal 0, msg.calculate_cost
+    assert_nil msg.calculate_cost(dispatched_model: "also-unknown")
+  end
+
+  test "calculate_cost falls back when returned catalog entry has no pricing" do
+    unpriced = RubyLLM::Model.new(id: "unpriced", provider: "openai")
+    priced = RubyLLM.models.find("gpt-5-mini")
+    RubyLLM.models.stubs(:find).with("unpriced").returns(unpriced)
+    RubyLLM.models.stubs(:find).with("gpt-5-mini").returns(priced)
+    msg = AssistantMessage.new(ai_model: "unpriced", input_tokens: 1_000_000, output_tokens: 1_000_000)
+    # gpt-5-mini: $0.25 input + $2.00 output per million, in cents.
+    assert_equal 225, msg.calculate_cost(dispatched_model: "gpt-5-mini")
+    assert_nil msg.calculate_cost
+  end
+
+  test "base model names remove only terminal dated snapshot suffixes" do
+    assert_equal "gpt-5-mini", AssistantMessage.base_model_name("gpt-5-mini-2025-08-07")
+    assert_equal "claude-sonnet-4", AssistantMessage.base_model_name("claude-sonnet-4-20250514")
+    assert_equal "gpt-4.1", AssistantMessage.base_model_name("gpt-4.1")
+    assert_equal "model-2025-08-07-preview", AssistantMessage.base_model_name("model-2025-08-07-preview")
   end
 
   test "calculate_cost returns 0 when tokens are nil" do

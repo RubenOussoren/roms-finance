@@ -72,6 +72,7 @@ GET /api/v1/chats/:id
       "role": "assistant",
       "content": "Hello! How can I help you?",
       "model": "gpt-4",
+      "requested_model": "gpt-4",
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z",
       "tool_calls": []
@@ -231,9 +232,10 @@ history stays visible with a warning; it cannot be retried by inferring its sour
 Send a new prompt to continue. Retry execution uses context preceding its original
 prompt, never later prompts or replies.
 
-The retry response exposes attempt status and origin identity. The existing get-chat
-history response is unchanged; its message IDs identify the rows to use as retry
-sources.
+The retry response exposes attempt status and origin identity. Get-chat history
+adds `requested_model` to assistant messages alongside the existing `model` field;
+message IDs still identify the rows to use as retry sources. `requested_model` is
+null for unlinked legacy replies rather than inferred from surrounding messages.
 
 ### Checking for AI Responses
 
@@ -253,9 +255,16 @@ provider configuration, not a guarantee that remote inference will succeed.
 
 Assistant history exposes `model` (the effective model, updated to the
 provider-returned model when present) and `requested_model` (the original prompt's
-model, or null for unlinked legacy replies). Differences disclose model changes;
-the web reply also displays a model-change notice. Token costs use the attributed
-response model's registry pricing. Historical records are not backfilled.
+model, or null for unlinked legacy replies). The web reply displays a model-change
+notice for a different model, but not for a dated snapshot of the same model
+(`-YYYY-MM-DD` or `-YYYYMMDD`). AI Usage also groups those snapshots with the base
+model without rewriting history.
+
+Token costs use the returned model's registry pricing when available, otherwise
+the model actually dispatched (which may differ from the requested model after
+fallback). If neither has usable pricing, the reply still completes, but its cost
+is stored as null, not zero. AI Usage displays `Unknown`, or the known subtotal
+plus `+ unknown` for partially priced totals. Historical records are not backfilled.
 
 ### Tool Calls
 

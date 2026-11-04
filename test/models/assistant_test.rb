@@ -147,6 +147,52 @@ class AssistantTest < ActiveSupport::TestCase
     assert_equal 225, attempt.cost_cents
   end
 
+  test "unknown returned snapshot is priced from actual fallback dispatch not the prompt" do
+    Setting.stubs(:default_ai_model).returns("gpt-5-mini")
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(nil)
+    @assistant.expects(:get_model_provider).with("gpt-5-mini").returns(@provider)
+    data = Provider::LlmConcept::ChatResponse.new(id: "snapshot", model: "gpt-5-mini-2025-08-07",
+      messages: [], function_requests: [], input_tokens: 1_000_000, output_tokens: 1_000_000)
+    priced = RubyLLM.models.find("gpt-5-mini")
+    RubyLLM.models.stubs(:find).with(data.model).raises(RubyLLM::ModelNotFoundError)
+    RubyLLM.models.stubs(:find).with("gpt-5-mini").returns(priced)
+    @provider.expects(:chat_response).with do |prompt, **options|
+      assert_equal "gpt-5-mini", options[:model]
+      options[:streamer].call(provider_text_chunk("Snapshot answer"))
+      options[:streamer].call(Provider::LlmConcept::ChatStreamChunk.new(type: "response", data: data))
+      true
+    end.returns(provider_success_response(data))
+
+    attempt = @assistant.respond_to(@message)
+
+    assert attempt.reload.complete?
+    assert_equal data.model, attempt.ai_model
+    assert_equal "gpt-5.4", @message.reload.ai_model
+    # $0.25 input + $2.00 output per million tokens = 225 cents.
+    assert_equal 225, attempt.cost_cents
+  end
+
+  test "reply completes with explicit unknown cost when neither name has pricing" do
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider)
+    unpriced = RubyLLM::Model.new(id: "gpt-5.4", provider: "openai")
+    RubyLLM.models.stubs(:find).with("gpt-5.4").returns(unpriced)
+    RubyLLM.models.stubs(:find).with("unknown-returned").raises(RubyLLM::ModelNotFoundError)
+    data = Provider::LlmConcept::ChatResponse.new(id: "unknown", model: "unknown-returned",
+      messages: [], function_requests: [], input_tokens: 1_000, output_tokens: 1_000)
+    @provider.expects(:chat_response).with do |prompt, **options|
+      options[:streamer].call(provider_text_chunk("Unpriced answer"))
+      options[:streamer].call(Provider::LlmConcept::ChatStreamChunk.new(type: "response", data: data))
+      true
+    end.returns(provider_success_response(data))
+
+    attempt = @assistant.respond_to(@message)
+
+    assert attempt.reload.complete?
+    assert_equal "unknown-returned", attempt.ai_model
+    assert_equal 1_000, attempt.input_tokens
+    assert_nil attempt.cost_cents
+  end
+
   test "unavailable requested and default models fail without fictitious fallback" do
     Setting.stubs(:default_ai_model).returns("unavailable-default")
     @assistant.expects(:get_model_provider).with("gpt-5.4").returns(nil)

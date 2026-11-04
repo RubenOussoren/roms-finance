@@ -41,6 +41,41 @@ class Api::V1::ChatsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "gpt-5-mini", reply.fetch("model")
   end
 
+  test "history exposes null requested model for an unlinked legacy assistant reply" do
+    legacy_reply = messages(:chat1_assistant_response)
+    assert_nil legacy_reply.origin_user_message_id
+
+    get "/api/v1/chats/#{@chat.id}", headers: bearer_auth_header(@read_token)
+
+    assert_response :success
+    reply = JSON.parse(response.body).fetch("messages").find { |message| message["id"] == legacy_reply.id }
+    assert_nil reply.fetch("requested_model")
+    assert_equal legacy_reply.ai_model, reply.fetch("model")
+  end
+
+  test "history preloads requested models for assistant replies" do
+    attempts = 3.times.map do |index|
+      prompt = @chat.messages.create!(type: "UserMessage", content: "Prompt #{index}", ai_model: "gpt-5-mini")
+      @chat.reserve_initial_attempt(prompt).first
+    end
+    origin_queries = []
+    subscriber = ->(*args) do
+      payload = args.last
+      origin_queries << payload[:sql] if payload[:name] == "UserMessage Load"
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+      get "/api/v1/chats/#{@chat.id}", headers: bearer_auth_header(@read_token)
+    end
+
+    assert_response :success
+    replies = JSON.parse(response.body).fetch("messages").index_by { |message| message.fetch("id") }
+    attempts.each do |attempt|
+      assert_equal "gpt-5-mini", replies.fetch(attempt.id).fetch("requested_model")
+    end
+    assert_equal 1, origin_queries.size, "Expected one batched origin lookup, not one lookup per reply"
+  end
+
   test "omitted and blank models use the configured default" do
     Setting.stubs(:default_ai_model).returns("gpt-5.4")
     [ nil, "" ].each do |model|

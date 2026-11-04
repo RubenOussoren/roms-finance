@@ -33,6 +33,13 @@ module SettingsHelper
     }
   end
 
+  def ai_usage_cost(total_cents, unknown_count:)
+    return number_to_currency(total_cents.to_i / 100.0) if unknown_count.zero?
+    return t("settings.ai_usages.cost_unknown") if total_cents.to_i.zero?
+
+    t("settings.ai_usages.cost_incomplete", amount: number_to_currency(total_cents / 100.0))
+  end
+
   def settings_section(title:, subtitle: nil, &block)
     content = capture(&block)
     render partial: "settings/section", locals: { title: title, subtitle: subtitle, content: content }

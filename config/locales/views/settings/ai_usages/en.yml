@@ -1,0 +1,5 @@
+en:
+  settings:
+    ai_usages:
+      cost_unknown: "Unknown"
+      cost_incomplete: "%{amount} + unknown"
