@@ -68,6 +68,7 @@ class Settings::AiUsagesControllerTest < ActionDispatch::IntegrationTest
       get settings_ai_usage_path
       assert_response :success
       assert_select "p", text: /pending or failed attempts without reported cost; these are not assumed free/
+      assert_select "p", text: /Token totals include reported counts only; missing counts are excluded/
       assert_select "p", text: "$0.25 + unknown", count: 1
       assert_select "td", text: "Unknown", count: 1
       assert_select "tbody" do |tables|

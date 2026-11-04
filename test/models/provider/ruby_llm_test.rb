@@ -213,12 +213,12 @@ class Provider::RubyLlmTest < ActiveSupport::TestCase
     assert_equal "a" * 100_000, name
   end
 
-  test "missing token counts default to zero" do
+  test "missing token counts remain unknown" do
     stub_chat("Hello", usage: {})
     response = @provider.chat_response("Hi", model: "gpt-5-mini")
     assert response.success?, response.error&.message
-    assert_equal 0, response.data.input_tokens
-    assert_equal 0, response.data.output_tokens
+    assert_nil response.data.input_tokens
+    assert_nil response.data.output_tokens
   end
 
   test "auto categorizer parses text content from RubyLLM 2 messages" do

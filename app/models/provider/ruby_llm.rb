@@ -92,8 +92,8 @@ class Provider::RubyLlm < Provider
         ],
         function_requests: [],
         tool_calls_log: tool_calls_log,
-        input_tokens: message.tokens.input || 0,
-        output_tokens: message.tokens.output || 0
+        input_tokens: message.tokens.input,
+        output_tokens: message.tokens.output
       )
     end
 end

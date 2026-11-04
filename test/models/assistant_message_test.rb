@@ -49,6 +49,17 @@ class AssistantMessageTest < ActiveSupport::TestCase
     assert_nil msg.calculate_cost
   end
 
+  test "pricing error on returned model still tries dispatched model" do
+    broken = mock("broken returned pricing")
+    priced = RubyLLM.models.find("gpt-5-mini")
+    RubyLLM.models.stubs(:find).with("broken-returned").returns(broken)
+    RubyLLM.models.stubs(:find).with("gpt-5-mini").returns(priced)
+    broken.expects(:cost_for).raises(StandardError, "provider details")
+    Rails.logger.expects(:warn).with("[AI Chat] Model cost estimate unavailable")
+    msg = AssistantMessage.new(ai_model: "broken-returned", input_tokens: 1_000_000, output_tokens: 1_000_000)
+    assert_equal 225, msg.calculate_cost(dispatched_model: "gpt-5-mini")
+  end
+
   test "base model names remove only terminal dated snapshot suffixes" do
     assert_equal "gpt-5-mini", AssistantMessage.base_model_name("gpt-5-mini-2025-08-07")
     assert_equal "claude-sonnet-4", AssistantMessage.base_model_name("claude-sonnet-4-20250514")
@@ -56,8 +67,13 @@ class AssistantMessageTest < ActiveSupport::TestCase
     assert_equal "model-2025-08-07-preview", AssistantMessage.base_model_name("model-2025-08-07-preview")
   end
 
-  test "calculate_cost returns 0 when tokens are nil" do
+  test "calculate_cost distinguishes missing usage from reported zero tokens" do
     msg = AssistantMessage.new(ai_model: "gpt-5.4", input_tokens: nil, output_tokens: nil)
+    assert_nil msg.calculate_cost
+    msg.input_tokens = 1_000
+    assert_nil msg.calculate_cost
+    msg.input_tokens = 0
+    msg.output_tokens = 0
     assert_equal 0, msg.calculate_cost
   end
   private

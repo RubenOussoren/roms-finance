@@ -266,9 +266,13 @@ fallback). If neither has usable pricing, the reply still completes, but its cos
 is stored as null, not zero. AI Usage displays `Unknown`, or the known subtotal
 plus `+ unknown` for partially priced totals. Pending and failed attempts with no
 reported cost are also unknown, not assumed free; failed attempts can incur provider
-charges. A catalog/pricing error leaves cost unknown without failing the reply.
+charges. Missing token counts stay null; incomplete usage also leaves cost unknown
+rather than creating a new false zero. Token totals include reported counts only,
+excluding missing counts. An explicit zero token count remains distinct from null.
+A catalog/pricing error tries dispatched-model pricing, then leaves cost unknown
+if necessary without failing the reply.
 Historical records are not backfilled: older zero costs may represent unavailable
-pricing and can understate spend, rather than prove a free response.
+pricing or usage and can understate spend, rather than prove a free response.
 
 ### Tool Calls
 

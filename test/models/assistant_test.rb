@@ -198,7 +198,7 @@ class AssistantTest < ActiveSupport::TestCase
     model = mock("broken catalog pricing")
     RubyLLM.models.stubs(:find).with("gpt-5.4").returns(model)
     model.stubs(:cost_for).raises(StandardError, "sensitive provider details")
-    Rails.logger.expects(:warn).with("[AI Chat] Cost estimate unavailable; preserving reply with unknown cost")
+    Rails.logger.expects(:warn).with("[AI Chat] Model cost estimate unavailable")
     data = Provider::LlmConcept::ChatResponse.new(id: "pricing-error", model: "gpt-5.4",
       messages: [], function_requests: [], input_tokens: 1_000, output_tokens: 1_000)
     @provider.expects(:chat_response).with do |prompt, **options|
@@ -212,6 +212,24 @@ class AssistantTest < ActiveSupport::TestCase
     assert attempt.reload.complete?
     assert_equal "Successful reply", attempt.content
     assert_equal 1_000, attempt.input_tokens
+    assert_nil attempt.cost_cents
+  end
+
+  test "missing reported usage does not become a free completed reply" do
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider)
+    data = Provider::LlmConcept::ChatResponse.new(id: "missing-usage", model: "gpt-5.4",
+      messages: [], function_requests: [], input_tokens: 100, output_tokens: nil)
+    @provider.expects(:chat_response).with do |prompt, **options|
+      options[:streamer].call(provider_text_chunk("Reply without full usage"))
+      options[:streamer].call(Provider::LlmConcept::ChatStreamChunk.new(type: "response", data: data))
+      true
+    end.returns(provider_success_response(data))
+
+    attempt = @assistant.respond_to(@message)
+
+    assert attempt.reload.complete?
+    assert_equal 100, attempt.input_tokens
+    assert_nil attempt.output_tokens
     assert_nil attempt.cost_cents
   end
 
