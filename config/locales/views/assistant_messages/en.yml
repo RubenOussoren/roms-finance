@@ -1,0 +1,3 @@
+en:
+  assistant_messages:
+    model_changed: "Model changed: requested %{requested}; using %{used}."

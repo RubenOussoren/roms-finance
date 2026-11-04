@@ -7,7 +7,10 @@ json.messages @messages do |message|
   json.type message.type.underscore
   json.role message.role
   json.content message.content
-  json.model message.ai_model if message.type == "AssistantMessage"
+  if message.type == "AssistantMessage"
+    json.model message.ai_model
+    json.requested_model message.origin_user_message&.ai_model
+  end
   json.created_at message.created_at.iso8601
   json.updated_at message.updated_at.iso8601
 

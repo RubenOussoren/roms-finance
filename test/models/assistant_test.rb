@@ -102,6 +102,72 @@ class AssistantTest < ActiveSupport::TestCase
     end
   end
 
+  test "fallback dispatches and persists the effective model before streaming" do
+    Setting.stubs(:default_ai_model).returns("gpt-5-mini")
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(nil)
+    @assistant.expects(:get_model_provider).with("gpt-5-mini").returns(@provider)
+    attempt = @chat.reserve_initial_attempt(@message).first
+    data = Provider::LlmConcept::ChatResponse.new(id: "fallback", model: nil,
+      messages: [], function_requests: [], input_tokens: 1_000_000, output_tokens: 0)
+    @provider.expects(:chat_response).with do |prompt, **options|
+      assert_equal @message.content, prompt
+      assert_equal "gpt-5-mini", options[:model]
+      assert_equal "gpt-5-mini", attempt.reload.ai_model
+      options[:streamer].call(provider_text_chunk("Fallback answer"))
+      options[:streamer].call(Provider::LlmConcept::ChatStreamChunk.new(type: "response", data: data))
+      true
+    end.returns(provider_success_response(data))
+
+    @assistant.respond_to(@message)
+
+    assert attempt.reload.complete?
+    assert_equal "gpt-5-mini", attempt.ai_model
+    assert_equal "gpt-5.4", @message.reload.ai_model
+    # gpt-5-mini input is $0.25 per million tokens: 25 cents.
+    assert_equal 25, attempt.cost_cents
+    assert_equal 1_000_000, attempt.input_tokens
+  end
+
+  test "provider returned model controls attribution and pricing" do
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider)
+    data = Provider::LlmConcept::ChatResponse.new(id: "returned", model: "gpt-5-mini",
+      messages: [], function_requests: [], input_tokens: 1_000_000, output_tokens: 1_000_000)
+    @provider.expects(:chat_response).with do |prompt, **options|
+      assert_equal "gpt-5.4", options[:model]
+      options[:streamer].call(provider_text_chunk("Answer"))
+      options[:streamer].call(Provider::LlmConcept::ChatStreamChunk.new(type: "response", data: data))
+      true
+    end.returns(provider_success_response(data))
+
+    attempt = @assistant.respond_to(@message)
+
+    assert attempt.reload.complete?
+    assert_equal "gpt-5-mini", attempt.ai_model
+    # $0.25 input + $2.00 output per million tokens = 225 cents.
+    assert_equal 225, attempt.cost_cents
+  end
+
+  test "unavailable requested and default models fail without fictitious fallback" do
+    Setting.stubs(:default_ai_model).returns("unavailable-default")
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(nil)
+    @assistant.expects(:get_model_provider).with("unavailable-default").returns(nil)
+    @provider.expects(:chat_response).never
+    @chat.expects(:add_error).with { |error| error.message.include?("No AI provider is available") }
+
+    attempt = @assistant.respond_to(@message)
+
+    assert attempt.reload.failed?
+    assert_equal "gpt-5.4", attempt.ai_model
+    assert_equal "", attempt.content
+  end
+
+  test "unavailable default is not resolved twice" do
+    Setting.stubs(:default_ai_model).returns("gpt-5.4")
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(nil).once
+    @chat.expects(:add_error).with { |error| error.message.include?("Settings") }
+    assert @assistant.respond_to(@message).reload.failed?
+  end
+
   private
     def provider_function_request(id:, call_id:, function_name:, function_args:)
       Provider::LlmConcept::ChatFunctionRequest.new(

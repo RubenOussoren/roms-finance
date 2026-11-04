@@ -6,6 +6,17 @@ class MessagesControllerTest < ActionDispatch::IntegrationTest
     @chat = @user.chats.first
   end
 
+  test "omitted and blank models use the configured default" do
+    Setting.stubs(:default_ai_model).returns("gpt-5.4")
+    [ nil, "" ].each do |model|
+      post chat_messages_url(@chat), params: { message: { content: "Default test", ai_model: model }.compact }
+      assert_response :redirect
+      prompt = @chat.messages.where(type: "UserMessage").order(:created_at).last
+      assert_equal "gpt-5.4", prompt.ai_model
+      assert_equal "gpt-5.4", prompt.chat.reserve_initial_attempt(prompt).first.ai_model
+    end
+  end
+
   test "create responds with turbo_stream" do
     post chat_messages_url(@chat), params: {
       message: { content: "Hello", ai_model: "gpt-5.4" }

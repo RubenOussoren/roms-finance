@@ -1,5 +1,6 @@
 class Assistant::Responder
-  def initialize(message:, instructions:, function_instances:, llm:)
+  def initialize(message:, instructions:, function_instances:, llm:, model:)
+    @model = model
     @message = message
     @instructions = instructions
     @function_instances = function_instances
@@ -22,6 +23,7 @@ class Assistant::Responder
         response = chunk.data
         emit(:response, {
           id: response.id,
+          model: response.model,
           tool_calls_log: response.tool_calls_log,
           input_tokens: response.input_tokens,
           output_tokens: response.output_tokens
@@ -33,12 +35,12 @@ class Assistant::Responder
   end
 
   private
-    attr_reader :message, :instructions, :function_instances, :llm
+    attr_reader :message, :instructions, :function_instances, :llm, :model
 
     def get_llm_response(streamer:, messages: [])
       response = llm.chat_response(
         message.content,
-        model: message.ai_model,
+        model: model,
         instructions: instructions,
         function_instances: function_instances,
         messages: messages,
