@@ -1,17 +1,47 @@
 version: 2
+multi-ecosystem-groups:
+  # bin/verify-playwright requires the Ruby client and npm packages to match exactly.
+  # The cooldown gives the Ruby client time to catch up with an npm release.
+  playwright:
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
 updates:
   - package-ecosystem: bundler
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: playwright-ruby-client
   - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "@playwright/test"
+      - dependency-name: playwright
+      - dependency-name: playwright-core
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+  - package-ecosystem: bundler
+    directory: "/"
+    patterns: ["playwright-ruby-client"]
+    multi-ecosystem-group: playwright
+  # npm patch releases can have no matching Ruby client, so they wait for the next minor.
+  - package-ecosystem: npm
+    directory: "/"
+    patterns: ["@playwright/test", "playwright", "playwright-core"]
+    multi-ecosystem-group: playwright
+    ignore:
+      - dependency-name: "@playwright/test"
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: playwright
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: playwright-core
+        update-types: ["version-update:semver-patch"]
