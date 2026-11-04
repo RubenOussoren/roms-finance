@@ -98,7 +98,7 @@ POST /api/v1/chats
 {
   "title": "Optional chat title",
   "message": "Initial message to AI",
-  "model": "gpt-4" // optional, defaults to gpt-4
+  "model": "gpt-5-mini" // optional, defaults to the instance AI setting
 }
 ```
 
@@ -140,7 +140,7 @@ POST /api/v1/chats/:chat_id/messages
 ```json
 {
   "content": "User message",
-  "model": "gpt-4" // optional, defaults to gpt-4
+  "model": "gpt-5-mini" // optional, defaults to the instance AI setting
 }
 ```
 
@@ -242,6 +242,20 @@ Currently, you need to poll the chat endpoint to check for new AI responses. Loo
 ### Available AI Models
 
 Available models are configured per-instance. Check your instance's Settings > AI page for supported models.
+
+Both web and API prompts use the instance's configured default AI model when the
+model is omitted or blank. An explicit model is preserved on the user prompt.
+At execution, if that model is unavailable, the assistant uses the configured
+default only if its provider is available. If neither is available, the attempt
+fails with a configuration error; it does not invent a fallback or contact an
+unconfigured provider. Availability is based on RubyLLM's current registry and
+provider configuration, not a guarantee that remote inference will succeed.
+
+Assistant history exposes `model` (the effective model, updated to the
+provider-returned model when present) and `requested_model` (the original prompt's
+model, or null for unlinked legacy replies). Differences disclose model changes;
+the web reply also displays a model-change notice. Token costs use the attributed
+response model's registry pricing. Historical records are not backfilled.
 
 ### Tool Calls
 

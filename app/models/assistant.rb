@@ -34,12 +34,14 @@ class Assistant
 
     function_instances = select_functions(message.content)
 
-    provider = get_model_provider(message.ai_model)
+    effective_model = message.ai_model
+    provider = get_model_provider(effective_model)
 
-    # Fallback to default model if requested model isn't available
-    if provider.nil? && message.ai_model != Setting.default_ai_model
-      provider = get_model_provider(Setting.default_ai_model)
-      Rails.logger.warn("AI model '#{message.ai_model}' unavailable, falling back to '#{Setting.default_ai_model}'")
+    # Resolve the provider and model together so dispatch and attribution agree.
+    default_model = Setting.default_ai_model
+    if provider.nil? && effective_model != default_model
+      effective_model = default_model
+      provider = get_model_provider(effective_model)
     end
 
     unless provider
@@ -47,11 +49,16 @@ class Assistant
       return assistant_message
     end
 
+    return assistant_message unless assistant_message.with_pending_execution do
+      assistant_message.update!(ai_model: effective_model)
+    end
+
     setup_done = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    Rails.logger.info("[AI Chat] Setup took #{((setup_done - started_at) * 1000).round}ms (#{function_instances.size} functions, model=#{message.ai_model})")
+    Rails.logger.info("[AI Chat] Setup took #{((setup_done - started_at) * 1000).round}ms (#{function_instances.size} functions, model=#{effective_model})")
 
     responder = Assistant::Responder.new(
       message: message,
+      model: effective_model,
       instructions: instructions,
       function_instances: function_instances,
       llm: provider
@@ -82,6 +89,9 @@ class Assistant
       assistant_message.with_pending_execution do
         stop_thinking unless thinking_stopped
         assistant_message.flush_buffer!
+
+        # Attribute usage to the provider-returned model when supplied.
+        assistant_message.ai_model = data[:model].presence || effective_model
 
         # Track token usage
         assistant_message.input_tokens = data[:input_tokens] || 0
