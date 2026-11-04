@@ -193,6 +193,28 @@ class AssistantTest < ActiveSupport::TestCase
     assert_nil attempt.cost_cents
   end
 
+  test "pricing exceptions do not fail a completed provider reply" do
+    @assistant.expects(:get_model_provider).with("gpt-5.4").returns(@provider)
+    model = mock("broken catalog pricing")
+    RubyLLM.models.stubs(:find).with("gpt-5.4").returns(model)
+    model.stubs(:cost_for).raises(StandardError, "sensitive provider details")
+    Rails.logger.expects(:warn).with("[AI Chat] Cost estimate unavailable; preserving reply with unknown cost")
+    data = Provider::LlmConcept::ChatResponse.new(id: "pricing-error", model: "gpt-5.4",
+      messages: [], function_requests: [], input_tokens: 1_000, output_tokens: 1_000)
+    @provider.expects(:chat_response).with do |prompt, **options|
+      options[:streamer].call(provider_text_chunk("Successful reply"))
+      options[:streamer].call(Provider::LlmConcept::ChatStreamChunk.new(type: "response", data: data))
+      true
+    end.returns(provider_success_response(data))
+
+    attempt = @assistant.respond_to(@message)
+
+    assert attempt.reload.complete?
+    assert_equal "Successful reply", attempt.content
+    assert_equal 1_000, attempt.input_tokens
+    assert_nil attempt.cost_cents
+  end
+
   test "unavailable requested and default models fail without fictitious fallback" do
     Setting.stubs(:default_ai_model).returns("unavailable-default")
     @assistant.expects(:get_model_provider).with("gpt-5.4").returns(nil)

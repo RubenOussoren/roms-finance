@@ -96,6 +96,11 @@ class AssistantMessage < Message
       return (total * 100).round unless total.nil? # cents
     end
     nil
+  rescue StandardError
+    # Accounting metadata must not invalidate an otherwise successful reply.
+    # Registry/pricing errors may contain provider data; log no exception details.
+    Rails.logger.warn("[AI Chat] Cost estimate unavailable; preserving reply with unknown cost")
+    nil
   end
 
   private

@@ -264,7 +264,11 @@ Token costs use the returned model's registry pricing when available, otherwise
 the model actually dispatched (which may differ from the requested model after
 fallback). If neither has usable pricing, the reply still completes, but its cost
 is stored as null, not zero. AI Usage displays `Unknown`, or the known subtotal
-plus `+ unknown` for partially priced totals. Historical records are not backfilled.
+plus `+ unknown` for partially priced totals. Pending and failed attempts with no
+reported cost are also unknown, not assumed free; failed attempts can incur provider
+charges. A catalog/pricing error leaves cost unknown without failing the reply.
+Historical records are not backfilled: older zero costs may represent unavailable
+pricing and can understate spend, rather than prove a free response.
 
 ### Tool Calls
 

@@ -42,7 +42,7 @@ class Settings::AiUsagesController < ApplicationController
         "COUNT(*) AS message_count",
         "COUNT(*) FILTER (WHERE cost_cents IS NULL) AS unknown_cost_count"
       )
-      .order("total_cost_cents DESC")
+      .order("total_cost_cents DESC NULLS LAST")
   end
 
   private

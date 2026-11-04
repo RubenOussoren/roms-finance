@@ -56,6 +56,27 @@ class Settings::AiUsagesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "pending and failed attempts with unreported costs are explicitly unknown not free" do
+    %w[pending failed].each do |status|
+      chats(:one).messages.create!(type: "AssistantMessage", ai_model: "unfinished-model",
+        content: "Unfinished reply", status: status)
+    end
+    chats(:one).messages.create!(type: "AssistantMessage", ai_model: "priced-model",
+      content: "Priced reply", status: :complete, cost_cents: 25)
+
+    with_self_hosting do
+      get settings_ai_usage_path
+      assert_response :success
+      assert_select "p", text: /pending or failed attempts without reported cost; these are not assumed free/
+      assert_select "p", text: "$0.25 + unknown", count: 1
+      assert_select "td", text: "Unknown", count: 1
+      assert_select "tbody" do |tables|
+        model_names = tables.first.css("tr td:first-child").map(&:text)
+        assert_equal [ "priced-model", "unfinished-model" ], model_names
+      end
+    end
+  end
+
   test "non-admin gets redirected" do
     sign_in users(:family_member)
 
