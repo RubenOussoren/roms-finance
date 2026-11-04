@@ -7,6 +7,30 @@ class ChatsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
+  test "changed model is disclosed beside the assistant reply" do
+    chat = chats(:one)
+    prompt, attempt = create_attempt(chat)
+    attempt.update!(ai_model: "gpt-5-mini", status: :complete, content: "Fallback answer")
+
+    get chat_url(chat)
+
+    assert_response :success
+    assert_select "#assistant_message_#{attempt.id} [role='status']",
+      text: "Model changed: requested #{prompt.ai_model}; using gpt-5-mini."
+    assert_equal prompt.ai_model, prompt.reload.ai_model
+  end
+
+  test "omitted and blank models use the configured default" do
+    Setting.stubs(:default_ai_model).returns("gpt-5.4")
+    [ nil, "" ].each do |model|
+      post chats_url, params: { chat: { content: "Default test", ai_model: model }.compact }
+      assert_response :redirect
+      prompt = Chat.order(:created_at).last.messages.find_by!(type: "UserMessage")
+      assert_equal "gpt-5.4", prompt.ai_model
+      assert_equal "gpt-5.4", prompt.chat.reserve_initial_attempt(prompt).first.ai_model
+    end
+  end
+
   test "gets index" do
     get chats_url
     assert_response :success

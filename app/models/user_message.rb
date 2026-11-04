@@ -1,4 +1,6 @@
 class UserMessage < Message
+  before_validation :set_default_ai_model, on: :create
+
   validates :ai_model, presence: true
 
   validates :conversation_turn, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
@@ -19,6 +21,10 @@ class UserMessage < Message
   end
 
   private
+    def set_default_ai_model
+      self.ai_model = ai_model.presence || Setting.default_ai_model
+    end
+
     def assign_conversation_turn
       chat.with_lock do
         self.conversation_turn = (chat.messages.maximum(:conversation_turn) || 0) + 1

@@ -2,6 +2,9 @@
 
 <div id="<%= dom_id(assistant_message) %>" role="article" aria-label="Assistant message">
   <% origin = assistant_message.origin_user_message %>
+  <% if origin && assistant_message.ai_model != origin.ai_model %>
+    <p class="text-xs text-secondary" role="status"><%= t("assistant_messages.model_changed", requested: origin.ai_model, used: assistant_message.ai_model) %></p>
+  <% end %>
   <% active_attempt = origin && assistant_message.chat.messages.where(type: "AssistantMessage", origin_user_message_id: origin.id, status: :pending).exists? %>
   <% if assistant_message.failed? %>
     <p class="text-xs text-destructive" role="status">FAILED — This response was not completed and is excluded from AI context.</p>

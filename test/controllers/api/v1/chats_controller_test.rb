@@ -28,6 +28,30 @@ class Api::V1::ChatsControllerTest < ActionDispatch::IntegrationTest
     @chat = chats(:one)
   end
 
+  test "history exposes requested and effective response models" do
+    prompt = @chat.messages.create!(type: "UserMessage", content: "Fallback prompt", ai_model: "unavailable-request")
+    attempt = @chat.reserve_initial_attempt(prompt).first
+    attempt.update!(ai_model: "gpt-5-mini", status: :complete, content: "Fallback answer")
+
+    get "/api/v1/chats/#{@chat.id}", headers: bearer_auth_header(@read_token)
+
+    assert_response :success
+    reply = JSON.parse(response.body).fetch("messages").find { |message| message["id"] == attempt.id }
+    assert_equal "unavailable-request", reply.fetch("requested_model")
+    assert_equal "gpt-5-mini", reply.fetch("model")
+  end
+
+  test "omitted and blank models use the configured default" do
+    Setting.stubs(:default_ai_model).returns("gpt-5.4")
+    [ nil, "" ].each do |model|
+      post "/api/v1/chats", params: { title: "Default test", message: "Default test", model: model }.compact, headers: bearer_auth_header(@write_token)
+      assert_response :created
+      prompt = Chat.find(JSON.parse(response.body).fetch("id")).messages.find_by!(type: "UserMessage")
+      assert_equal "gpt-5.4", prompt.ai_model
+      assert_equal "gpt-5.4", prompt.chat.reserve_initial_attempt(prompt).first.ai_model
+    end
+  end
+
   test "should require authentication" do
     get "/api/v1/chats"
     assert_response :unauthorized
