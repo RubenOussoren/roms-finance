@@ -10,6 +10,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # bin/verify-playwright requires this package to match playwright-ruby-client
+      # exactly, so upgrade both together by hand. Only version updates are listed.
+      - dependency-name: "@playwright/test"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
