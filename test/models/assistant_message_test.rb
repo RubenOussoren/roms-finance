@@ -60,6 +60,15 @@ class AssistantMessageTest < ActiveSupport::TestCase
     assert_equal 225, msg.calculate_cost(dispatched_model: "gpt-5-mini")
   end
 
+  test "non-finite catalog pricing leaves cost unknown instead of raising" do
+    model = mock("non-finite pricing")
+    model.stubs(:cost_for).returns(stub(total: Float::NAN))
+    RubyLLM.models.stubs(:find).with("non-finite").returns(model)
+    Rails.logger.expects(:warn).with("[AI Chat] Model cost estimate unavailable")
+    msg = AssistantMessage.new(ai_model: "non-finite", input_tokens: 1_000, output_tokens: 1_000)
+    assert_nil msg.calculate_cost
+  end
+
   test "base model names remove only terminal dated snapshot suffixes" do
     assert_equal "gpt-5-mini", AssistantMessage.base_model_name("gpt-5-mini-2025-08-07")
     assert_equal "claude-sonnet-4", AssistantMessage.base_model_name("claude-sonnet-4-20250514")

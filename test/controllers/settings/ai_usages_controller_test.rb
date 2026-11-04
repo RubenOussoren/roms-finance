@@ -78,6 +78,19 @@ class Settings::AiUsagesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "monthly usage includes replies from the last day of the month" do
+    travel_to Time.zone.local(2026, 11, 30, 15, 0, 0) do
+      chats(:one).messages.create!(type: "AssistantMessage", ai_model: "last-day-model",
+        content: "Last day reply", status: :complete, input_tokens: 100, output_tokens: 50, cost_cents: 25)
+
+      with_self_hosting do
+        get settings_ai_usage_path
+        assert_response :success
+        assert_select "td", text: "last-day-model", count: 1
+      end
+    end
+  end
+
   test "non-admin gets redirected" do
     sign_in users(:family_member)
 

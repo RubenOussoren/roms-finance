@@ -10,7 +10,7 @@ class Settings::AiUsagesController < ApplicationController
     assistant_messages = AssistantMessage.joins(:chat).where(chats: { user_id: Current.family.users.select(:id) })
 
     # Monthly totals
-    monthly = assistant_messages.where(created_at: @current_month..@current_month.end_of_month)
+    monthly = assistant_messages.where(created_at: Time.current.all_month)
     @monthly_cost_cents = monthly.sum(:cost_cents)
     @monthly_unknown_cost_count = monthly.where(cost_cents: nil).count
     @monthly_input_tokens = monthly.sum(:input_tokens)

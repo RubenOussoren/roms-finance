@@ -89,18 +89,19 @@ class AssistantMessage < Message
   def calculate_cost(dispatched_model: nil)
     return nil if input_tokens.nil? || output_tokens.nil?
 
-    tokens = RubyLLM::Tokens.new(input: input_tokens, output: output_tokens)
     [ ai_model, dispatched_model ].compact.uniq.each do |name|
-      total = catalog_cost(name, tokens)
-      return (total * 100).round unless total.nil? # cents
+      cents = catalog_cost_cents(name)
+      return cents unless cents.nil?
     end
     nil
   end
 
   private
 
-    def catalog_cost(name, tokens)
-      catalog_model(name)&.cost_for(tokens)&.total
+    def catalog_cost_cents(name)
+      tokens = RubyLLM::Tokens.new(input: input_tokens, output: output_tokens)
+      total = catalog_model(name)&.cost_for(tokens)&.total
+      (total * 100).round unless total.nil?
     rescue StandardError
       # Accounting metadata must not invalidate a successful reply. Try the next
       # name, without logging exceptions that may contain provider data.
