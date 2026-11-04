@@ -84,9 +84,9 @@ class Rule::ActionExecutor::CreateEquitySale < Rule::ActionExecutor
     def pick_grant(source_account, as_of)
       source_account.accountable.equity_grants
         .includes(:security)
-        .order(:grant_date)
+        .in_sale_order
         .find { |g| g.vested_units_remaining(as_of: as_of) > 0 } ||
-        source_account.accountable.equity_grants.order(:grant_date).first
+        source_account.accountable.equity_grants.in_sale_order.first
     end
 
     # Derives units given proceeds already expressed in `target_currency`. The security price
