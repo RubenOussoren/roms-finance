@@ -387,7 +387,7 @@ GEM
       faraday (>= 1, < 3)
       sawyer (~> 0.9)
     ostruct (0.6.3)
-    pagy (43.6.3)
+    pagy (43.8.1)
       json
       uri
       yaml
