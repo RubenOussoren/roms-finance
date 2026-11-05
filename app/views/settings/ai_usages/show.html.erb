@@ -1,10 +1,11 @@
 <%= settings_section title: "AI Usage", subtitle: "Token usage and cost tracking for AI assistant" do %>
   <div class="space-y-6">
+    <p class="text-sm text-secondary"><%= t("settings.ai_usages.cost_note") %></p>
     <%# Monthly summary cards %>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="p-4 bg-container rounded-lg border border-primary">
         <p class="text-sm text-secondary">Cost this month</p>
-        <p class="text-xl font-semibold text-primary"><%= number_to_currency(@monthly_cost_cents / 100.0) %></p>
+        <p class="text-xl font-semibold text-primary"><%= ai_usage_cost(@monthly_cost_cents, unknown_count: @monthly_unknown_cost_count) %></p>
       </div>
       <div class="p-4 bg-container rounded-lg border border-primary">
         <p class="text-sm text-secondary">Messages</p>
@@ -42,7 +43,7 @@
                   <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.message_count) %></td>
                   <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_input_tokens) %></td>
                   <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_output_tokens) %></td>
-                  <td class="py-2 text-right text-primary"><%= number_to_currency(row.total_cost_cents.to_i / 100.0) %></td>
+                  <td class="py-2 text-right text-primary"><%= ai_usage_cost(row.total_cost_cents, unknown_count: row.unknown_cost_count) %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -73,7 +74,7 @@
                   <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.message_count) %></td>
                   <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_input_tokens) %></td>
                   <td class="py-2 pr-4 text-right text-secondary"><%= number_with_delimiter(row.total_output_tokens) %></td>
-                  <td class="py-2 text-right text-primary"><%= number_to_currency(row.total_cost_cents.to_i / 100.0) %></td>
+                  <td class="py-2 text-right text-primary"><%= ai_usage_cost(row.total_cost_cents, unknown_count: row.unknown_cost_count) %></td>
                 </tr>
               <% end %>
             </tbody>

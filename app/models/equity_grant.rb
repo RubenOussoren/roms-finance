@@ -17,6 +17,10 @@ class EquityGrant < ApplicationRecord
 
   POST_TERMINATION_EXERCISE_DAYS = 90
 
+  # FIFO for inferred sales. Same-date grants resolve to the earlier-created grant,
+  # then the lower ID, so reprocessing the same data always picks the same grant.
+  scope :in_sale_order, -> { order(:grant_date, :created_at, :id) }
+
   def stock_option?
     grant_type == "stock_option"
   end

@@ -159,3 +159,11 @@ status and limitations, not a deductible-interest total. An empty candidate set
 is not a determination of zero eligible deductions. Borrowed-fund purpose and
 jurisdictional eligibility require source-record/professional review. Other
 income/proceeds currency aggregation limitations remain separate work (#142).
+
+## Inferred equity sale order
+
+Rules and backfill assign an inferred sale to the first grant in `EquityGrant.in_sale_order`
+that has vested units remaining: oldest grant date first, then the earlier-created grant,
+then the lower ID. The owner chose this tie-break on 2026-11-04. It applies to new sales
+only; existing `EquityGrantSale` rows are not reassigned. Availability limits remain open
+in #125.

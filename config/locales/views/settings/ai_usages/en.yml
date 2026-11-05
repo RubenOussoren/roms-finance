@@ -1,0 +1,6 @@
+en:
+  settings:
+    ai_usages:
+      cost_unknown: "Unknown"
+      cost_incomplete: "%{amount} + unknown"
+      cost_note: "Costs are estimates. Unknown includes missing pricing or usage and pending or failed attempts without reported cost; these are not assumed free. Historical zero costs may include unavailable pricing or usage. Token totals include reported counts only; missing counts are excluded."
