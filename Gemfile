@@ -79,7 +79,7 @@ gem "after_commit_everywhere", "~> 1.0"
 
 # AI
 gem "ruby-openai"
-gem "ruby_llm", "~> 2.0.0"
+gem "ruby_llm", "~> 2.1.1"
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows]
