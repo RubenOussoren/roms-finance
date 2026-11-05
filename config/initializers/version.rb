@@ -14,7 +14,7 @@ module RomsFinance
 
     private
       def semver
-        "1.1.0"
+        "1.3.1"
       end
   end
 end
