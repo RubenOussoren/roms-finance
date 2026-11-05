@@ -7,7 +7,7 @@ gem "rails", "~> 8.0"
 
 # Drivers
 gem "pg", "~> 1.7"
-gem "redis", "~> 5.4"
+gem "redis", "~> 6.0"
 gem "connection_pool"
 
 # Deployment
