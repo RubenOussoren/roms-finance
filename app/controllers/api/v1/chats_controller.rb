@@ -14,6 +14,10 @@ class Api::V1::ChatsController < Api::V1::BaseController
   def show
     return unless @chat
     @pagy, @messages = pagy(@chat.messages.ordered, limit: 50)
+    ActiveRecord::Associations::Preloader.new(
+      records: @messages.select { |message| message.is_a?(AssistantMessage) },
+      associations: :origin_user_message
+    ).call
   end
 
   def create

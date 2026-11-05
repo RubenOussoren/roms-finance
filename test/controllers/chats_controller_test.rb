@@ -20,6 +20,17 @@ class ChatsControllerTest < ActionDispatch::IntegrationTest
     assert_equal prompt.ai_model, prompt.reload.ai_model
   end
 
+  test "dated snapshots do not show a false model change notice" do
+    chat = chats(:one)
+    prompt, attempt = create_attempt(chat)
+    [ "-2025-08-07", "-20250807" ].each do |suffix|
+      attempt.update!(ai_model: "#{prompt.ai_model}#{suffix}", status: :complete, content: "Snapshot answer")
+      get chat_url(chat)
+      assert_response :success
+      assert_select "#assistant_message_#{attempt.id} [role='status']", text: /Model changed/, count: 0
+    end
+  end
+
   test "omitted and blank models use the configured default" do
     Setting.stubs(:default_ai_model).returns("gpt-5.4")
     [ nil, "" ].each do |model|

@@ -154,6 +154,40 @@ class Rule::ActionExecutor::CreateEquitySaleTest < ActiveSupport::TestCase
     assert_equal "USD", sale.currency
   end
 
+  test "same-date grants sell from the earlier-created option grant" do
+    # The later-created row is inserted first, so insertion order cannot explain a pass.
+    later = create_tied_rsu(created_at: 1.day.ago)
+    earlier = create_tied_option(created_at: 2.days.ago)
+
+    sale = apply_sale(later, earlier)
+
+    assert_equal earlier, sale.equity_grant
+    # $1,800 proceeds / ($180 price - $150 strike) = 60 options.
+    assert_in_delta 60.0, sale.units.to_f, 0.01
+  end
+
+  test "same-date grants sell from the earlier-created RSU grant" do
+    later = create_tied_option(created_at: 1.day.ago)
+    earlier = create_tied_rsu(created_at: 2.days.ago)
+
+    sale = apply_sale(later, earlier)
+
+    assert_equal earlier, sale.equity_grant
+    # $1,800 proceeds / $180 price = 10 RSUs.
+    assert_in_delta 10.0, sale.units.to_f, 0.01
+  end
+
+  test "same-date grants created together sell from the lower ID" do
+    created_at = 1.day.ago
+    higher = create_tied_rsu(created_at: created_at, id: "00000000-0000-4000-8000-000000000002")
+    lower = create_tied_option(created_at: created_at, id: "00000000-0000-4000-8000-000000000001")
+
+    sale = apply_sale(higher, lower)
+
+    assert_equal lower, sale.equity_grant
+    assert_in_delta 60.0, sale.units.to_f, 0.01
+  end
+
   test "FIFO picks oldest vested grant when multiple exist" do
     older = EquityGrant.create!(
       equity_compensation: @equity_account.accountable,
@@ -173,4 +207,27 @@ class Rule::ActionExecutor::CreateEquitySaleTest < ActiveSupport::TestCase
     sale = EquityGrantSale.last
     assert_equal older.id, sale.equity_grant_id
   end
+
+  private
+
+    # Older than the fixture grants, so these two decide the sale.
+    def tied_grant_attributes
+      { equity_compensation: @equity_account.accountable, security: @grant.security, total_units: 500,
+        grant_date: Date.new(2022, 1, 1), cliff_months: 0, vesting_period_months: 12, vesting_frequency: "monthly" }
+    end
+
+    def create_tied_rsu(**attributes)
+      EquityGrant.create!(tied_grant_attributes.merge(grant_type: "rsu", grant_price: 100, **attributes))
+    end
+
+    def create_tied_option(**attributes)
+      EquityGrant.create!(tied_grant_attributes.merge(grant_type: "stock_option", strike_price: 150,
+        expiration_date: Date.new(2032, 1, 1), option_type: "iso", **attributes))
+    end
+
+    def apply_sale(*grants)
+      action = Rule::Action.new(rule: @rule, action_type: "create_equity_sale", value: @equity_account.id)
+      action.apply(Transaction.where(id: @bank_txn.id))
+      EquityGrantSale.where(equity_grant: grants).sole
+    end
 end

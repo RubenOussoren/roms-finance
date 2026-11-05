@@ -88,7 +88,7 @@ class EquityCompensation < ApplicationRecord
   VESTING_ENTRY_PREFIX = "Vesting: "
 
   # Backfills EquityGrantSale rows for historical positive-amount Transaction entries
-  # on this account that aren't already linked to a sale. Uses FIFO by grant_date and
+  # on this account that aren't already linked to a sale. Uses EquityGrant.in_sale_order and
   # derives units from the historical price on the entry date. Idempotent.
   def backfill_sales_from_transactions!
     acct = account
@@ -104,7 +104,7 @@ class EquityCompensation < ApplicationRecord
       .each do |entry|
         next if existing_entry_ids.include?(entry.id)
 
-        grant = equity_grants.includes(:security).order(:grant_date)
+        grant = equity_grants.includes(:security).in_sale_order
           .find { |g| g.vested_units_remaining(as_of: entry.date) > 0 }
         next if grant.nil?
 

@@ -1,6 +1,17 @@
 class AssistantMessage < Message
   FLUSH_INTERVAL = 0.1 # seconds
   STALL_AFTER = 5.minutes
+  SNAPSHOT_SUFFIX = "-([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{8})$".freeze
+
+  # Keep raw provider names in history; normalize only comparisons and reporting.
+  def self.base_model_name(name)
+    name.to_s.sub(/#{SNAPSHOT_SUFFIX}/, "")
+  end
+
+  def model_changed?
+    origin_user_message.present? &&
+      self.class.base_model_name(ai_model) != self.class.base_model_name(origin_user_message.ai_model)
+  end
 
   belongs_to :origin_user_message, class_name: "UserMessage", optional: true
   belongs_to :replaces_message, class_name: "AssistantMessage", optional: true
@@ -72,17 +83,37 @@ class AssistantMessage < Message
     end
   end
 
-  def calculate_cost
-    model_info = RubyLLM.models.find(ai_model)
-    return 0 unless model_info
+  # The dispatched model is explicit: the prompt may have fallen back before
+  # dispatch and must not be used to infer pricing. nil means unavailable pricing,
+  # distinct from a genuinely free or rounded-zero reply.
+  def calculate_cost(dispatched_model: nil)
+    return nil if input_tokens.nil? || output_tokens.nil?
 
-    tokens = RubyLLM::Tokens.new(input: input_tokens || 0, output: output_tokens || 0)
-    ((model_info.cost_for(tokens).total || 0) * 100).round # cents
-  rescue
-    0
+    [ ai_model, dispatched_model ].compact.uniq.each do |name|
+      cents = catalog_cost_cents(name)
+      return cents unless cents.nil?
+    end
+    nil
   end
 
   private
+
+    def catalog_cost_cents(name)
+      tokens = RubyLLM::Tokens.new(input: input_tokens, output: output_tokens)
+      total = catalog_model(name)&.cost_for(tokens)&.total
+      (total * 100).round unless total.nil?
+    rescue StandardError
+      # Accounting metadata must not invalidate a successful reply. Try the next
+      # name, without logging exceptions that may contain provider data.
+      Rails.logger.warn("[AI Chat] Model cost estimate unavailable")
+      nil
+    end
+
+    def catalog_model(name)
+      RubyLLM.models.find(name)
+    rescue RubyLLM::ModelNotFoundError
+      nil
+    end
 
     def valid_attempt_links
       if origin_user_message_id.present?
