@@ -333,6 +333,115 @@ class EquityGrantTest < ActiveSupport::TestCase
     assert_equal Date.new(2024, 4, 1), dates.first
   end
 
+  # === Anniversary Schedule Regressions (#123) ===
+
+  test "January 15 monthly grant catches up on its cliff anniversary" do
+    cliff_date = Date.new(2025, 1, 15)
+    next_date = Date.new(2025, 2, 15)
+
+    assert_equal cliff_date, @rsu_grant.next_vest_date(as_of: Date.new(2024, 1, 14))
+    assert_equal 0, @rsu_grant.vested_units(as_of: Date.new(2025, 1, 14))
+    assert_empty @rsu_grant.vesting_dates(up_to: Date.new(2025, 1, 14))
+    assert_equal cliff_date, @rsu_grant.next_vest_date(as_of: Date.new(2025, 1, 14))
+
+    # The first event releases 12 of 48 installments on the 1,000-unit grant.
+    assert_equal 250, @rsu_grant.vested_units(as_of: cliff_date)
+    assert_equal [ cliff_date ], @rsu_grant.vesting_dates(up_to: cliff_date)
+    assert_equal next_date, @rsu_grant.next_vest_date(as_of: cliff_date)
+    assert_equal 250, @rsu_grant.vested_units(as_of: Date.new(2025, 2, 14))
+    assert_equal BigDecimal("270.8333"), @rsu_grant.vested_units(as_of: next_date)
+  end
+
+  test "monthly vesting clamps January 31 to leap day and restores the 31st in March" do
+    grant = EquityGrant.new(
+      grant_date: Date.new(2024, 1, 31), total_units: 300,
+      cliff_months: 0, vesting_period_months: 3, vesting_frequency: "monthly"
+    )
+    february = Date.new(2024, 2, 29)
+    march = Date.new(2024, 3, 31)
+    april = Date.new(2024, 4, 30)
+
+    assert_empty grant.vesting_dates(up_to: Date.new(2024, 1, 31))
+    assert_equal february, grant.next_vest_date(as_of: Date.new(2024, 1, 31))
+    assert_equal 0, grant.vested_units(as_of: Date.new(2024, 2, 28))
+    assert_equal 100, grant.vested_units(as_of: february)
+    assert_equal march, grant.next_vest_date(as_of: february)
+    assert_equal 100, grant.vested_units(as_of: Date.new(2024, 3, 30))
+    assert_equal 200, grant.vested_units(as_of: march)
+    assert_equal [ february, march, april ], grant.vesting_dates(up_to: april)
+  end
+
+  test "quarterly vesting catches up at the first cadence date after an off-cadence cliff" do
+    grant = EquityGrant.new(
+      grant_date: Date.new(2024, 1, 15), total_units: 900,
+      cliff_months: 4, vesting_period_months: 7, vesting_frequency: "quarterly"
+    )
+    first_vest = Date.new(2024, 7, 15)
+    last_vest = Date.new(2024, 10, 15)
+
+    assert_equal first_vest, grant.next_vest_date(as_of: Date.new(2024, 1, 15))
+    assert_equal 0, grant.vested_units(as_of: Date.new(2024, 5, 15))
+    assert_equal 0, grant.vested_units(as_of: Date.new(2024, 7, 14))
+    assert_empty grant.vesting_dates(up_to: Date.new(2024, 7, 14))
+
+    # The seven-month term has three 300-unit installments, two released in July.
+    assert_equal 600, grant.vested_units(as_of: first_vest)
+    assert_equal last_vest, grant.next_vest_date(as_of: first_vest)
+    assert_equal 600, grant.vested_units(as_of: Date.new(2024, 8, 15))
+    assert_equal 600, grant.vested_units(as_of: Date.new(2024, 10, 14))
+    assert_equal 900, grant.vested_units(as_of: last_vest)
+    assert_equal [ first_vest, last_vest ], grant.vesting_dates(up_to: last_vest)
+    assert_nil grant.next_vest_date(as_of: last_vest)
+  end
+
+  test "annual vesting restores February 29 after non-leap anniversaries" do
+    grant = EquityGrant.new(
+      grant_date: Date.new(2024, 2, 29), total_units: 400,
+      cliff_months: 0, vesting_period_months: 48, vesting_frequency: "annually"
+    )
+    dates = [ Date.new(2025, 2, 28), Date.new(2026, 2, 28), Date.new(2027, 2, 28), Date.new(2028, 2, 29) ]
+
+    assert_equal 0, grant.vested_units(as_of: Date.new(2025, 2, 27))
+    assert_equal 100, grant.vested_units(as_of: Date.new(2025, 2, 28))
+    assert_equal 300, grant.vested_units(as_of: Date.new(2028, 2, 28))
+    assert_equal Date.new(2028, 2, 29), grant.next_vest_date(as_of: Date.new(2028, 2, 28))
+    assert_equal 400, grant.vested_units(as_of: Date.new(2028, 2, 29))
+    assert_equal dates, grant.vesting_dates(up_to: Date.new(2028, 2, 29))
+  end
+
+  test "termination on an anniversary includes that installment but no later ones" do
+    @rsu_grant.termination_date = Date.new(2025, 2, 15)
+    later = Date.new(2025, 4, 15)
+
+    assert_equal 250, @rsu_grant.vested_units(as_of: Date.new(2025, 2, 14))
+    assert_equal Date.new(2025, 2, 15), @rsu_grant.next_vest_date(as_of: Date.new(2025, 2, 14))
+    assert_equal BigDecimal("270.8333"), @rsu_grant.vested_units(as_of: Date.new(2025, 2, 15))
+    assert_equal BigDecimal("270.8333"), @rsu_grant.vested_units(as_of: later)
+    assert_equal [ Date.new(2025, 1, 15), Date.new(2025, 2, 15) ], @rsu_grant.vesting_dates(up_to: later)
+    assert_nil @rsu_grant.next_vest_date(as_of: Date.new(2025, 2, 15))
+  end
+
+  test "termination the day before an anniversary excludes that installment" do
+    @rsu_grant.termination_date = Date.new(2025, 2, 14)
+    later = Date.new(2025, 4, 15)
+
+    assert_equal 250, @rsu_grant.vested_units(as_of: later)
+    assert_equal [ Date.new(2025, 1, 15) ], @rsu_grant.vesting_dates(up_to: later)
+    assert_nil @rsu_grant.next_vest_date(as_of: Date.new(2025, 2, 13))
+  end
+
+  test "vested units floor the cumulative amount to four decimal places" do
+    grant = EquityGrant.new(
+      grant_date: Date.new(2024, 1, 15), total_units: 1,
+      cliff_months: 0, vesting_period_months: 6, vesting_frequency: "monthly"
+    )
+
+    # Floor 1/6 to 0.1666 (not 0.1667), and 2/6 to 0.3333 (not 0.3332).
+    assert_equal BigDecimal("0.1666"), grant.vested_units(as_of: Date.new(2024, 2, 15))
+    assert_equal BigDecimal("0.3333"), grant.vested_units(as_of: Date.new(2024, 3, 15))
+    assert_equal 1, grant.vested_units(as_of: Date.new(2024, 7, 15))
+  end
+
   # === Price parameter ===
 
   test "vested_value uses provided price when given" do

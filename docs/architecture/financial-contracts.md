@@ -160,6 +160,30 @@ is not a determination of zero eligible deductions. Borrowed-fund purpose and
 jurisdictional eligibility require source-record/professional review. Other
 income/proceeds currency aggregation limitations remain separate work (#142).
 
+## Equity vesting schedule
+
+`EquityGrant` models regular monthly, quarterly, or annual installments (every
+1, 3, or 12 months), for both RSUs and stock options. Each date is calculated
+from the original grant date, using the target month's last day if the grant
+day does not exist in that month. For example, January 31 vests on February 28
+in a non-leap year and then March 31. No vest occurs on the grant date.
+
+- The number of installments is the vesting term divided by the cadence,
+  rounded up. If the term is not an exact multiple of the cadence, the last
+  installment remains on the next regular date, not on a pro-rated stub date.
+- The first scheduled date on or after the cliff releases all installments
+  accrued through that date. If no scheduled date meets the cliff, nothing vests.
+- Vested units include installments on the as-of date. Termination includes a
+  vest on the termination date but excludes later dates. The next vest is the
+  first eligible date strictly after the as-of date, or absent if there is none.
+- Cumulative vested units are the total granted units times the number of
+  elapsed installments divided by the total number of installments, floored
+  to four decimal places. The calculation does not round each installment
+  separately.
+
+Custom employer dates, irregular tranche sizes, and acceleration rules are not
+modeled. Option expiration and exercise deadlines remain separate from vesting.
+
 ## Inferred equity sale order
 
 Rules and backfill assign an inferred sale to the first grant in `EquityGrant.in_sale_order`
