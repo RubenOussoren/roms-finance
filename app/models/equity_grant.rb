@@ -59,16 +59,15 @@ class EquityGrant < ApplicationRecord
   end
 
   def vested_units(as_of: Date.current)
-    return 0 if as_of < grant_date
+    periods_elapsed = 0
+    each_vesting_event do |date, period|
+      break if date > as_of
+      periods_elapsed = period
+    end
 
-    effective_as_of = terminated? ? [ as_of, termination_date ].min : as_of
-    elapsed = months_between(grant_date, effective_as_of)
-    return 0 if elapsed < cliff_months
+    return 0 if periods_elapsed.zero?
 
-    freq = frequency_in_months
-    periods_total = (vesting_period_months / freq.to_f).ceil
-    periods_elapsed = [ elapsed / freq, periods_total ].min
-    (total_units * periods_elapsed / periods_total.to_d).floor(4)
+    (total_units * periods_elapsed / vesting_period_count.to_d).floor(4)
   end
 
   def unvested_units(as_of: Date.current)
@@ -112,21 +111,11 @@ class EquityGrant < ApplicationRecord
   end
 
   def vesting_dates(up_to: Date.current)
-    return [] if up_to < grant_date
-
-    freq = frequency_in_months
-    periods_total = (vesting_period_months / freq.to_f).ceil
     dates = []
-
-    (1..periods_total).each do |period|
-      date = grant_date + (period * freq).months
+    each_vesting_event do |date, _period|
       break if date > up_to
-      break if terminated? && date > termination_date
-      next if period * freq < cliff_months
-
       dates << date
     end
-
     dates
   end
 
@@ -155,17 +144,8 @@ class EquityGrant < ApplicationRecord
   end
 
   def next_vest_date(as_of: Date.current)
-    return nil if fully_vested?(as_of: as_of)
-    return nil if terminated? && as_of >= termination_date
-
-    freq = frequency_in_months
-    periods_total = (vesting_period_months / freq.to_f).ceil
-
-    (1..periods_total).each do |period|
-      vest_date = grant_date + (period * freq).months
-      next unless vest_date > as_of
-      return nil if terminated? && vest_date > termination_date
-      return vest_date
+    each_vesting_event do |date, _period|
+      return date if date > as_of
     end
 
     nil
@@ -217,8 +197,22 @@ class EquityGrant < ApplicationRecord
       false
     end
 
-    def months_between(start_date, end_date)
-      (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+    def each_vesting_event
+      frequency = frequency_in_months
+      first_period = [ cliff_months.ceildiv(frequency), 1 ].max
+
+      (first_period..vesting_period_count).each do |period|
+        # Always shift from the grant date so a short month does not move later anniversaries.
+        date = grant_date >> (period * frequency)
+        break if terminated? && date > termination_date
+
+        # Keep the original period number so the first eligible vest includes the cliff catch-up.
+        yield date, period
+      end
+    end
+
+    def vesting_period_count
+      vesting_period_months.ceildiv(frequency_in_months)
     end
 
     def frequency_in_months
